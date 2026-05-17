@@ -31,52 +31,73 @@ function useMounted() {
 }
 
 // ================================================================
-// SIMPLE RED ANIME INTRO — "LUFFY TV"
-// Text fades in red → splits in half top/bottom → website appears
+// NETFLIX-STYLE INTRO — "LUFFY TV"
+// Pure CSS/HTML animation: brush sweep → text reveal → lumiere lights → zoom
+// React only mounts/unmounts, CSS handles all animation
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
   const onCompleteRef = useRef(onComplete);
-  const [phase, setPhase] = useState<'idle' | 'show' | 'split' | 'gone'>('idle');
+  const [gone, setGone] = useState(false);
 
   useEffect(() => { onCompleteRef.current = onComplete; });
 
   const skip = useCallback(() => {
-    setPhase('gone');
+    setGone(true);
     onCompleteRef.current();
   }, []);
 
+  // CSS handles all animation timing, we just unmount after
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setPhase('show'), 200),    // text fades in
-      setTimeout(() => setPhase('split'), 2200),   // text splits
-      setTimeout(() => setPhase('gone'), 3000),    // remove overlay
-      setTimeout(() => onCompleteRef.current(), 3100),
-    ];
-    return () => timers.forEach(clearTimeout);
+    const t = setTimeout(() => {
+      setGone(true);
+      onCompleteRef.current();
+    }, 5500);
+    return () => clearTimeout(t);
   }, []);
 
-  if (phase === 'gone') return null;
+  if (gone) return null;
 
   return (
-    <div className={`lt-intro ${phase === 'split' ? 'lt-intro-split' : ''}`}>
-      {/* Red glow behind text */}
-      <div className="lt-glow" />
+    <div className="nf-intro">
+      <div className="nf-logo">
+        {/* Red ambient glow */}
+        <div className="nf-glow" />
 
-      {/* Splitting text container */}
-      <div className="lt-text-wrap">
-        {/* Top half — slides up */}
-        <div className="lt-half lt-half-top">
-          <span className="lt-logo">LUFFY TV</span>
+        {/* Text layer — revealed by clip-path synced with brush */}
+        <div className="nf-text">
+          <div className="nf-row">
+            {['L','U','F','F','Y'].map((c, i) => (
+              <span key={i} className="nf-char" style={{ '--i': i } as React.CSSProperties}>{c}</span>
+            ))}
+          </div>
+          <div className="nf-row nf-row-sm">
+            {['T','V'].map((c, i) => (
+              <span key={i} className="nf-char nf-char-sm" style={{ '--i': i + 5 } as React.CSSProperties}>{c}</span>
+            ))}
+          </div>
         </div>
-        {/* Bottom half — slides down */}
-        <div className="lt-half lt-half-bottom">
-          <span className="lt-logo">LUFFY TV</span>
+
+        {/* Brush sweep — red paint stroke across screen */}
+        <div className="nf-brush">
+          <div className="nf-brush-body" />
+          <div className="nf-brush-fur">
+            {Array.from({ length: 31 }, (_, i) => (
+              <span key={i} className={`nf-fur nf-fur-${i + 1}`} />
+            ))}
+          </div>
+        </div>
+
+        {/* Lumiere light streaks */}
+        <div className="nf-lums">
+          {Array.from({ length: 28 }, (_, i) => (
+            <span key={i} className={`nf-lamp nf-lamp-${i + 1}`} />
+          ))}
         </div>
       </div>
 
-      {/* Skip */}
-      <button onClick={skip} className="lt-skip" aria-label="Skip intro">
+      {/* Skip button */}
+      <button onClick={skip} className="nf-skip" aria-label="Skip intro">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
