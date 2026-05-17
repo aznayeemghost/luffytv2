@@ -31,74 +31,53 @@ function useMounted() {
 }
 
 // ================================================================
-// SIMPLE CLEAN ANIME INTRO — "LUFFY TV"
-// Straw hat spins in → LUFFY TV text reveals → smooth exit → website
-// Clean, smooth, no over-engineering
+// SIMPLE RED ANIME INTRO — "LUFFY TV"
+// Text fades in red → splits in half top/bottom → website appears
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
   const onCompleteRef = useRef(onComplete);
-  const [visible, setVisible] = useState(true);
-  const [showText, setShowText] = useState(false);
-  const [exitAnim, setExitAnim] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'show' | 'split' | 'gone'>('idle');
 
   useEffect(() => { onCompleteRef.current = onComplete; });
 
   const skip = useCallback(() => {
-    if (!visible) return;
-    setVisible(false);
+    setPhase('gone');
     onCompleteRef.current();
-  }, [visible]);
+  }, []);
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setShowText(true), 1800),   // hat lands, text appears
-      setTimeout(() => setExitAnim(true), 3800),    // start exit
-      setTimeout(() => setVisible(false), 4500),    // remove
-      setTimeout(() => onCompleteRef.current(), 4600),
+      setTimeout(() => setPhase('show'), 200),    // text fades in
+      setTimeout(() => setPhase('split'), 2200),   // text splits
+      setTimeout(() => setPhase('gone'), 3000),    // remove overlay
+      setTimeout(() => onCompleteRef.current(), 3100),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  if (!visible) return null;
+  if (phase === 'gone') return null;
 
   return (
-    <div className={`lt-intro ${exitAnim ? 'lt-intro-exit' : ''}`}>
-      {/* Red ambient glow */}
+    <div className={`lt-intro ${phase === 'split' ? 'lt-intro-split' : ''}`}>
+      {/* Red glow behind text */}
       <div className="lt-glow" />
 
-      {/* Straw Hat — spins in from above */}
-      <div className={`lt-hat ${showText ? 'lt-hat-landed' : ''}`}>
-        <svg viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg">
-          {/* Brim */}
-          <ellipse cx="60" cy="48" rx="55" ry="11" fill="#C8963E" stroke="#A67C3D" strokeWidth="1.5" />
-          <ellipse cx="60" cy="48" rx="50" ry="9" fill="none" stroke="#B8942E" strokeWidth="0.6" strokeDasharray="3,3" />
-          {/* Crown */}
-          <path d="M36,28 Q36,14 60,10 Q84,14 84,28 L84,44 L36,44 Z" fill="#C8963E" stroke="#A67C3D" strokeWidth="1.5" />
-          {/* Weave */}
-          <g stroke="#B08630" strokeWidth="0.5" opacity="0.35">
-            <line x1="38" y1="22" x2="82" y2="22" />
-            <line x1="38" y1="28" x2="82" y2="28" />
-            <line x1="38" y1="34" x2="82" y2="34" />
-            <line x1="38" y1="40" x2="82" y2="40" />
-          </g>
-          {/* Band */}
-          <rect x="36" y="41" width="48" height="8" rx="1.5" fill="#8B4513" stroke="#6B3410" strokeWidth="0.5" />
-          {/* Buckle */}
-          <rect x="50" y="39" width="20" height="12" rx="2" fill="#DAA520" stroke="#B8860B" strokeWidth="0.8" />
-          <rect x="56" y="42" width="8" height="6" rx="1" fill="#6B3410" />
-        </svg>
-      </div>
-
-      {/* LUFFY TV Text */}
-      <div className={`lt-text ${showText ? 'lt-text-in' : ''}`}>
-        <span className="lt-word" style={{ '--word-delay': '0s' } as React.CSSProperties}>LUFFY</span>
-        <span className="lt-word lt-word-tv" style={{ '--word-delay': '0.15s' } as React.CSSProperties}>TV</span>
+      {/* Splitting text container */}
+      <div className="lt-text-wrap">
+        {/* Top half — slides up */}
+        <div className="lt-half lt-half-top">
+          <span className="lt-logo">LUFFY TV</span>
+        </div>
+        {/* Bottom half — slides down */}
+        <div className="lt-half lt-half-bottom">
+          <span className="lt-logo">LUFFY TV</span>
+        </div>
       </div>
 
       {/* Skip */}
       <button onClick={skip} className="lt-skip" aria-label="Skip intro">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="mr-1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
         </svg>
