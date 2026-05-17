@@ -31,22 +31,18 @@ function useMounted() {
 }
 
 // ================================================================
-// SMOOTH CINEMATIC INTRO — "LUFFY TV"
-// Fluid, buttery-smooth animation inspired by Netflix/HBO/D+
-// No chunky phase jumps — continuous CSS-driven transitions
+// PIRATE FLAG INTRO — "LUFFY TV"
+// A Straw Hat Jolly Roger flag unfurls, then burns away smoothly
+// to reveal the website. Canvas-driven fire particles + CSS burn.
 // ================================================================
 
-const BRAND_PARTS = [
-  { letters: ['L', 'U', 'F', 'F', 'Y'], gap: 2 },
-  { letters: ['T', 'V'], gap: 6 },
-];
+type IntroPhase = 'waiting' | 'entering' | 'waving' | 'burning' | 'done';
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
   const onCompleteRef = useRef(onComplete);
-  const [started, setStarted] = useState(false);
-  const [showStreak, setShowStreak] = useState(false);
-  const [showGlow, setShowGlow] = useState(false);
-  const [fadeOut, setFadeOut] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
+  const [phase, setPhase] = useState<IntroPhase>('waiting');
   const [visible, setVisible] = useState(true);
 
   useEffect(() => { onCompleteRef.current = onComplete; });
@@ -54,132 +50,233 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
   const skip = useCallback(() => {
     if (!visible) return;
     setVisible(false);
+    cancelAnimationFrame(rafRef.current);
     onCompleteRef.current();
   }, [visible]);
 
-  // Smooth timed sequence — longer, more relaxed pacing
+  // ── Fire particle system (canvas) ──
+  useEffect(() => {
+    if (phase !== 'burning') return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Flag bounds (must match CSS sizing)
+    const flagW = Math.min(w * 0.55, 500);
+    const flagH = flagW * 0.8;
+    const flagLeft = (w - flagW) / 2;
+    const flagTop = (h - flagH) / 2;
+
+    interface Particle {
+      x: number; y: number;
+      vx: number; vy: number;
+      life: number; maxLife: number;
+      size: number;
+      type: 'flame' | 'ember' | 'smoke';
+    }
+
+    const particles: Particle[] = [];
+    let burnProgress = 0;
+    const burnDuration = 2.8;
+    const startTime = performance.now();
+
+    const addFlame = (x: number, y: number) => {
+      const life = 0.3 + Math.random() * 0.5;
+      particles.push({ x, y, vx: (Math.random() - 0.5) * 1.5, vy: -2 - Math.random() * 3, life, maxLife: life, size: 4 + Math.random() * 8, type: 'flame' });
+    };
+    const addEmber = (x: number, y: number) => {
+      const life = 1 + Math.random() * 2;
+      particles.push({ x, y, vx: (Math.random() - 0.5) * 4, vy: -3 - Math.random() * 5, life, maxLife: life, size: 1 + Math.random() * 2.5, type: 'ember' });
+    };
+    const addSmoke = (x: number, y: number) => {
+      const life = 1.5 + Math.random() * 2;
+      particles.push({ x, y, vx: (Math.random() - 0.5) * 1, vy: -0.5 - Math.random() * 1.5, life, maxLife: life, size: 10 + Math.random() * 20, type: 'smoke' });
+    };
+
+    let lastTime = startTime;
+
+    const animate = (now: number) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      const elapsed = (now - startTime) / 1000;
+      burnProgress = Math.min(1, elapsed / burnDuration);
+
+      // Burn line moves from flag bottom to flag top
+      const burnY = flagTop + flagH * (1 - burnProgress);
+
+      // Spawn particles
+      if (burnProgress < 0.95) {
+        for (let i = 0; i < 5; i++) addFlame(flagLeft + Math.random() * flagW, burnY);
+        if (Math.random() < 0.4) addEmber(flagLeft + Math.random() * flagW, burnY);
+        if (Math.random() < 0.15) addSmoke(flagLeft + Math.random() * flagW, burnY - 30);
+      }
+
+      // Update particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
+        if (p.type === 'flame') p.vy -= 0.08;
+        if (p.type === 'ember') p.vy -= 0.03;
+        if (p.type === 'smoke') { p.size += dt * 8; p.vy -= 0.01; }
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw smoke (behind everything)
+      for (const p of particles) {
+        if (p.type !== 'smoke') continue;
+        const alpha = (p.life / p.maxLife) * 0.12;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(100, 80, 60, ${alpha})`;
+        ctx.fill();
+      }
+
+      // Glow along burn line
+      if (burnProgress < 0.95) {
+        const glowH = 60;
+        const grd = ctx.createLinearGradient(0, burnY - glowH, 0, burnY + 10);
+        grd.addColorStop(0, 'rgba(255, 100, 0, 0)');
+        grd.addColorStop(0.6, `rgba(255, 130, 20, ${0.25 * (1 - burnProgress)})`);
+        grd.addColorStop(1, 'rgba(255, 60, 0, 0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(flagLeft - 30, burnY - glowH, flagW + 60, glowH + 10);
+      }
+
+      // Draw flames
+      for (const p of particles) {
+        if (p.type !== 'flame') continue;
+        const alpha = Math.max(0, p.life / p.maxLife);
+        const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+        if (alpha > 0.6) {
+          grd.addColorStop(0, `rgba(255, 255, 200, ${alpha})`);
+          grd.addColorStop(0.4, `rgba(255, 160, 30, ${alpha * 0.7})`);
+          grd.addColorStop(1, 'rgba(255, 60, 0, 0)');
+        } else {
+          grd.addColorStop(0, `rgba(255, 100, 20, ${alpha})`);
+          grd.addColorStop(1, 'rgba(150, 30, 0, 0)');
+        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = grd;
+        ctx.fill();
+      }
+
+      // Draw embers
+      for (const p of particles) {
+        if (p.type !== 'ember') continue;
+        const alpha = Math.max(0, p.life / p.maxLife);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, ${120 + Math.floor(alpha * 80)}, 20, ${alpha})`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 120, 20, ${alpha * 0.15})`;
+        ctx.fill();
+      }
+
+      rafRef.current = requestAnimationFrame(animate);
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [phase]);
+
+  // ── Timing sequence ──
   useEffect(() => {
     const timers = [
-      setTimeout(() => setStarted(true),      600),   // brief dark hold
-      setTimeout(() => setShowStreak(true),    2800),  // letters settle ~2.2s
-      setTimeout(() => setShowStreak(false),   3600),  // streak sweeps ~0.8s
-      setTimeout(() => setShowGlow(true),      3800),  // glow starts
-      setTimeout(() => setFadeOut(true),       4800),  // glow ~1s then start fade
-      setTimeout(() => setVisible(false),      5600),  // fade completes ~0.8s
-      setTimeout(() => onCompleteRef.current(),5700),
+      setTimeout(() => setPhase('entering'), 200),    // brief dark hold
+      setTimeout(() => setPhase('waving'), 1800),     // flag settles, waves
+      setTimeout(() => setPhase('burning'), 3200),    // fire starts
+      setTimeout(() => setPhase('done'), 6200),       // burn complete
+      setTimeout(() => setVisible(false), 6700),      // intro hidden
+      setTimeout(() => onCompleteRef.current(), 7000), // callback
     ];
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+      cancelAnimationFrame(rafRef.current);
+    };
   }, []);
 
-  // Fewer, softer ambient particles
-  const ambientParticles = useMemo(() =>
-    Array.from({ length: 18 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: 0.8 + Math.random() * 1.5,
-      duration: 6 + Math.random() * 10,
-      delay: Math.random() * 4,
-      opacity: 0.04 + Math.random() * 0.08,
-      drift: (Math.random() - 0.5) * 20,
-    }))
-  , []);
-
-  // Build flat letter array with spacing info
-  const letterItems = useMemo(() => {
-    const items: { letter: string; delay: number; spaceBefore: number }[] = [];
-    let delay = 0;
-    BRAND_PARTS.forEach((part, pi) => {
-      part.letters.forEach((letter, li) => {
-        items.push({
-          letter,
-          delay,
-          spaceBefore: (pi > 0 && li === 0) ? part.gap : 0,
-        });
-        delay += 0.12;
-      });
-    });
-    return items;
-  }, []);
+  if (!visible) return null;
 
   return (
-    <div className={`luffy-intro ${fadeOut ? 'luffy-intro-fadeout' : ''} ${!visible ? 'luffy-intro-gone' : ''}`}>
-      {/* ── Soft vignette ── */}
-      <div className="luffy-vignette" />
+    <div className={`pirate-intro ${phase === 'done' ? 'pirate-intro-exit' : ''}`}>
+      {/* ── Dark atmosphere with subtle warm glow ── */}
+      <div className="pirate-atmosphere" />
+      <div className="pirate-fog" />
 
-      {/* ── Ambient particles (fewer, softer) ── */}
-      {started && !fadeOut && (
-        <div className="luffy-particles">
-          {ambientParticles.map(p => (
-            <div
-              key={p.id}
-              className="luffy-particle"
-              style={{
-                left: `${p.x}%`,
-                top: `${p.y}%`,
-                width: `${p.size}px`,
-                height: `${p.size}px`,
-                '--p-dur': `${p.duration}s`,
-                '--p-delay': `${p.delay}s`,
-                '--p-drift': `${p.drift}px`,
-                opacity: p.opacity,
-              } as React.CSSProperties}
-            />
-          ))}
+      {/* ── Pirate Flag ── */}
+      {phase !== 'waiting' && (
+        <div className={`pirate-flag-container ${phase === 'entering' ? 'flag-entering' : 'flag-visible'} ${phase === 'waving' ? 'flag-waving' : ''}`}>
+          <div className={`pirate-flag ${phase === 'burning' || phase === 'done' ? 'flag-burning' : ''}`}>
+            <svg viewBox="0 0 400 320" className="jolly-roger-svg" xmlns="http://www.w3.org/2000/svg">
+              {/* Flag cloth */}
+              <path d="M30,15 C60,10 120,5 200,5 C280,5 340,10 370,15 L370,270 C340,280 280,290 200,290 C120,290 60,280 30,270 Z" fill="#0a0a0a" stroke="#222" strokeWidth="1.5"/>
+
+              {/* Crossbones */}
+              <g stroke="#d0d0d0" strokeWidth="8" strokeLinecap="round">
+                <line x1="115" y1="245" x2="285" y2="155"/>
+                <line x1="285" y1="245" x2="115" y2="155"/>
+              </g>
+              <g fill="#d0d0d0">
+                <circle cx="115" cy="245" r="7"/>
+                <circle cx="285" cy="245" r="7"/>
+                <circle cx="115" cy="155" r="7"/>
+                <circle cx="285" cy="155" r="7"/>
+              </g>
+
+              {/* Skull */}
+              <ellipse cx="200" cy="115" rx="32" ry="38" fill="#d0d0d0"/>
+              <ellipse cx="186" cy="110" rx="6" ry="7" fill="#0a0a0a"/>
+              <ellipse cx="214" cy="110" rx="6" ry="7" fill="#0a0a0a"/>
+              <path d="M197,125 L200,131 L203,125" stroke="#0a0a0a" strokeWidth="1.5" fill="none"/>
+              <path d="M184,138 Q200,148 216,138" stroke="#0a0a0a" strokeWidth="2" fill="none"/>
+              <g stroke="#0a0a0a" strokeWidth="1.2">
+                <line x1="189" y1="138" x2="189" y2="144"/>
+                <line x1="197" y1="140" x2="197" y2="146"/>
+                <line x1="205" y1="140" x2="205" y2="146"/>
+                <line x1="213" y1="138" x2="213" y2="144"/>
+              </g>
+
+              {/* Straw Hat */}
+              <g>
+                <ellipse cx="200" cy="82" rx="50" ry="9" fill="#C8963E" stroke="#A67C3D" strokeWidth="1"/>
+                <path d="M176,60 Q176,52 200,50 Q224,52 224,60 L224,78 L176,78 Z" fill="#C8963E" stroke="#A67C3D" strokeWidth="1"/>
+                <g stroke="#B0862E" strokeWidth="0.5" opacity="0.5">
+                  <line x1="178" y1="65" x2="222" y2="65"/>
+                  <line x1="178" y1="70" x2="222" y2="70"/>
+                  <line x1="178" y1="75" x2="222" y2="75"/>
+                </g>
+                <rect x="176" y="74" width="48" height="7" fill="#8B4513" stroke="#6B3410" strokeWidth="0.5"/>
+                <rect x="192" y="73" width="16" height="9" rx="2" fill="#DAA520" stroke="#B8860B" strokeWidth="0.5"/>
+              </g>
+
+              {/* LUFFY TV text */}
+              <text x="200" y="265" textAnchor="middle" fill="#00A8E1" fontFamily="system-ui, sans-serif" fontWeight="900" fontSize="32" letterSpacing="6">LUFFY TV</text>
+            </svg>
+          </div>
         </div>
       )}
 
-      {/* ── Subtle ambient glow ── */}
-      {started && !fadeOut && <div className="luffy-ambient-glow" />}
-
-      {/* ═══════════════════════════════════════════
-          ══ LETTERS — smooth, elegant reveal ══
-          ═══════════════════════════════════════════ */}
-      {started && (
-        <div className={`luffy-logo-wrap ${showGlow ? 'luffy-logo-glow' : ''} ${fadeOut ? 'luffy-logo-exit' : ''}`}>
-          <div className="luffy-letters">
-            {letterItems.map((item, i) => (
-              <span
-                key={i}
-                className={`luffy-letter ${started ? 'luffy-letter-in' : ''}`}
-                style={{
-                  '--l-delay': `${item.delay}s`,
-                  marginLeft: item.spaceBefore ? `${item.spaceBefore * 6}px` : undefined,
-                } as React.CSSProperties}
-              >
-                {item.letter}
-              </span>
-            ))}
-          </div>
-
-          {/* ── Tagline ── */}
-          <div className={`luffy-tagline ${showGlow ? 'luffy-tagline-in' : ''}`}>
-            Anime &bull; Movies &bull; TV
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════
-          ══ LIGHT STREAK — subtle sweep ══
-          ═══════════════════════════════════════════ */}
-      {showStreak && <div className="luffy-streak" />}
-
-      {/* ═══════════════════════════════════════════
-          ══ GLOW PULSE — soft radial bloom ══
-          ═══════════════════════════════════════════ */}
-      {showGlow && (
-        <>
-          <div className="luffy-glow-bloom" />
-          <div className="luffy-glow-ring" />
-        </>
-      )}
+      {/* ── Fire canvas overlay ── */}
+      <canvas ref={canvasRef} className="pirate-fire-canvas" />
 
       {/* ── Skip Button ── */}
-      <button
-        onClick={skip}
-        className="luffy-skip-btn"
-        aria-label="Skip intro"
-      >
+      <button onClick={skip} className="pirate-skip-btn" aria-label="Skip intro">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="mr-1">
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />

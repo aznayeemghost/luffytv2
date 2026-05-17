@@ -697,348 +697,162 @@ video::-webkit-media-controls { border-radius: 8px; }
 .content-reveal { animation: contentReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ================================================================
-   SMOOTH CINEMATIC INTRO — "LUFFY TV"
-   Fluid, buttery animation — no chunky phase jumps
-   Continuous CSS transitions, minimal DOM thrashing
+   PIRATE FLAG INTRO — "LUFFY TV"
+   Straw Hat Jolly Roger unfurls, burns away smoothly
+   Canvas fire particles + CSS clip-path burn effect
    ================================================================ */
 
 /* ── Intro container ── */
-.luffy-intro {
+.pirate-intro {
   position: fixed;
   inset: 0;
   z-index: 9999;
   background: #000;
   overflow: hidden;
-  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), filter 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), filter 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.luffy-intro-fadeout {
+.pirate-intro-exit {
   opacity: 0;
-  filter: blur(6px);
+  filter: blur(4px);
 }
 
-.luffy-intro-gone {
-  display: none;
-}
-
-/* ── Soft vignette ── */
-.luffy-vignette {
+/* ── Dark atmosphere with warm undertone ── */
+.pirate-atmosphere {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.5) 80%, rgba(0, 0, 0, 0.9) 100%);
+  background: radial-gradient(ellipse at 50% 60%, rgba(40, 20, 5, 0.3) 0%, rgba(0, 0, 0, 0.8) 50%, #000 100%);
   pointer-events: none;
-  z-index: 5;
+  z-index: 1;
 }
 
-/* ── Ambient particles (fewer, softer) ── */
-.luffy-particles {
+.pirate-fog {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(30, 30, 40, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(30, 30, 40, 0.15) 0%, transparent 40%);
   pointer-events: none;
-  z-index: 3;
-}
-
-@keyframes luffyParticleFloat {
-  0%, 100% {
-    opacity: 0;
-    transform: translateY(0) translateX(0) translateZ(0);
-  }
-  15% { opacity: var(--p-base-op, 0.1); }
-  50% {
-    transform: translateY(-20px) translateX(var(--p-drift, 10px)) translateZ(0);
-  }
-  85% { opacity: var(--p-base-op, 0.06); }
-}
-
-.luffy-particle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(0, 168, 225, 0.4);
-  will-change: transform, opacity;
-  animation: luffyParticleFloat var(--p-dur, 7s) ease-in-out infinite;
-  animation-delay: var(--p-delay, 0s);
-}
-
-/* ── Subtle ambient glow ── */
-.luffy-ambient-glow {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) translateZ(0);
-  width: 500px;
-  height: 350px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse,
-    rgba(0, 168, 225, 0.06) 0%,
-    rgba(0, 80, 140, 0.03) 40%,
-    transparent 70%
-  );
-  filter: blur(50px);
   z-index: 2;
-  pointer-events: none;
-  animation: luffyAmbientPulse 5s ease-in-out infinite alternate;
+  animation: fogDrift 8s ease-in-out infinite alternate;
 }
 
-@keyframes luffyAmbientPulse {
-  0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1) translateZ(0); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1.05) translateZ(0); }
+@keyframes fogDrift {
+  from { transform: translateX(-15px) translateZ(0); }
+  to { transform: translateX(15px) translateZ(0); }
 }
 
 /* ══════════════════════════════════════════════════════
-   ══ LOGO WRAP ──
+   ══ FLAG CONTAINER — centers the flag ══
    ══════════════════════════════════════════════════════ */
 
-.luffy-logo-wrap {
+.pirate-flag-container {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) translateZ(0);
   z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  will-change: transform, opacity, filter;
-  transition: filter 1s ease-in-out, opacity 0.8s ease-out, transform 0.8s ease-out;
+  will-change: transform, opacity;
+  perspective: 800px;
 }
 
-/* ── Glow state — soft bloom on letters ── */
-.luffy-logo-glow {
-  filter: brightness(1.6) drop-shadow(0 0 30px rgba(0, 168, 225, 0.6)) drop-shadow(0 0 60px rgba(0, 168, 225, 0.3));
+/* ── Flag entering — dramatic scale-up with 3D tilt ── */
+.flag-entering {
+  animation: flagEnter 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* ── Exit state — smooth zoom + blur ── */
-.luffy-logo-exit {
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(1.8) translateZ(0);
-  filter: blur(12px) brightness(2);
-}
-
-/* ══════════════════════════════════════════════════════
-   ══ LETTERS — smooth slide-up reveal ══
-   ══════════════════════════════════════════════════════ */
-
-.luffy-letters {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.luffy-letter {
-  display: inline-block;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: clamp(3rem, 10vw, 6.5rem);
-  font-weight: 900;
-  letter-spacing: 0.01em;
-  color: transparent;
-  background: linear-gradient(180deg, #ffffff 0%, #c8edf8 35%, #00A8E1 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  opacity: 0;
-  transform: translateY(40px) translateZ(0);
-  filter: blur(8px);
-  will-change: transform, opacity, filter;
-}
-
-.luffy-letter-in {
-  animation: luffyLetterSlideIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: var(--l-delay, 0s);
-}
-
-@keyframes luffyLetterSlideIn {
+@keyframes flagEnter {
   0% {
     opacity: 0;
-    transform: translateY(40px) translateZ(0);
-    filter: blur(8px);
+    transform: translate(-50%, -50%) scale(0.3) rotateY(-25deg) translateZ(0);
+    filter: blur(8px) brightness(0.5);
   }
   40% {
-    opacity: 0.8;
-    filter: blur(2px);
+    opacity: 0.9;
+    filter: blur(2px) brightness(1.1);
   }
-  70% {
+  75% {
     opacity: 1;
-    transform: translateY(-3px) translateZ(0);
-    filter: blur(0);
+    transform: translate(-50%, -50%) scale(1.03) rotateY(3deg) translateZ(0);
+    filter: blur(0) brightness(1);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) translateZ(0);
-    filter: blur(0);
+    transform: translate(-50%, -50%) scale(1) rotateY(0deg) translateZ(0);
+    filter: blur(0) brightness(1);
   }
 }
 
-/* ══════════════════════════════════════════════════════
-   ══ TAGLINE ──
-   ══════════════════════════════════════════════════════ */
-
-.luffy-tagline {
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: clamp(0.7rem, 1.8vw, 1rem);
-  font-weight: 400;
-  letter-spacing: 0.35em;
-  text-transform: uppercase;
-  color: rgba(0, 168, 225, 0.45);
-  opacity: 0;
-  transform: translateY(8px);
-  will-change: transform, opacity;
-  transition: opacity 0.8s ease-out, transform 0.8s ease-out, filter 0.8s ease-out;
-  filter: blur(4px);
+/* ── Flag visible (settled state) ── */
+.flag-visible {
+  transform: translate(-50%, -50%) translateZ(0);
 }
 
-.luffy-tagline-in {
-  opacity: 1;
-  transform: translateY(0);
-  filter: blur(0);
+/* ── Flag waving — gentle 3D wave ── */
+.flag-waving .pirate-flag {
+  animation: flagWave 3s ease-in-out infinite;
+  transform-origin: left center;
+}
+
+@keyframes flagWave {
+  0%, 100% { transform: perspective(800px) rotateY(-2deg) skewY(0.3deg) translateZ(0); }
+  25% { transform: perspective(800px) rotateY(0.5deg) skewY(-0.3deg) translateZ(0); }
+  50% { transform: perspective(800px) rotateY(2deg) skewY(0deg) translateZ(0); }
+  75% { transform: perspective(800px) rotateY(-0.5deg) skewY(0.2deg) translateZ(0); }
 }
 
 /* ══════════════════════════════════════════════════════
-   ══ LIGHT STREAK — smooth horizontal sweep ══
+   ══ THE FLAG ITSELF — burn via clip-path ══
    ══════════════════════════════════════════════════════ */
 
-.luffy-streak {
-  position: absolute;
-  top: 50%;
-  left: -10%;
-  width: 120%;
-  height: 1.5px;
-  z-index: 20;
-  pointer-events: none;
-  animation: luffyStreakSweep 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+.pirate-flag {
+  width: clamp(280px, 55vw, 500px);
+  will-change: clip-path, filter;
 }
 
-.luffy-streak::before {
-  content: '';
+/* ── Flag burning — smooth clip-path from bottom to top ── */
+.flag-burning {
+  animation: flagBurn 2.8s ease-in forwards;
+}
+
+@keyframes flagBurn {
+  0% {
+    clip-path: inset(0);
+    filter: brightness(1);
+  }
+  3% {
+    filter: brightness(1.4) saturate(1.2);
+  }
+  100% {
+    clip-path: inset(0 0 100% 0);
+    filter: brightness(2) saturate(0.5);
+  }
+}
+
+/* ── Jolly Roger SVG ── */
+.jolly-roger-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 4px 30px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 60px rgba(0, 0, 0, 0.3));
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ FIRE CANVAS — particle overlay ══
+   ══════════════════════════════════════════════════════ */
+
+.pirate-fire-canvas {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(0, 168, 225, 0.15) 20%,
-    rgba(0, 168, 225, 0.7) 40%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(0, 168, 225, 0.7) 60%,
-    rgba(0, 168, 225, 0.15) 80%,
-    transparent 100%
-  );
-  box-shadow:
-    0 0 15px rgba(0, 168, 225, 0.6),
-    0 0 40px rgba(0, 168, 225, 0.3);
-}
-
-.luffy-streak::after {
-  content: '';
-  position: absolute;
-  top: -20px;
-  bottom: -20px;
-  left: 0;
-  right: 0;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(0, 168, 225, 0.02) 20%,
-    rgba(0, 168, 225, 0.08) 40%,
-    rgba(103, 216, 239, 0.1) 50%,
-    rgba(0, 168, 225, 0.08) 60%,
-    rgba(0, 168, 225, 0.02) 80%,
-    transparent 100%
-  );
-  filter: blur(15px);
-}
-
-@keyframes luffyStreakSweep {
-  0% {
-    transform: scaleX(0.05) translateZ(0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-    transform: scaleX(0.2) translateZ(0);
-  }
-  60% {
-    transform: scaleX(1) translateZ(0);
-  }
-  100% {
-    transform: scaleX(1.05) translateZ(0);
-    opacity: 0;
-  }
-}
-
-/* ══════════════════════════════════════════════════════
-   ══ GLOW BLOOM — soft radial pulse ══
-   ══════════════════════════════════════════════════════ */
-
-.luffy-glow-bloom {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) translateZ(0);
-  width: 350px;
-  height: 350px;
-  border-radius: 50%;
-  background: radial-gradient(circle,
-    rgba(0, 168, 225, 0.2) 0%,
-    rgba(103, 216, 239, 0.08) 35%,
-    rgba(0, 168, 225, 0.02) 60%,
-    transparent 80%
-  );
-  z-index: 8;
   pointer-events: none;
-  will-change: transform, opacity;
-  animation: luffyGlowBloom 1s ease-out forwards;
-}
-
-@keyframes luffyGlowBloom {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.4) translateZ(0);
-  }
-  40% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1) translateZ(0);
-  }
-  100% {
-    opacity: 0.4;
-    transform: translate(-50%, -50%) scale(1.5) translateZ(0);
-  }
-}
-
-.luffy-glow-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) translateZ(0);
-  width: 250px;
-  height: 250px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(0, 168, 225, 0.35);
-  box-shadow:
-    0 0 20px rgba(0, 168, 225, 0.15),
-    0 0 40px rgba(0, 168, 225, 0.08);
-  z-index: 9;
-  pointer-events: none;
-  will-change: transform, opacity;
-  animation: luffyGlowRing 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes luffyGlowRing {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.3) translateZ(0);
-  }
-  25% {
-    opacity: 0.8;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(3) translateZ(0);
-  }
+  z-index: 15;
 }
 
 /* ══════════════════════════════════════════════════════
    ══ SKIP BUTTON ══
    ══════════════════════════════════════════════════════ */
 
-.luffy-skip-btn {
+.pirate-skip-btn {
   position: absolute;
   bottom: 36px;
   right: 36px;
@@ -1059,20 +873,20 @@ video::-webkit-media-controls { border-radius: 8px; }
   letter-spacing: 0.02em;
   cursor: pointer;
   transition: all 0.25s ease;
-  animation: luffySkipIn 0.5s ease-out 1.2s both;
+  animation: pirateSkipIn 0.5s ease-out 1.5s both;
 }
 
-.luffy-skip-btn:hover {
-  background: rgba(0, 168, 225, 0.15);
-  border-color: rgba(0, 168, 225, 0.4);
+.pirate-skip-btn:hover {
+  background: rgba(255, 100, 30, 0.2);
+  border-color: rgba(255, 140, 50, 0.4);
   color: white;
 }
 
-.luffy-skip-btn:active {
+.pirate-skip-btn:active {
   transform: scale(0.96);
 }
 
-@keyframes luffySkipIn {
+@keyframes pirateSkipIn {
   0% { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: translateY(0); }
 }

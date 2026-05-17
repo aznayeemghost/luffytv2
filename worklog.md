@@ -27,3 +27,24 @@ Stage Summary:
 - All old intro CSS (800+ lines) replaced with clean new CSS (~600 lines)
 - Fixed CSS left: 1/2 bug in nav-link-active
 - Build passes cleanly, no errors
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Replace Netflix-style intro with Pirate Flag burn intro for Luffy TV
+
+Work Log:
+- Read existing LuffyIntro component in page.tsx (lines 33-191)
+- Read existing luffy-* CSS in globals.css (lines 699-1078)
+- Replaced LuffyIntro component with new Pirate Flag intro
+- New intro features: Straw Hat Jolly Roger SVG flag, dramatic 3D scale-up entry, gentle wave animation, smooth clip-path burn from bottom to top, canvas fire/ember/smoke particle system
+- Replaced all luffy-* CSS with pirate-* CSS classes
+- Build passes with zero errors
+- Created zip at /home/z/my-project/download/luffytv-pirate-intro.zip
+
+Stage Summary:
+- Pirate flag intro replaces Netflix-style letter reveal
+- Animation sequence: Dark hold (0.2s) → Flag enters with 3D tilt (0.2-1.8s) → Flag waves gently (1.8-3.2s) → Fire burns flag from bottom up with canvas particles (3.2-6.2s) → Fade out (6.2-7s)
+- SVG includes: skull, crossbones, straw hat with band/buckle, "LUFFY TV" text in cyan
+- Fire particles: flames (radial gradient), embers (bright dots), smoke (expanding circles)
+- Burn effect uses CSS clip-path: inset() animation (GPU-accelerated) for smoothness
