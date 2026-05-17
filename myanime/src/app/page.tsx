@@ -47,16 +47,32 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     onCompleteRef.current();
   }, []);
 
-  // CSS handles all animation timing, we just unmount after
+  // CSS handles all animation timing, we just unmount after zoom completes
   useEffect(() => {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 5500);
+    }, 5000);
     return () => clearTimeout(t);
   }, []);
 
   if (gone) return null;
+
+  // Ember particle positions — generated once, not on every render
+  const embers = useMemo(() => [
+    { x: '12%', y: '45%', size: 4, dx: '-40px', dy: '-120px', delay: '1.6s', dur: '1.8s' },
+    { x: '25%', y: '55%', size: 3, dx: '30px', dy: '-100px', delay: '1.7s', dur: '2s' },
+    { x: '38%', y: '40%', size: 5, dx: '-60px', dy: '-140px', delay: '1.5s', dur: '1.6s' },
+    { x: '50%', y: '50%', size: 3, dx: '50px', dy: '-110px', delay: '1.8s', dur: '2.2s' },
+    { x: '62%', y: '48%', size: 4, dx: '-35px', dy: '-130px', delay: '1.6s', dur: '1.9s' },
+    { x: '75%', y: '52%', size: 3, dx: '45px', dy: '-90px', delay: '1.9s', dur: '2.1s' },
+    { x: '88%', y: '46%', size: 4, dx: '-55px', dy: '-115px', delay: '1.7s', dur: '1.7s' },
+    { x: '20%', y: '60%', size: 2, dx: '25px', dy: '-80px', delay: '2s', dur: '2.3s' },
+    { x: '45%', y: '38%', size: 3, dx: '-45px', dy: '-125px', delay: '1.5s', dur: '1.5s' },
+    { x: '70%', y: '58%', size: 4, dx: '60px', dy: '-105px', delay: '1.8s', dur: '2s' },
+    { x: '55%', y: '42%', size: 2, dx: '-20px', dy: '-95px', delay: '2.1s', dur: '2.4s' },
+    { x: '82%', y: '54%', size: 3, dx: '35px', dy: '-135px', delay: '1.6s', dur: '1.8s' },
+  ], []);
 
   return (
     <div className="nf-intro">
@@ -82,16 +98,39 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
         <div className="nf-brush">
           <div className="nf-brush-body" />
           <div className="nf-brush-fur">
-            {Array.from({ length: 31 }, (_, i) => (
+            {Array.from({ length: 15 }, (_, i) => (
               <span key={i} className={`nf-fur nf-fur-${i + 1}`} />
             ))}
           </div>
         </div>
 
-        {/* Lumiere light streaks */}
+        {/* Lumiere light streaks — 14 optimized lamps */}
         <div className="nf-lums">
-          {Array.from({ length: 28 }, (_, i) => (
+          {Array.from({ length: 14 }, (_, i) => (
             <span key={i} className={`nf-lamp nf-lamp-${i + 1}`} />
+          ))}
+        </div>
+
+        {/* Red impact flash — fires when text fully revealed */}
+        <div className="nf-flash" />
+
+        {/* Ember particles — float up from text */}
+        <div className="nf-embers">
+          {embers.map((e, i) => (
+            <span
+              key={i}
+              className="nf-ember"
+              style={{
+                left: e.x,
+                top: e.y,
+                width: e.size,
+                height: e.size,
+                '--dx': e.dx,
+                '--dy': e.dy,
+                animationDelay: e.delay,
+                animationDuration: e.dur,
+              } as React.CSSProperties}
+            />
           ))}
         </div>
       </div>
