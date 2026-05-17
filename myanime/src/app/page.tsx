@@ -47,74 +47,98 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     onCompleteRef.current();
   }, []);
 
-  // CSS handles all animation timing, we just unmount after zoom completes
+  // Unmount after all animations complete (3.6s fade + buffer)
   useEffect(() => {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 5000);
+    }, 4400);
     return () => clearTimeout(t);
   }, []);
 
   if (gone) return null;
 
-  // Ember particle positions — generated once, not on every render
+  // Ember particles — memoized once
   const embers = useMemo(() => [
-    { x: '12%', y: '45%', size: 4, dx: '-40px', dy: '-120px', delay: '1.6s', dur: '1.8s' },
-    { x: '25%', y: '55%', size: 3, dx: '30px', dy: '-100px', delay: '1.7s', dur: '2s' },
-    { x: '38%', y: '40%', size: 5, dx: '-60px', dy: '-140px', delay: '1.5s', dur: '1.6s' },
-    { x: '50%', y: '50%', size: 3, dx: '50px', dy: '-110px', delay: '1.8s', dur: '2.2s' },
-    { x: '62%', y: '48%', size: 4, dx: '-35px', dy: '-130px', delay: '1.6s', dur: '1.9s' },
-    { x: '75%', y: '52%', size: 3, dx: '45px', dy: '-90px', delay: '1.9s', dur: '2.1s' },
-    { x: '88%', y: '46%', size: 4, dx: '-55px', dy: '-115px', delay: '1.7s', dur: '1.7s' },
-    { x: '20%', y: '60%', size: 2, dx: '25px', dy: '-80px', delay: '2s', dur: '2.3s' },
-    { x: '45%', y: '38%', size: 3, dx: '-45px', dy: '-125px', delay: '1.5s', dur: '1.5s' },
-    { x: '70%', y: '58%', size: 4, dx: '60px', dy: '-105px', delay: '1.8s', dur: '2s' },
-    { x: '55%', y: '42%', size: 2, dx: '-20px', dy: '-95px', delay: '2.1s', dur: '2.4s' },
-    { x: '82%', y: '54%', size: 3, dx: '35px', dy: '-135px', delay: '1.6s', dur: '1.8s' },
+    { x: '14%', y: '48%', size: 4, dx: '-35px', dy: '-110px', delay: '1.4s', dur: '1.6s' },
+    { x: '28%', y: '52%', size: 3, dx: '40px', dy: '-90px', delay: '1.5s', dur: '1.8s' },
+    { x: '42%', y: '44%', size: 5, dx: '-50px', dy: '-130px', delay: '1.3s', dur: '1.5s' },
+    { x: '52%', y: '50%', size: 3, dx: '45px', dy: '-100px', delay: '1.6s', dur: '1.9s' },
+    { x: '64%', y: '46%', size: 4, dx: '-30px', dy: '-120px', delay: '1.4s', dur: '1.7s' },
+    { x: '76%', y: '54%', size: 3, dx: '50px', dy: '-85px', delay: '1.7s', dur: '2s' },
+    { x: '86%', y: '48%', size: 4, dx: '-45px', dy: '-115px', delay: '1.5s', dur: '1.6s' },
+    { x: '35%', y: '56%', size: 2, dx: '20px', dy: '-75px', delay: '1.8s', dur: '2.1s' },
+    { x: '58%', y: '42%', size: 3, dx: '-55px', dy: '-125px', delay: '1.3s', dur: '1.4s' },
+    { x: '72%', y: '55%', size: 3, dx: '35px', dy: '-95px', delay: '1.6s', dur: '1.8s' },
   ], []);
 
   return (
     <div className="nf-intro">
+      {/* Scanline overlay — CRT anime aesthetic */}
+      <div className="nf-scanlines" />
+
+      {/* Film grain overlay */}
+      <div className="nf-grain" />
+
+      {/* Tunnel overlay for warp exit effect */}
+      <div className="nf-tunnel" />
+
       <div className="nf-logo">
         {/* Red ambient glow */}
         <div className="nf-glow" />
+
+        {/* Power aura ring — expands from center */}
+        <div className="nf-aura" />
 
         {/* Text layer — revealed by clip-path synced with brush */}
         <div className="nf-text">
           <div className="nf-row">
             {['L','U','F','F','Y'].map((c, i) => (
-              <span key={i} className="nf-char" style={{ '--i': i } as React.CSSProperties}>{c}</span>
+              <span
+                key={i}
+                className="nf-char"
+                data-char={c}
+                style={{ '--i': i } as React.CSSProperties}
+              >
+                {c}
+              </span>
             ))}
           </div>
           <div className="nf-row nf-row-sm">
             {['T','V'].map((c, i) => (
-              <span key={i} className="nf-char nf-char-sm" style={{ '--i': i + 5 } as React.CSSProperties}>{c}</span>
+              <span
+                key={i}
+                className="nf-char nf-char-sm"
+                data-char={c}
+                style={{ '--i': i + 5 } as React.CSSProperties}
+              >
+                {c}
+              </span>
             ))}
           </div>
         </div>
 
-        {/* Brush sweep — red paint stroke across screen */}
+        {/* Brush sweep — red paint stroke */}
         <div className="nf-brush">
           <div className="nf-brush-body" />
           <div className="nf-brush-fur">
-            {Array.from({ length: 15 }, (_, i) => (
+            {Array.from({ length: 12 }, (_, i) => (
               <span key={i} className={`nf-fur nf-fur-${i + 1}`} />
             ))}
           </div>
         </div>
 
-        {/* Lumiere light streaks — 14 optimized lamps */}
+        {/* Lumiere light streaks — 10 lamps */}
         <div className="nf-lums">
-          {Array.from({ length: 14 }, (_, i) => (
+          {Array.from({ length: 10 }, (_, i) => (
             <span key={i} className={`nf-lamp nf-lamp-${i + 1}`} />
           ))}
         </div>
 
-        {/* Red impact flash — fires when text fully revealed */}
+        {/* Red impact flash */}
         <div className="nf-flash" />
 
-        {/* Ember particles — float up from text */}
+        {/* Ember particles */}
         <div className="nf-embers">
           {embers.map((e, i) => (
             <span
