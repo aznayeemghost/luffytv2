@@ -31,142 +31,340 @@ function useMounted() {
 }
 
 // ================================================================
-// PIRATE FLAG INTRO — "LUFFY TV"
-// A Straw Hat Jolly Roger flag unfurls, then burns away smoothly
-// to reveal the website. Canvas-driven fire particles + CSS burn.
+// CINEMATIC PIRATE FLAG INTRO — "LUFFY TV"
+// Full cinematic: stormy atmosphere → flag unfurls from pole →
+// cloth waves → ignition spark → spreading fire with real particles →
+// charred edges → ash rain → smoke plume → reveal website
+// Canvas: fire, embers, ash, smoke, sparks, char debris
 // ================================================================
 
-type IntroPhase = 'waiting' | 'entering' | 'waving' | 'burning' | 'done';
+type IntroPhase = 'dark' | 'atmosphere' | 'unfurling' | 'waving' | 'ignition' | 'burning' | 'embers' | 'reveal' | 'gone';
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
   const onCompleteRef = useRef(onComplete);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
-  const [phase, setPhase] = useState<IntroPhase>('waiting');
-  const [visible, setVisible] = useState(true);
+  const [phase, setPhase] = useState<IntroPhase>('dark');
+  const phaseRef = useRef<IntroPhase>('dark');
 
   useEffect(() => { onCompleteRef.current = onComplete; });
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   const skip = useCallback(() => {
-    if (!visible) return;
-    setVisible(false);
     cancelAnimationFrame(rafRef.current);
+    setPhase('gone');
     onCompleteRef.current();
-  }, [visible]);
+  }, []);
 
-  // ── Fire particle system (canvas) ──
+  // ══════════════════════════════════════════════════════
+  // ══ MEGA CANVAS PARTICLE ENGINE ══
+  // ══════════════════════════════════════════════════════
   useEffect(() => {
-    if (phase !== 'burning') return;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let w = window.innerWidth;
+    let h = window.innerHeight;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.scale(dpr, dpr);
 
-    // Flag bounds (must match CSS sizing)
-    const flagW = Math.min(w * 0.55, 500);
-    const flagH = flagW * 0.8;
-    const flagLeft = (w - flagW) / 2;
-    const flagTop = (h - flagH) / 2;
+    const onResize = () => {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    window.addEventListener('resize', onResize);
 
+    // ── Flag geometry ──
+    const getFlagBounds = () => {
+      const flagW = Math.min(w * 0.5, 460);
+      const flagH = flagW * 0.75;
+      return { flagW, flagH, flagLeft: (w - flagW) / 2, flagTop: (h - flagH) / 2 };
+    };
+
+    // ── Particle types ──
     interface Particle {
       x: number; y: number;
       vx: number; vy: number;
       life: number; maxLife: number;
-      size: number;
-      type: 'flame' | 'ember' | 'smoke';
+      size: number; origSize: number;
+      type: 'flame' | 'ember' | 'smoke' | 'ash' | 'spark' | 'char' | 'wind' | 'rain';
+      rotation?: number; rotSpeed?: number;
+      color?: string;
     }
 
     const particles: Particle[] = [];
-    let burnProgress = 0;
-    const burnDuration = 2.8;
-    const startTime = performance.now();
 
-    const addFlame = (x: number, y: number) => {
-      const life = 0.3 + Math.random() * 0.5;
-      particles.push({ x, y, vx: (Math.random() - 0.5) * 1.5, vy: -2 - Math.random() * 3, life, maxLife: life, size: 4 + Math.random() * 8, type: 'flame' });
+    // ── Spawn helpers ──
+    const addFlame = (x: number, y: number, intensity = 1) => {
+      const life = (0.2 + Math.random() * 0.4) * intensity;
+      const sz = (3 + Math.random() * 7) * intensity;
+      particles.push({
+        x, y, vx: (Math.random() - 0.5) * 2, vy: -1.5 - Math.random() * 4,
+        life, maxLife: life, size: sz, origSize: sz, type: 'flame'
+      });
     };
     const addEmber = (x: number, y: number) => {
-      const life = 1 + Math.random() * 2;
-      particles.push({ x, y, vx: (Math.random() - 0.5) * 4, vy: -3 - Math.random() * 5, life, maxLife: life, size: 1 + Math.random() * 2.5, type: 'ember' });
+      const life = 1.5 + Math.random() * 3;
+      particles.push({
+        x, y, vx: (Math.random() - 0.5) * 5, vy: -2 - Math.random() * 6,
+        life, maxLife: life, size: 0.8 + Math.random() * 2, origSize: 0.8 + Math.random() * 2, type: 'ember'
+      });
     };
-    const addSmoke = (x: number, y: number) => {
+    const addSmoke = (x: number, y: number, size = 15) => {
+      const life = 2 + Math.random() * 3;
+      particles.push({
+        x, y, vx: (Math.random() - 0.5) * 0.8, vy: -0.3 - Math.random() * 1.2,
+        life, maxLife: life, size, origSize: size, type: 'smoke'
+      });
+    };
+    const addAsh = (x: number, y: number) => {
+      const life = 3 + Math.random() * 4;
+      particles.push({
+        x, y, vx: (Math.random() - 0.5) * 0.5, vy: 0.3 + Math.random() * 0.8,
+        life, maxLife: life, size: 1 + Math.random() * 2.5, origSize: 1 + Math.random() * 2.5, type: 'ash',
+        rotation: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 2
+      });
+    };
+    const addSpark = (x: number, y: number) => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3 + Math.random() * 8;
+      const life = 0.3 + Math.random() * 0.6;
+      particles.push({
+        x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2,
+        life, maxLife: life, size: 1 + Math.random() * 1.5, origSize: 1 + Math.random() * 1.5, type: 'spark'
+      });
+    };
+    const addChar = (x: number, y: number) => {
+      const life = 1 + Math.random() * 2;
+      particles.push({
+        x, y, vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 3,
+        life, maxLife: life, size: 2 + Math.random() * 4, origSize: 2 + Math.random() * 4, type: 'char',
+        rotation: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 5
+      });
+    };
+    const addWind = (x: number, y: number) => {
       const life = 1.5 + Math.random() * 2;
-      particles.push({ x, y, vx: (Math.random() - 0.5) * 1, vy: -0.5 - Math.random() * 1.5, life, maxLife: life, size: 10 + Math.random() * 20, type: 'smoke' });
+      particles.push({
+        x, y, vx: 1 + Math.random() * 2, vy: (Math.random() - 0.5) * 0.3,
+        life, maxLife: life, size: 1 + Math.random() * 1.5, origSize: 1 + Math.random() * 1.5, type: 'wind'
+      });
     };
 
-    let lastTime = startTime;
+    let burnStartTime = 0;
+    let ignitionX = 0;
+    let ignitionY = 0;
+    let frameCount = 0;
 
     const animate = (now: number) => {
-      const dt = Math.min((now - lastTime) / 1000, 0.05);
-      lastTime = now;
-      const elapsed = (now - startTime) / 1000;
-      burnProgress = Math.min(1, elapsed / burnDuration);
-
-      // Burn line moves from flag bottom to flag top
-      const burnY = flagTop + flagH * (1 - burnProgress);
-
-      // Spawn particles
-      if (burnProgress < 0.95) {
-        for (let i = 0; i < 5; i++) addFlame(flagLeft + Math.random() * flagW, burnY);
-        if (Math.random() < 0.4) addEmber(flagLeft + Math.random() * flagW, burnY);
-        if (Math.random() < 0.15) addSmoke(flagLeft + Math.random() * flagW, burnY - 30);
-      }
-
-      // Update particles
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx * dt * 60;
-        p.y += p.vy * dt * 60;
-        if (p.type === 'flame') p.vy -= 0.08;
-        if (p.type === 'ember') p.vy -= 0.03;
-        if (p.type === 'smoke') { p.size += dt * 8; p.vy -= 0.01; }
-        p.life -= dt;
-        if (p.life <= 0) particles.splice(i, 1);
-      }
+      const currentPhase = phaseRef.current;
+      if (currentPhase === 'gone') return;
 
       ctx.clearRect(0, 0, w, h);
+      frameCount++;
 
-      // Draw smoke (behind everything)
+      const { flagW, flagH, flagLeft, flagTop } = getFlagBounds();
+
+      // ══════════════════════════════════════════
+      // ══ ATMOSPHERE: wind + rain particles ══
+      // ══════════════════════════════════════════
+      if ((currentPhase === 'atmosphere' || currentPhase === 'unfurling' || currentPhase === 'waving') && frameCount % 3 === 0) {
+        addWind(-10, Math.random() * h);
+      }
+
+      // ══════════════════════════════════════════
+      // ══ IGNITION: single spark burst ══
+      // ══════════════════════════════════════════
+      if (currentPhase === 'ignition') {
+        if (frameCount % 2 === 0) {
+          for (let i = 0; i < 4; i++) addSpark(ignitionX, ignitionY);
+          addFlame(ignitionX + (Math.random() - 0.5) * 30, ignitionY, 0.7);
+        }
+      }
+
+      // ══════════════════════════════════════════
+      // ══ BURNING: full fire system ══
+      // ══════════════════════════════════════════
+      if (currentPhase === 'burning') {
+        if (burnStartTime === 0) burnStartTime = now;
+        const burnElapsed = (now - burnStartTime) / 1000;
+        const burnDuration = 3.2;
+        const burnProgress = Math.min(1, burnElapsed / burnDuration);
+
+        // Burn line rises from bottom
+        const burnY = flagTop + flagH * (1 - burnProgress);
+        const burnWidth = flagW * Math.min(1, burnProgress * 3);
+
+        // Flames along burn front
+        const spawnCount = Math.floor(8 + burnProgress * 6);
+        for (let i = 0; i < spawnCount; i++) {
+          const fx = flagLeft + (flagW - burnWidth) / 2 + Math.random() * burnWidth;
+          addFlame(fx, burnY, 0.6 + burnProgress * 0.6);
+        }
+
+        // Hot spots — bigger flames at random positions
+        if (Math.random() < 0.3) {
+          addFlame(flagLeft + Math.random() * flagW, burnY + (Math.random() - 0.5) * 20, 1.5);
+        }
+
+        // Embers fly up from burn zone
+        if (frameCount % 2 === 0) {
+          addEmber(flagLeft + Math.random() * flagW, burnY + (Math.random() - 0.5) * 10);
+        }
+
+        // Smoke from above burn line
+        if (frameCount % 4 === 0) {
+          addSmoke(flagLeft + Math.random() * flagW, burnY - 20 - Math.random() * 40, 12 + Math.random() * 15);
+        }
+
+        // Char debris from edges
+        if (frameCount % 5 === 0 && burnProgress > 0.2) {
+          addChar(flagLeft + Math.random() * flagW, burnY + Math.random() * 20);
+        }
+
+        // Sparks from burn zone
+        if (frameCount % 3 === 0) {
+          addSpark(flagLeft + Math.random() * flagW, burnY);
+        }
+
+        // ══ GLOW along burn line ══
+        const glowH = 80;
+        const grd = ctx.createLinearGradient(0, burnY - glowH, 0, burnY + 15);
+        const intensity = 0.3 * (1 - burnProgress * 0.5);
+        grd.addColorStop(0, 'rgba(255, 80, 0, 0)');
+        grd.addColorStop(0.4, `rgba(255, 120, 10, ${intensity * 0.5})`);
+        grd.addColorStop(0.7, `rgba(255, 180, 40, ${intensity})`);
+        grd.addColorStop(1, 'rgba(255, 60, 0, 0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(flagLeft - 40, burnY - glowH, flagW + 80, glowH + 15);
+
+        // Edge glow on sides
+        const sideGlow = ctx.createRadialGradient(flagLeft, burnY, 0, flagLeft, burnY, 80);
+        sideGlow.addColorStop(0, `rgba(255, 140, 30, ${intensity * 0.4})`);
+        sideGlow.addColorStop(1, 'rgba(255, 80, 0, 0)');
+        ctx.fillStyle = sideGlow;
+        ctx.fillRect(flagLeft - 80, burnY - 40, 80, 80);
+
+        const sideGlow2 = ctx.createRadialGradient(flagLeft + flagW, burnY, 0, flagLeft + flagW, burnY, 80);
+        sideGlow2.addColorStop(0, `rgba(255, 140, 30, ${intensity * 0.4})`);
+        sideGlow2.addColorStop(1, 'rgba(255, 80, 0, 0)');
+        ctx.fillStyle = sideGlow2;
+        ctx.fillRect(flagLeft + flagW, burnY - 40, 80, 80);
+      }
+
+      // ══════════════════════════════════════════
+      // ══ EMBERS: dying phase ══
+      // ══════════════════════════════════════════
+      if (currentPhase === 'embers') {
+        if (frameCount % 8 === 0) addEmber(flagLeft + Math.random() * flagW, flagTop + Math.random() * flagH * 0.5);
+        if (frameCount % 12 === 0) addSmoke(w / 2 + (Math.random() - 0.5) * flagW, flagTop, 20 + Math.random() * 20);
+      }
+
+      // ══════════════════════════════════════════
+      // ══ ASH RAIN: always during/after burn ══
+      // ══════════════════════════════════════════
+      if ((currentPhase === 'burning' || currentPhase === 'embers' || currentPhase === 'reveal') && frameCount % 6 === 0) {
+        addAsh(Math.random() * w, -10);
+      }
+
+      // ══════════════════════════════════════════
+      // ══ UPDATE ALL PARTICLES ══
+      // ══════════════════════════════════════════
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        const dt = 1 / 60;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= dt;
+
+        switch (p.type) {
+          case 'flame':
+            p.vy -= 0.12;
+            p.vx *= 0.98;
+            p.size = p.origSize * Math.max(0, p.life / p.maxLife);
+            break;
+          case 'ember':
+            p.vy -= 0.02;
+            p.vx += (Math.random() - 0.5) * 0.3;
+            p.vy += (Math.random() - 0.5) * 0.2;
+            break;
+          case 'smoke':
+            p.vy -= 0.005;
+            p.size += 0.3;
+            p.vx += (Math.random() - 0.5) * 0.05;
+            break;
+          case 'ash':
+            p.vx += Math.sin(frameCount * 0.02 + p.x * 0.01) * 0.02;
+            if (p.rotation !== undefined && p.rotSpeed !== undefined) p.rotation += p.rotSpeed * dt;
+            break;
+          case 'spark':
+            p.vy += 0.15;
+            p.size = p.origSize * Math.max(0, p.life / p.maxLife);
+            break;
+          case 'char':
+            p.vy += 0.05;
+            if (p.rotation !== undefined && p.rotSpeed !== undefined) p.rotation += p.rotSpeed * dt;
+            break;
+          case 'wind':
+            p.vx *= 1.01;
+            break;
+        }
+
+        if (p.life <= 0 || p.y > h + 50 || p.x > w + 50 || p.x < -50) {
+          particles.splice(i, 1);
+        }
+      }
+
+      // ══════════════════════════════════════════
+      // ══ DRAW PARTICLES (layered) ══
+      // ══════════════════════════════════════════
+
+      // Layer 1: Smoke (behind everything)
       for (const p of particles) {
         if (p.type !== 'smoke') continue;
-        const alpha = (p.life / p.maxLife) * 0.12;
+        const a = Math.max(0, (p.life / p.maxLife) * 0.15);
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(100, 80, 60, ${alpha})`;
+        ctx.fillStyle = `rgba(80, 65, 50, ${a})`;
         ctx.fill();
       }
 
-      // Glow along burn line
-      if (burnProgress < 0.95) {
-        const glowH = 60;
-        const grd = ctx.createLinearGradient(0, burnY - glowH, 0, burnY + 10);
-        grd.addColorStop(0, 'rgba(255, 100, 0, 0)');
-        grd.addColorStop(0.6, `rgba(255, 130, 20, ${0.25 * (1 - burnProgress)})`);
-        grd.addColorStop(1, 'rgba(255, 60, 0, 0)');
-        ctx.fillStyle = grd;
-        ctx.fillRect(flagLeft - 30, burnY - glowH, flagW + 60, glowH + 10);
+      // Layer 2: Wind streaks
+      for (const p of particles) {
+        if (p.type !== 'wind') continue;
+        const a = Math.max(0, (p.life / p.maxLife) * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - 20, p.y);
+        ctx.strokeStyle = `rgba(180, 200, 220, ${a})`;
+        ctx.lineWidth = p.size;
+        ctx.stroke();
       }
 
-      // Draw flames
+      // Layer 3: Flames (with layered radial gradients)
       for (const p of particles) {
         if (p.type !== 'flame') continue;
-        const alpha = Math.max(0, p.life / p.maxLife);
+        const a = Math.max(0, p.life / p.maxLife);
+        if (a <= 0 || p.size <= 0) continue;
         const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-        if (alpha > 0.6) {
-          grd.addColorStop(0, `rgba(255, 255, 200, ${alpha})`);
-          grd.addColorStop(0.4, `rgba(255, 160, 30, ${alpha * 0.7})`);
-          grd.addColorStop(1, 'rgba(255, 60, 0, 0)');
+        if (a > 0.5) {
+          grd.addColorStop(0, `rgba(255, 255, 220, ${a})`);
+          grd.addColorStop(0.2, `rgba(255, 230, 100, ${a * 0.9})`);
+          grd.addColorStop(0.5, `rgba(255, 150, 20, ${a * 0.6})`);
+          grd.addColorStop(1, 'rgba(200, 40, 0, 0)');
+        } else if (a > 0.25) {
+          grd.addColorStop(0, `rgba(255, 180, 50, ${a})`);
+          grd.addColorStop(0.4, `rgba(220, 80, 10, ${a * 0.5})`);
+          grd.addColorStop(1, 'rgba(150, 20, 0, 0)');
         } else {
-          grd.addColorStop(0, `rgba(255, 100, 20, ${alpha})`);
-          grd.addColorStop(1, 'rgba(150, 30, 0, 0)');
+          grd.addColorStop(0, `rgba(180, 50, 10, ${a})`);
+          grd.addColorStop(1, 'rgba(80, 10, 0, 0)');
         }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -174,109 +372,301 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
         ctx.fill();
       }
 
-      // Draw embers
+      // Layer 4: Char debris
+      for (const p of particles) {
+        if (p.type !== 'char') continue;
+        const a = Math.max(0, p.life / p.maxLife);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation || 0);
+        ctx.fillStyle = `rgba(30, 20, 15, ${a})`;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+
+      // Layer 5: Embers (bright dots with glow)
       for (const p of particles) {
         if (p.type !== 'ember') continue;
-        const alpha = Math.max(0, p.life / p.maxLife);
+        const a = Math.max(0, p.life / p.maxLife);
+        // Outer glow
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 4, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 120, 20, ${a * 0.1})`;
+        ctx.fill();
+        // Core
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, ${120 + Math.floor(alpha * 80)}, 20, ${alpha})`;
+        ctx.fillStyle = `rgba(255, ${160 + Math.floor(a * 95)}, ${40 + Math.floor(a * 60)}, ${a})`;
         ctx.fill();
+      }
+
+      // Layer 6: Sparks (bright streaks)
+      for (const p of particles) {
+        if (p.type !== 'spark') continue;
+        const a = Math.max(0, p.life / p.maxLife);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 120, 20, ${alpha * 0.15})`;
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.vx * 2, p.y - p.vy * 2);
+        ctx.strokeStyle = `rgba(255, 240, 180, ${a})`;
+        ctx.lineWidth = p.size;
+        ctx.stroke();
+        // Bright core
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
         ctx.fill();
+      }
+
+      // Layer 7: Ash (gentle falling)
+      for (const p of particles) {
+        if (p.type !== 'ash') continue;
+        const a = Math.max(0, (p.life / p.maxLife) * 0.4);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation || 0);
+        ctx.fillStyle = `rgba(160, 130, 100, ${a})`;
+        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        ctx.restore();
       }
 
       rafRef.current = requestAnimationFrame(animate);
     };
 
     rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [phase]);
 
-  // ── Timing sequence ──
+    return () => {
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // ══════════════════════════════════════════════════════
+  // ══ TIMING: Cinematic sequence ══
+  // ══════════════════════════════════════════════════════
   useEffect(() => {
+    const { flagW, flagH, flagLeft, flagTop } = {
+      flagW: Math.min(window.innerWidth * 0.5, 460),
+      flagH: Math.min(window.innerWidth * 0.5, 460) * 0.75,
+      flagLeft: (window.innerWidth - Math.min(window.innerWidth * 0.5, 460)) / 2,
+      flagTop: (window.innerHeight - Math.min(window.innerWidth * 0.5, 460) * 0.75) / 2,
+    };
+
     const timers = [
-      setTimeout(() => setPhase('entering'), 200),    // brief dark hold
-      setTimeout(() => setPhase('waving'), 1800),     // flag settles, waves
-      setTimeout(() => setPhase('burning'), 3200),    // fire starts
-      setTimeout(() => setPhase('done'), 6200),       // burn complete
-      setTimeout(() => setVisible(false), 6700),      // intro hidden
-      setTimeout(() => onCompleteRef.current(), 7000), // callback
+      // Phase 1: Dark stormy atmosphere builds
+      setTimeout(() => setPhase('atmosphere'), 100),
+      // Phase 2: Flag unfurls from pole
+      setTimeout(() => setPhase('unfurling'), 1200),
+      // Phase 3: Flag waves majestically
+      setTimeout(() => setPhase('waving'), 2800),
+      // Phase 4: Ignition — spark catches at bottom-center
+      setTimeout(() => {
+        ignitionX = flagLeft + flagW * 0.5;
+        ignitionY = flagTop + flagH * 0.85;
+        setPhase('ignition');
+      }, 4500),
+      // Phase 5: Full burn
+      setTimeout(() => {
+        burnStartTime = 0;
+        setPhase('burning');
+      }, 5200),
+      // Phase 6: Dying embers
+      setTimeout(() => setPhase('embers'), 8500),
+      // Phase 7: Reveal website
+      setTimeout(() => setPhase('reveal'), 9800),
+      // Phase 8: Gone
+      setTimeout(() => {
+        setPhase('gone');
+        onCompleteRef.current();
+      }, 10500),
     ];
+
     return () => {
       timers.forEach(clearTimeout);
       cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
-  if (!visible) return null;
+  if (phase === 'gone') return null;
+
+  const showFlag = phase === 'unfurling' || phase === 'waving' || phase === 'ignition' || phase === 'burning';
+  const showFlagpole = phase !== 'dark' && phase !== 'atmosphere';
+  const isBurning = phase === 'burning' || phase === 'embers';
+  const isIgniting = phase === 'ignition';
 
   return (
-    <div className={`pirate-intro ${phase === 'done' ? 'pirate-intro-exit' : ''}`}>
-      {/* ── Dark atmosphere with subtle warm glow ── */}
-      <div className="pirate-atmosphere" />
-      <div className="pirate-fog" />
+    <div className={`lf-intro ${phase === 'reveal' ? 'lf-intro-reveal' : ''}`}>
+      {/* ══ ATMOSPHERIC LAYERS ══ */}
+      <div className="lf-storm-bg" />
+      <div className="lf-lightning" />
+      <div className="lf-fog-layer" />
+      <div className="lf-vignette" />
 
-      {/* ── Pirate Flag ── */}
-      {phase !== 'waiting' && (
-        <div className={`pirate-flag-container ${phase === 'entering' ? 'flag-entering' : 'flag-visible'} ${phase === 'waving' ? 'flag-waving' : ''}`}>
-          <div className={`pirate-flag ${phase === 'burning' || phase === 'done' ? 'flag-burning' : ''}`}>
-            <svg viewBox="0 0 400 320" className="jolly-roger-svg" xmlns="http://www.w3.org/2000/svg">
-              {/* Flag cloth */}
-              <path d="M30,15 C60,10 120,5 200,5 C280,5 340,10 370,15 L370,270 C340,280 280,290 200,290 C120,290 60,280 30,270 Z" fill="#0a0a0a" stroke="#222" strokeWidth="1.5"/>
+      {/* ══ WIND STREAKS (CSS) ══ */}
+      {(phase === 'atmosphere' || phase === 'unfurling' || phase === 'waving') && (
+        <div className="lf-wind-streaks">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="lf-wind-line" style={{ '--w-delay': `${i * 0.4}s`, '--w-top': `${15 + i * 14}%`, '--w-dur': `${1.5 + i * 0.3}s` } as React.CSSProperties} />
+          ))}
+        </div>
+      )}
+
+      {/* ══ FLAGPOLE ══ */}
+      {showFlagpole && (
+        <div className={`lf-flagpole ${phase === 'unfurling' ? 'pole-enter' : ''}`}>
+          <div className="lf-pole-shaft" />
+          <div className="lf-pole-ball" />
+          <div className="lf-pole-rope" />
+        </div>
+      )}
+
+      {/* ══ PIRATE FLAG ══ */}
+      {showFlag && (
+        <div className={`lf-flag-area ${phase === 'unfurling' ? 'flag-unfurling' : ''} ${phase === 'waving' ? 'flag-waving' : ''} ${isIgniting ? 'flag-igniting' : ''} ${isBurning ? 'flag-burning' : ''}`}>
+          <div className="lf-flag-cloth">
+            <svg viewBox="0 0 420 330" className="lf-jolly-roger" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <filter id="flagTexture">
+                  <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
+                  <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise" />
+                  <feBlend in="SourceGraphic" in2="grayNoise" mode="multiply" />
+                </filter>
+                <linearGradient id="clothShading" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
+                  <stop offset="50%" stopColor="rgba(0,0,0,0)" />
+                  <stop offset="100%" stopColor="rgba(0,0,0,0.15)" />
+                </linearGradient>
+                <linearGradient id="hatGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#D4A24C" />
+                  <stop offset="100%" stopColor="#A67C3D" />
+                </linearGradient>
+                <linearGradient id="hatBandGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#8B4513" />
+                  <stop offset="50%" stopColor="#A0522D" />
+                  <stop offset="100%" stopColor="#8B4513" />
+                </linearGradient>
+                <linearGradient id="textGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#00C8FF" />
+                  <stop offset="50%" stopColor="#00A8E1" />
+                  <stop offset="100%" stopColor="#0088C0" />
+                </linearGradient>
+                <filter id="textGlow">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <filter id="skullShadow">
+                  <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.4" />
+                </filter>
+              </defs>
+
+              {/* Flag cloth shape */}
+              <path d="M20,12 C50,6 130,2 210,2 C290,2 370,6 400,12 L400,275 C370,282 290,288 210,288 C130,288 50,282 20,275 Z" fill="#0d0d0d" filter="url(#flagTexture)" />
+              <path d="M20,12 C50,6 130,2 210,2 C290,2 370,6 400,12 L400,275 C370,282 290,288 210,288 C130,288 50,282 20,275 Z" fill="url(#clothShading)" />
+              <path d="M20,12 C50,6 130,2 210,2 C290,2 370,6 400,12 L400,275 C370,282 290,288 210,288 C130,288 50,282 20,275 Z" fill="none" stroke="#1a1a1a" strokeWidth="2" />
 
               {/* Crossbones */}
-              <g stroke="#d0d0d0" strokeWidth="8" strokeLinecap="round">
-                <line x1="115" y1="245" x2="285" y2="155"/>
-                <line x1="285" y1="245" x2="115" y2="155"/>
-              </g>
-              <g fill="#d0d0d0">
-                <circle cx="115" cy="245" r="7"/>
-                <circle cx="285" cy="245" r="7"/>
-                <circle cx="115" cy="155" r="7"/>
-                <circle cx="285" cy="155" r="7"/>
+              <g filter="url(#skullShadow)">
+                <line x1="120" y1="248" x2="300" y2="158" stroke="#c8c8c8" strokeWidth="9" strokeLinecap="round" />
+                <line x1="300" y1="248" x2="120" y2="158" stroke="#c8c8c8" strokeWidth="9" strokeLinecap="round" />
+                {/* Bone ends */}
+                <circle cx="120" cy="248" r="8" fill="#d0d0d0" />
+                <circle cx="300" cy="248" r="8" fill="#d0d0d0" />
+                <circle cx="120" cy="158" r="8" fill="#d0d0d0" />
+                <circle cx="300" cy="158" r="8" fill="#d0d0d0" />
+                {/* Bone knuckles */}
+                <circle cx="112" cy="242" r="4" fill="#b8b8b8" />
+                <circle cx="128" cy="242" r="4" fill="#b8b8b8" />
+                <circle cx="112" cy="254" r="4" fill="#b8b8b8" />
+                <circle cx="128" cy="254" r="4" fill="#b8b8b8" />
+                <circle cx="292" cy="242" r="4" fill="#b8b8b8" />
+                <circle cx="308" cy="242" r="4" fill="#b8b8b8" />
+                <circle cx="292" cy="254" r="4" fill="#b8b8b8" />
+                <circle cx="308" cy="254" r="4" fill="#b8b8b8" />
               </g>
 
               {/* Skull */}
-              <ellipse cx="200" cy="115" rx="32" ry="38" fill="#d0d0d0"/>
-              <ellipse cx="186" cy="110" rx="6" ry="7" fill="#0a0a0a"/>
-              <ellipse cx="214" cy="110" rx="6" ry="7" fill="#0a0a0a"/>
-              <path d="M197,125 L200,131 L203,125" stroke="#0a0a0a" strokeWidth="1.5" fill="none"/>
-              <path d="M184,138 Q200,148 216,138" stroke="#0a0a0a" strokeWidth="2" fill="none"/>
-              <g stroke="#0a0a0a" strokeWidth="1.2">
-                <line x1="189" y1="138" x2="189" y2="144"/>
-                <line x1="197" y1="140" x2="197" y2="146"/>
-                <line x1="205" y1="140" x2="205" y2="146"/>
-                <line x1="213" y1="138" x2="213" y2="144"/>
+              <g filter="url(#skullShadow)">
+                <ellipse cx="210" cy="118" rx="35" ry="42" fill="#d5d5d5" />
+                {/* Cheekbones */}
+                <ellipse cx="185" cy="128" rx="8" ry="5" fill="#c0c0c0" />
+                <ellipse cx="235" cy="128" rx="8" ry="5" fill="#c0c0c0" />
+                {/* Eye sockets */}
+                <ellipse cx="195" cy="112" rx="8" ry="9" fill="#0d0d0d" />
+                <ellipse cx="225" cy="112" rx="8" ry="9" fill="#0d0d0d" />
+                {/* Eye glints */}
+                <ellipse cx="197" cy="110" rx="2" ry="2.5" fill="rgba(255,255,255,0.1)" />
+                <ellipse cx="227" cy="110" rx="2" ry="2.5" fill="rgba(255,255,255,0.1)" />
+                {/* Nose */}
+                <path d="M207,126 L210,131 L213,126" stroke="#0d0d0d" strokeWidth="2" fill="none" strokeLinecap="round" />
+                {/* Teeth row */}
+                <path d="M193,142 Q210,154 227,142" stroke="#0d0d0d" strokeWidth="2.5" fill="none" />
+                <g stroke="#0d0d0d" strokeWidth="1.5">
+                  <line x1="198" y1="142" x2="198" y2="149" />
+                  <line x1="206" y1="145" x2="206" y2="151" />
+                  <line x1="214" y1="145" x2="214" y2="151" />
+                  <line x1="222" y1="142" x2="222" y2="149" />
+                </g>
+                {/* Jaw line */}
+                <path d="M185,138 Q210,165 235,138" stroke="#c0c0c0" strokeWidth="1" fill="none" opacity="0.3" />
               </g>
 
               {/* Straw Hat */}
               <g>
-                <ellipse cx="200" cy="82" rx="50" ry="9" fill="#C8963E" stroke="#A67C3D" strokeWidth="1"/>
-                <path d="M176,60 Q176,52 200,50 Q224,52 224,60 L224,78 L176,78 Z" fill="#C8963E" stroke="#A67C3D" strokeWidth="1"/>
-                <g stroke="#B0862E" strokeWidth="0.5" opacity="0.5">
-                  <line x1="178" y1="65" x2="222" y2="65"/>
-                  <line x1="178" y1="70" x2="222" y2="70"/>
-                  <line x1="178" y1="75" x2="222" y2="75"/>
+                {/* Hat brim - wider, more detailed */}
+                <ellipse cx="210" cy="85" rx="55" ry="10" fill="url(#hatGrad)" stroke="#8B6914" strokeWidth="1" />
+                {/* Brim stitching */}
+                <ellipse cx="210" cy="85" rx="50" ry="8" fill="none" stroke="#B8942E" strokeWidth="0.5" strokeDasharray="3,3" />
+                {/* Hat crown */}
+                <path d="M184,62 Q184,50 210,47 Q236,50 236,62 L236,80 L184,80 Z" fill="url(#hatGrad)" stroke="#8B6914" strokeWidth="1" />
+                {/* Crown weave lines */}
+                <g stroke="#C4A035" strokeWidth="0.4" opacity="0.4">
+                  <line x1="186" y1="58" x2="234" y2="58" />
+                  <line x1="186" y1="63" x2="234" y2="63" />
+                  <line x1="186" y1="68" x2="234" y2="68" />
+                  <line x1="186" y1="73" x2="234" y2="73" />
+                  <line x1="186" y1="78" x2="234" y2="78" />
                 </g>
-                <rect x="176" y="74" width="48" height="7" fill="#8B4513" stroke="#6B3410" strokeWidth="0.5"/>
-                <rect x="192" y="73" width="16" height="9" rx="2" fill="#DAA520" stroke="#B8860B" strokeWidth="0.5"/>
+                {/* Hat band */}
+                <rect x="184" y="76" width="52" height="8" rx="1" fill="url(#hatBandGrad)" stroke="#6B3410" strokeWidth="0.5" />
+                {/* Buckle */}
+                <rect x="200" y="74" width="20" height="12" rx="2.5" fill="#DAA520" stroke="#B8860B" strokeWidth="1" />
+                <rect x="206" y="77" width="8" height="6" rx="1" fill="#0d0d0d" />
               </g>
 
               {/* LUFFY TV text */}
-              <text x="200" y="265" textAnchor="middle" fill="#00A8E1" fontFamily="system-ui, sans-serif" fontWeight="900" fontSize="32" letterSpacing="6">LUFFY TV</text>
+              <text x="210" y="270" textAnchor="middle" fill="url(#textGrad)" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="34" letterSpacing="7" filter="url(#textGlow)">LUFFY TV</text>
             </svg>
           </div>
+
+          {/* ══ Burn overlay on flag ══ */}
+          {isBurning && <div className="lf-burn-overlay" />}
+          {/* ══ Char edge effect ══ */}
+          {isBurning && <div className="lf-char-edges" />}
         </div>
       )}
 
-      {/* ── Fire canvas overlay ── */}
-      <canvas ref={canvasRef} className="pirate-fire-canvas" />
+      {/* ══ CANVAS PARTICLE LAYER ══ */}
+      <canvas ref={canvasRef} className="lf-canvas" />
 
-      {/* ── Skip Button ── */}
-      <button onClick={skip} className="pirate-skip-btn" aria-label="Skip intro">
+      {/* ══ ASH RAIN OVERLAY (CSS) ══ */}
+      {(phase === 'burning' || phase === 'embers' || phase === 'reveal') && (
+        <div className="lf-ash-rain">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div key={i} className="lf-ash-dot" style={{
+              '--ash-x': `${Math.random() * 100}%`,
+              '--ash-delay': `${Math.random() * 4}s`,
+              '--ash-dur': `${3 + Math.random() * 5}s`,
+              '--ash-size': `${1 + Math.random() * 2}px`,
+              '--ash-drift': `${(Math.random() - 0.5) * 60}px`,
+            } as React.CSSProperties} />
+          ))}
+        </div>
+      )}
+
+      {/* ══ SKIP BUTTON ══ */}
+      <button onClick={skip} className="lf-skip-btn" aria-label="Skip intro">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="mr-1">
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />

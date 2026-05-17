@@ -697,151 +697,370 @@ video::-webkit-media-controls { border-radius: 8px; }
 .content-reveal { animation: contentReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ================================================================
-   PIRATE FLAG INTRO — "LUFFY TV"
-   Straw Hat Jolly Roger unfurls, burns away smoothly
-   Canvas fire particles + CSS clip-path burn effect
+   CINEMATIC PIRATE FLAG INTRO — "LUFFY TV"
+   8-phase cinematic: dark → storm → unfurl → wave →
+   ignite → burn → embers → reveal
+   Canvas fire engine + CSS atmosphere + SVG Jolly Roger
    ================================================================ */
 
-/* ── Intro container ── */
-.pirate-intro {
+/* ══════════════════════════════════════════════════════
+   ══ INTRO CONTAINER ══
+   ══════════════════════════════════════════════════════ */
+.lf-intro {
   position: fixed;
   inset: 0;
   z-index: 9999;
   background: #000;
   overflow: hidden;
-  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), filter 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), filter 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.pirate-intro-exit {
+.lf-intro-reveal {
   opacity: 0;
-  filter: blur(4px);
-}
-
-/* ── Dark atmosphere with warm undertone ── */
-.pirate-atmosphere {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 60%, rgba(40, 20, 5, 0.3) 0%, rgba(0, 0, 0, 0.8) 50%, #000 100%);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.pirate-fog {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 80%, rgba(30, 30, 40, 0.2) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, rgba(30, 30, 40, 0.15) 0%, transparent 40%);
-  pointer-events: none;
-  z-index: 2;
-  animation: fogDrift 8s ease-in-out infinite alternate;
-}
-
-@keyframes fogDrift {
-  from { transform: translateX(-15px) translateZ(0); }
-  to { transform: translateX(15px) translateZ(0); }
+  filter: blur(6px);
 }
 
 /* ══════════════════════════════════════════════════════
-   ══ FLAG CONTAINER — centers the flag ══
+   ══ STORM BACKGROUND ══
    ══════════════════════════════════════════════════════ */
+.lf-storm-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 70%, rgba(20, 15, 30, 0.6) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 30%, rgba(15, 20, 35, 0.4) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 100%, rgba(40, 25, 10, 0.3) 0%, transparent 60%),
+    linear-gradient(180deg, #020205 0%, #0a0810 40%, #0d0a08 70%, #050304 100%);
+  z-index: 1;
+  animation: stormPulse 6s ease-in-out infinite alternate;
+}
 
-.pirate-flag-container {
+@keyframes stormPulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.85; }
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ LIGHTNING FLASH ══
+   ══════════════════════════════════════════════════════ */
+.lf-lightning {
+  position: absolute;
+  inset: 0;
+  background: rgba(200, 210, 255, 0);
+  z-index: 2;
+  pointer-events: none;
+  animation: lightningFlash 8s ease-in-out infinite;
+}
+
+@keyframes lightningFlash {
+  0%, 100% { background: rgba(200, 210, 255, 0); }
+  42% { background: rgba(200, 210, 255, 0); }
+  43% { background: rgba(200, 210, 255, 0.06); }
+  43.5% { background: rgba(200, 210, 255, 0); }
+  44% { background: rgba(200, 210, 255, 0.03); }
+  45% { background: rgba(200, 210, 255, 0); }
+  78% { background: rgba(200, 210, 255, 0); }
+  78.5% { background: rgba(200, 210, 255, 0.04); }
+  79% { background: rgba(200, 210, 255, 0); }
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ FOG LAYERS ══
+   ══════════════════════════════════════════════════════ */
+.lf-fog-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 15% 85%, rgba(40, 35, 50, 0.25) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 75%, rgba(35, 30, 45, 0.2) 0%, transparent 35%),
+    radial-gradient(ellipse at 50% 95%, rgba(50, 40, 30, 0.15) 0%, transparent 50%);
+  animation: fogDrift 10s ease-in-out infinite alternate;
+}
+
+@keyframes fogDrift {
+  from { transform: translateX(-20px) translateY(5px) translateZ(0); }
+  to { transform: translateX(20px) translateY(-5px) translateZ(0); }
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ VIGNETTE ══
+   ══════════════════════════════════════════════════════ */
+.lf-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.4) 65%, rgba(0, 0, 0, 0.85) 100%);
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ WIND STREAKS ══
+   ══════════════════════════════════════════════════════ */
+.lf-wind-streaks {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lf-wind-line {
+  position: absolute;
+  top: var(--w-top, 50%);
+  left: -10%;
+  width: 25%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(180, 200, 220, 0.08) 30%, rgba(200, 215, 230, 0.12) 60%, transparent 100%);
+  animation: windBlow var(--w-dur, 2s) ease-out var(--w-delay, 0s) infinite;
+}
+
+@keyframes windBlow {
+  0% { transform: translateX(0) translateZ(0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateX(120vw) translateZ(0); opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ FLAGPOLE ══
+   ══════════════════════════════════════════════════════ */
+.lf-flagpole {
+  position: absolute;
+  left: calc(50% - clamp(140px, 25vw, 230px) - 6px);
+  top: 8%;
+  height: 84%;
+  z-index: 11;
+  opacity: 0;
+  transition: opacity 0.8s ease-out;
+}
+
+.lf-flagpole.pole-enter {
+  animation: poleAppear 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes poleAppear {
+  0% { opacity: 0; transform: translateY(-30px) translateZ(0); }
+  100% { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+
+.lf-pole-shaft {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 3%;
+  width: 4px;
+  height: 94%;
+  background: linear-gradient(180deg,
+    #8a7a60 0%, #6b5b45 15%, #7a6a50 30%,
+    #5a4a35 50%, #6b5b45 70%, #8a7a60 85%, #5a4a35 100%);
+  border-radius: 2px;
+  box-shadow:
+    2px 0 8px rgba(0, 0, 0, 0.5),
+    -1px 0 4px rgba(0, 0, 0, 0.3),
+    inset 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+.lf-pole-ball {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #c8b080, #8a7a50, #5a4a30);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 -1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.lf-pole-rope {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(2px);
+  width: 2px;
+  height: 40px;
+  background: repeating-linear-gradient(180deg, #8a7a50, #6b5b40 3px, #8a7a50 6px);
+  border-radius: 1px;
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ FLAG AREA — positioning + phases ══
+   ══════════════════════════════════════════════════════ */
+.lf-flag-area {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) translateZ(0);
   z-index: 10;
-  will-change: transform, opacity;
-  perspective: 800px;
+  will-change: transform, opacity, filter, clip-path;
+  perspective: 1000px;
 }
 
-/* ── Flag entering — dramatic scale-up with 3D tilt ── */
-.flag-entering {
-  animation: flagEnter 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* ── Unfurling — flag drops down and opens ══ */
+.lf-flag-area.flag-unfurling {
+  animation: flagUnfurl 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes flagEnter {
+@keyframes flagUnfurl {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.3) rotateY(-25deg) translateZ(0);
-    filter: blur(8px) brightness(0.5);
+    transform: translate(-50%, -50%) scaleY(0.02) scaleX(0.6) translateZ(0);
+    filter: blur(4px) brightness(0.3);
+    transform-origin: center top;
   }
-  40% {
-    opacity: 0.9;
-    filter: blur(2px) brightness(1.1);
+  30% {
+    opacity: 0.7;
+    filter: blur(2px) brightness(0.7);
   }
-  75% {
+  60% {
+    transform: translate(-50%, -50%) scaleY(0.85) scaleX(0.95) translateZ(0);
+    filter: blur(0.5px) brightness(0.9);
+  }
+  80% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.03) rotateY(3deg) translateZ(0);
-    filter: blur(0) brightness(1);
+    transform: translate(-50%, -50%) scaleY(1.04) scaleX(1.01) translateZ(0);
+    filter: blur(0) brightness(1.05);
   }
   100% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1) rotateY(0deg) translateZ(0);
+    transform: translate(-50%, -50%) scale(1) translateZ(0);
     filter: blur(0) brightness(1);
   }
 }
 
-/* ── Flag visible (settled state) ── */
-.flag-visible {
-  transform: translate(-50%, -50%) translateZ(0);
-}
-
-/* ── Flag waving — gentle 3D wave ── */
-.flag-waving .pirate-flag {
-  animation: flagWave 3s ease-in-out infinite;
+/* ── Waving — realistic cloth wave ══ */
+.lf-flag-area.flag-waving .lf-flag-cloth {
+  animation: clothWave 2.5s ease-in-out infinite;
   transform-origin: left center;
 }
 
-@keyframes flagWave {
-  0%, 100% { transform: perspective(800px) rotateY(-2deg) skewY(0.3deg) translateZ(0); }
-  25% { transform: perspective(800px) rotateY(0.5deg) skewY(-0.3deg) translateZ(0); }
-  50% { transform: perspective(800px) rotateY(2deg) skewY(0deg) translateZ(0); }
-  75% { transform: perspective(800px) rotateY(-0.5deg) skewY(0.2deg) translateZ(0); }
+@keyframes clothWave {
+  0%, 100% {
+    transform: perspective(800px) rotateY(0deg) skewY(0deg) translateZ(0);
+  }
+  15% {
+    transform: perspective(800px) rotateY(-3deg) skewY(0.5deg) translateZ(0);
+  }
+  35% {
+    transform: perspective(800px) rotateY(2deg) skewY(-0.3deg) translateZ(0);
+  }
+  50% {
+    transform: perspective(800px) rotateY(4deg) skewY(0deg) translateZ(0);
+  }
+  65% {
+    transform: perspective(800px) rotateY(-1deg) skewY(0.3deg) translateZ(0);
+  }
+  85% {
+    transform: perspective(800px) rotateY(1deg) skewY(-0.2deg) translateZ(0);
+  }
 }
 
-/* ══════════════════════════════════════════════════════
-   ══ THE FLAG ITSELF — burn via clip-path ══
-   ══════════════════════════════════════════════════════ */
-
-.pirate-flag {
-  width: clamp(280px, 55vw, 500px);
-  will-change: clip-path, filter;
+/* ── Ignition — subtle pulse ══ */
+.lf-flag-area.flag-igniting {
+  animation: ignitionPulse 0.6s ease-in-out;
 }
 
-/* ── Flag burning — smooth clip-path from bottom to top ── */
-.flag-burning {
-  animation: flagBurn 2.8s ease-in forwards;
+@keyframes ignitionPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15) saturate(1.1); }
 }
 
-@keyframes flagBurn {
+/* ── Burning — clip-path burn + glow ══ */
+.lf-flag-area.flag-burning {
+  animation: flagBurnAway 3.2s ease-in forwards;
+}
+
+@keyframes flagBurnAway {
   0% {
     clip-path: inset(0);
-    filter: brightness(1);
+    filter: brightness(1.2) saturate(1.3) drop-shadow(0 0 15px rgba(255, 120, 20, 0.4));
   }
-  3% {
-    filter: brightness(1.4) saturate(1.2);
+  5% {
+    filter: brightness(1.5) saturate(1.5) drop-shadow(0 0 25px rgba(255, 100, 10, 0.6));
+  }
+  15% {
+    clip-path: inset(0 0 5% 0);
+    filter: brightness(1.3) saturate(1.2) drop-shadow(0 0 20px rgba(255, 120, 20, 0.5));
+  }
+  30% {
+    clip-path: inset(0 0 20% 0);
+    filter: brightness(1.4) saturate(1.1) drop-shadow(0 0 18px rgba(255, 100, 10, 0.4));
+  }
+  50% {
+    clip-path: inset(0 0 40% 0);
+    filter: brightness(1.2) saturate(0.9) drop-shadow(0 0 12px rgba(255, 80, 0, 0.3));
+  }
+  70% {
+    clip-path: inset(0 0 65% 0);
+    filter: brightness(1.5) saturate(0.7) drop-shadow(0 0 8px rgba(255, 60, 0, 0.2));
+  }
+  90% {
+    clip-path: inset(0 0 90% 0);
+    filter: brightness(2) saturate(0.4) drop-shadow(0 0 4px rgba(255, 40, 0, 0.1));
   }
   100% {
     clip-path: inset(0 0 100% 0);
-    filter: brightness(2) saturate(0.5);
+    filter: brightness(2.5) saturate(0) drop-shadow(0 0 0 transparent);
   }
 }
 
-/* ── Jolly Roger SVG ── */
-.jolly-roger-svg {
+/* ══════════════════════════════════════════════════════
+   ══ FLAG CLOTH + SVG ══
+   ══════════════════════════════════════════════════════ */
+.lf-flag-cloth {
+  width: clamp(280px, 50vw, 460px);
+  will-change: transform;
+}
+
+.lf-jolly-roger {
   width: 100%;
   height: auto;
   display: block;
-  filter: drop-shadow(0 4px 30px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 60px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 4px 40px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 80px rgba(0, 0, 0, 0.3));
 }
 
 /* ══════════════════════════════════════════════════════
-   ══ FIRE CANVAS — particle overlay ══
+   ══ BURN OVERLAY — hot edge glow on flag ══
    ══════════════════════════════════════════════════════ */
+.lf-burn-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  animation: burnOverlayPulse 0.4s ease-in-out infinite alternate;
+  background: linear-gradient(0deg,
+    rgba(255, 120, 20, 0.15) 0%,
+    rgba(255, 80, 0, 0.05) 15%,
+    transparent 30%
+  );
+}
 
-.pirate-fire-canvas {
+@keyframes burnOverlayPulse {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ CHAR EDGES — darkened border on burning flag ══
+   ══════════════════════════════════════════════════════ */
+.lf-char-edges {
+  position: absolute;
+  inset: 0;
+  z-index: 13;
+  pointer-events: none;
+  border-bottom: 3px solid rgba(30, 15, 5, 0.6);
+  box-shadow:
+    0 2px 8px rgba(255, 100, 20, 0.3),
+    0 -2px 4px rgba(30, 15, 5, 0.4),
+    inset 0 -4px 12px rgba(255, 80, 0, 0.15);
+}
+
+/* ══════════════════════════════════════════════════════
+   ══ CANVAS ══
+   ══════════════════════════════════════════════════════ */
+.lf-canvas {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -849,10 +1068,44 @@ video::-webkit-media-controls { border-radius: 8px; }
 }
 
 /* ══════════════════════════════════════════════════════
+   ══ ASH RAIN ══
+   ══════════════════════════════════════════════════════ */
+.lf-ash-rain {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lf-ash-dot {
+  position: absolute;
+  left: var(--ash-x, 50%);
+  top: -5px;
+  width: var(--ash-size, 1.5px);
+  height: var(--ash-size, 1.5px);
+  background: rgba(160, 130, 100, 0.35);
+  border-radius: 1px;
+  animation: ashFall var(--ash-dur, 4s) linear var(--ash-delay, 0s) infinite;
+}
+
+@keyframes ashFall {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg) translateZ(0);
+    opacity: 0;
+  }
+  10% { opacity: 0.5; }
+  90% { opacity: 0.3; }
+  100% {
+    transform: translateY(110vh) translateX(var(--ash-drift, 20px)) rotate(720deg) translateZ(0);
+    opacity: 0;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
    ══ SKIP BUTTON ══
    ══════════════════════════════════════════════════════ */
-
-.pirate-skip-btn {
+.lf-skip-btn {
   position: absolute;
   bottom: 36px;
   right: 36px;
@@ -862,32 +1115,33 @@ video::-webkit-media-controls { border-radius: 8px; }
   gap: 5px;
   padding: 8px 18px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255, 255, 255, 0.7);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.02em;
   cursor: pointer;
   transition: all 0.25s ease;
-  animation: pirateSkipIn 0.5s ease-out 1.5s both;
+  animation: lfSkipIn 0.5s ease-out 2s both;
 }
 
-.pirate-skip-btn:hover {
+.lf-skip-btn:hover {
   background: rgba(255, 100, 30, 0.2);
   border-color: rgba(255, 140, 50, 0.4);
   color: white;
+  box-shadow: 0 0 12px rgba(255, 100, 30, 0.15);
 }
 
-.pirate-skip-btn:active {
-  transform: scale(0.96);
+.lf-skip-btn:active {
+  transform: scale(0.95);
 }
 
-@keyframes pirateSkipIn {
-  0% { opacity: 0; transform: translateY(8px); }
+@keyframes lfSkipIn {
+  0% { opacity: 0; transform: translateY(10px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
