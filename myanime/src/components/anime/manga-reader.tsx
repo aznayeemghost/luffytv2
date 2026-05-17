@@ -6,7 +6,7 @@ import { useAppStore } from "./store";
 interface ChapterPage {
   index: number;
   url: string;
-  proxiedUrl: string;
+  proxiedUrl?: string;
   width?: number;
   height?: number;
 }
@@ -25,6 +25,7 @@ export default function MangaReader({ mangaId, chapterId }: MangaReaderProps) {
   const [chapterTitle, setChapterTitle] = useState("");
   const [showControls, setShowControls] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
+  const [allChapters, setAllChapters] = useState<any[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Load chapter pages
@@ -50,8 +51,10 @@ export default function MangaReader({ mangaId, chapterId }: MangaReaderProps) {
         if (detailRes.ok) {
           const detail = await detailRes.json();
           setMangaTitle(detail.englishTitle || detail.title || "");
-          const ch = (detail.chapters || []).find((c: any) => c.id === chapterId);
-          setChapterTitle(ch?.title || `Chapter ${chapterId}`);
+          const chs = detail.chapters || [];
+          setAllChapters(chs);
+          const ch = chs.find((c: any) => c.id === chapterId);
+          setChapterTitle(ch?.title || `Chapter ${ch?.number || chapterId}`);
         }
       } catch {
         setError("Failed to load chapter.");
@@ -60,6 +63,11 @@ export default function MangaReader({ mangaId, chapterId }: MangaReaderProps) {
     }
     load();
   }, [mangaId, chapterId]);
+
+  // Find prev/next chapters
+  const currentChapterIdx = allChapters.findIndex((c: any) => c.id === chapterId);
+  const prevChapter = currentChapterIdx > 0 ? allChapters[currentChapterIdx - 1] : null;
+  const nextChapter = currentChapterIdx < allChapters.length - 1 ? allChapters[currentChapterIdx + 1] : null;
 
   // Track scroll position for page counter
   const handleScroll = useCallback(() => {
@@ -97,8 +105,8 @@ export default function MangaReader({ mangaId, chapterId }: MangaReaderProps) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] fade-in">
         <div className="text-center space-y-4">
-          <div className="w-14 h-14 rounded-full border-2 border-emerald-500/20 border-t-emerald-500/60 animate-spin mx-auto" />
-          <p className="text-emerald-300/60 text-xs font-medium">Loading chapter...</p>
+          <div className="w-14 h-14 rounded-full border-2 border-red-600/20 border-t-red-500/60 animate-spin mx-auto" />
+          <p className="text-red-300/60 text-xs font-medium">Loading chapter...</p>
         </div>
       </div>
     );
@@ -143,16 +151,34 @@ export default function MangaReader({ mangaId, chapterId }: MangaReaderProps) {
                 <p className="text-[10px] text-zinc-400 truncate">{chapterTitle}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs text-zinc-400 font-medium">
+            <div className="flex items-center gap-3 shrink-0">
+              {prevChapter && (
+                <button
+                  onClick={() => navigate({ page: "manga-read", id: mangaId, chapterId: prevChapter.id })}
+                  className="p-2 text-zinc-400 hover:text-red-400 bg-white/[0.04] rounded-lg transition-colors"
+                  title="Previous Chapter"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
+                </button>
+              )}
+              <span className="text-xs text-zinc-400 font-medium min-w-[60px] text-center">
                 {currentPage + 1} / {pages.length}
               </span>
+              {nextChapter && (
+                <button
+                  onClick={() => navigate({ page: "manga-read", id: mangaId, chapterId: nextChapter.id })}
+                  className="p-2 text-zinc-400 hover:text-red-400 bg-white/[0.04] rounded-lg transition-colors"
+                  title="Next Chapter"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom page counter */}
+      {/* Bottom nav pill */}
       <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
         <div className="glass-pill rounded-full px-4 py-2 flex items-center gap-3">
           <button
@@ -185,14 +211,14 @@ export default function MangaReader({ mangaId, chapterId }: MangaReaderProps) {
         </div>
       </div>
 
-      {/* Vertical scrolling manga reader */}
+      {/* Vertical scrolling manga reader — FULL WIDTH */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
         className="max-h-[calc(100vh-75px)] overflow-y-auto"
         style={{ scrollbarWidth: "thin" }}
       >
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {pages.map((page, i) => (
             <div key={i} className="w-full">
               <img
@@ -204,6 +230,38 @@ export default function MangaReader({ mangaId, chapterId }: MangaReaderProps) {
               />
             </div>
           ))}
+
+          {/* Chapter end nav */}
+          {pages.length > 0 && (
+            <div className="py-8 text-center space-y-3">
+              <p className="text-zinc-500 text-xs">End of {chapterTitle}</p>
+              <div className="flex items-center justify-center gap-3">
+                {prevChapter && (
+                  <button
+                    onClick={() => navigate({ page: "manga-read", id: mangaId, chapterId: prevChapter.id })}
+                    className="pill-btn pill-btn-ghost text-xs"
+                  >
+                    ← Prev Chapter
+                  </button>
+                )}
+                <button
+                  onClick={() => navigate({ page: "manga-detail", id: mangaId })}
+                  className="pill-btn text-xs"
+                  style={{ background: "linear-gradient(135deg, #dc2626, #991b1b)", color: "white" }}
+                >
+                  All Chapters
+                </button>
+                {nextChapter && (
+                  <button
+                    onClick={() => navigate({ page: "manga-read", id: mangaId, chapterId: nextChapter.id })}
+                    className="pill-btn pill-btn-ghost text-xs"
+                  >
+                    Next Chapter →
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

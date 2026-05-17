@@ -14,12 +14,15 @@ export async function GET(request: NextRequest) {
       referer = "https://atsu.moe/";
     } else if (url.includes("mangadex.org") || url.includes("uploads.mangadex.org")) {
       referer = "https://mangadex.org/";
+    } else if (url.includes("comix.to")) {
+      referer = "https://comix.to/";
     }
 
     const imgRes = await fetch(url, {
       headers: {
         Referer: referer,
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "image/webp,image/apng,image/*,*/*;q=0.8",
       },
     });
 
