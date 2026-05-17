@@ -147,7 +147,7 @@ export default function Navbar() {
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
               </div>
-              <span className="hidden sm:block text-lg font-bold gradient-text tracking-tight">GoAnime</span>
+              <span className="hidden sm:block text-lg font-bold gradient-text tracking-tight">Luffy TV</span>
             </button>
 
             {/* Desktop Nav Items */}

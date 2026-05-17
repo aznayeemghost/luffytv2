@@ -13,11 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GoAnime — Anime, Movies & TV Shows",
+  title: "Luffy TV — Anime, Movies & TV Shows",
   description: "Stream anime, movies, and TV shows online free. Watch subbed & dubbed anime, trending movies, popular TV series all in one place.",
   keywords: [
     "anime", "watch anime online", "free anime streaming", "movies",
-    "TV shows", "HD anime", "trending anime", "GoAnime", "streaming",
+    "TV shows", "HD anime", "trending anime", "Luffy TV", "streaming",
     "subbed", "dubbed", "watch movies free", "watch TV shows online",
   ],
   icons: {

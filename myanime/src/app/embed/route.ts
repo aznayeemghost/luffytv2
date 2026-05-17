@@ -4,7 +4,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url");
   const type = searchParams.get("type") || "mp4";
-  const title = searchParams.get("title") || "GoAnime Player";
+  const title = searchParams.get("title") || "Luffy TV Player";
   const referer = searchParams.get("referer") || "";
 
   if (!url) {

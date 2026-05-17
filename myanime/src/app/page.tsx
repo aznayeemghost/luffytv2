@@ -31,86 +31,97 @@ function useMounted() {
 }
 
 // ================================================================
-// NETFLIX-STYLE CINEMATIC INTRO — "GOANIME"
-// Phases: dark → letters-in → light-streak → logo-glow → zoom-out → reveal
-// Inspired by Netflix/HBO/D+ splash screens
-// GPU-accelerated, 60fps, with skip button
+// SMOOTH CINEMATIC INTRO — "LUFFY TV"
+// Fluid, buttery-smooth animation inspired by Netflix/HBO/D+
+// No chunky phase jumps — continuous CSS-driven transitions
 // ================================================================
 
-const BRAND_LETTERS = ['G', 'O', 'A', 'N', 'I', 'M', 'E'];
+const BRAND_PARTS = [
+  { letters: ['L', 'U', 'F', 'F', 'Y'], gap: 2 },
+  { letters: ['T', 'V'], gap: 6 },
+];
 
-function NetflixIntro({ onComplete }: { onComplete: () => void }) {
-  const [phase, setPhase] = useState<'dark' | 'letters' | 'streak' | 'glow' | 'zoom' | 'reveal'>('dark');
+function LuffyIntro({ onComplete }: { onComplete: () => void }) {
   const onCompleteRef = useRef(onComplete);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [started, setStarted] = useState(false);
+  const [showStreak, setShowStreak] = useState(false);
+  const [showGlow, setShowGlow] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => { onCompleteRef.current = onComplete; });
 
   const skip = useCallback(() => {
+    if (!visible) return;
+    setVisible(false);
     onCompleteRef.current();
-  }, []);
+  }, [visible]);
 
+  // Smooth timed sequence — longer, more relaxed pacing
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase('letters'),  800),   // 0.8s darkness
-      setTimeout(() => setPhase('streak'),    3200),  // letters settle 2.4s
-      setTimeout(() => setPhase('glow'),      4400),  // streak sweep 1.2s
-      setTimeout(() => setPhase('zoom'),      5600),  // glow pulse 1.2s
-      setTimeout(() => setPhase('reveal'),    6200),  // zoom out 0.6s
-      setTimeout(() => onCompleteRef.current(), 7000), // fade complete 0.8s
+      setTimeout(() => setStarted(true),      600),   // brief dark hold
+      setTimeout(() => setShowStreak(true),    2800),  // letters settle ~2.2s
+      setTimeout(() => setShowStreak(false),   3600),  // streak sweeps ~0.8s
+      setTimeout(() => setShowGlow(true),      3800),  // glow starts
+      setTimeout(() => setFadeOut(true),       4800),  // glow ~1s then start fade
+      setTimeout(() => setVisible(false),      5600),  // fade completes ~0.8s
+      setTimeout(() => onCompleteRef.current(),5700),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  // Ambient floating particles for cinematic depth
+  // Fewer, softer ambient particles
   const ambientParticles = useMemo(() =>
-    Array.from({ length: 35 }, (_, i) => ({
+    Array.from({ length: 18 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: 0.5 + Math.random() * 2,
-      duration: 4 + Math.random() * 8,
-      delay: Math.random() * 3,
-      opacity: 0.06 + Math.random() * 0.15,
-      drift: (Math.random() - 0.5) * 30,
+      size: 0.8 + Math.random() * 1.5,
+      duration: 6 + Math.random() * 10,
+      delay: Math.random() * 4,
+      opacity: 0.04 + Math.random() * 0.08,
+      drift: (Math.random() - 0.5) * 20,
     }))
   , []);
 
-  // Spark particles for the streak phase
-  const streakSparks = useMemo(() =>
-    Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      y: 30 + Math.random() * 40,
-      size: 1 + Math.random() * 3,
-      delay: 0.3 + Math.random() * 0.8,
-      duration: 0.3 + Math.random() * 0.5,
-      color: i % 3 === 0 ? '#00A8E1' : i % 3 === 1 ? '#67d8ef' : '#ffffff',
-    }))
-  , []);
+  // Build flat letter array with spacing info
+  const letterItems = useMemo(() => {
+    const items: { letter: string; delay: number; spaceBefore: number }[] = [];
+    let delay = 0;
+    BRAND_PARTS.forEach((part, pi) => {
+      part.letters.forEach((letter, li) => {
+        items.push({
+          letter,
+          delay,
+          spaceBefore: (pi > 0 && li === 0) ? part.gap : 0,
+        });
+        delay += 0.12;
+      });
+    });
+    return items;
+  }, []);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 z-[9999] bg-black overflow-hidden">
-      {/* ── Cinematic vignette ── */}
-      <div className="netflix-vignette" />
+    <div className={`luffy-intro ${fadeOut ? 'luffy-intro-fadeout' : ''} ${!visible ? 'luffy-intro-gone' : ''}`}>
+      {/* ── Soft vignette ── */}
+      <div className="luffy-vignette" />
 
-      {/* ── Film grain overlay ── */}
-      <div className="netflix-grain" />
-
-      {/* ── Ambient floating particles ── */}
-      {phase !== 'reveal' && (
-        <div className="netflix-ambient-container">
+      {/* ── Ambient particles (fewer, softer) ── */}
+      {started && !fadeOut && (
+        <div className="luffy-particles">
           {ambientParticles.map(p => (
             <div
               key={p.id}
-              className="netflix-ambient-particle"
+              className="luffy-particle"
               style={{
                 left: `${p.x}%`,
                 top: `${p.y}%`,
                 width: `${p.size}px`,
                 height: `${p.size}px`,
-                '--particle-dur': `${p.duration}s`,
-                '--particle-delay': `${p.delay}s`,
-                '--particle-drift': `${p.drift}px`,
+                '--p-dur': `${p.duration}s`,
+                '--p-delay': `${p.delay}s`,
+                '--p-drift': `${p.drift}px`,
                 opacity: p.opacity,
               } as React.CSSProperties}
             />
@@ -118,99 +129,58 @@ function NetflixIntro({ onComplete }: { onComplete: () => void }) {
         </div>
       )}
 
-      {/* ── Deep red ambient glow (like Netflix) ── */}
-      {(phase === 'letters' || phase === 'streak' || phase === 'glow') && (
-        <div className="netflix-ambient-glow" />
-      )}
+      {/* ── Subtle ambient glow ── */}
+      {started && !fadeOut && <div className="luffy-ambient-glow" />}
 
-      {/* ════════════════════════════════════════════════
-          ══ LETTER-BY-LETTER REVEAL — Netflix style ══
-          ════════════════════════════════════════════════ */}
-      {phase !== 'dark' && phase !== 'reveal' && (
-        <div className={`netflix-logo-container ${
-          phase === 'zoom' ? 'netflix-logo-zoom' : ''
-        }`}>
-          {/* ── The "GOANIME" letters ── */}
-          <div className="netflix-letters-row">
-            {BRAND_LETTERS.map((letter, i) => (
+      {/* ═══════════════════════════════════════════
+          ══ LETTERS — smooth, elegant reveal ══
+          ═══════════════════════════════════════════ */}
+      {started && (
+        <div className={`luffy-logo-wrap ${showGlow ? 'luffy-logo-glow' : ''} ${fadeOut ? 'luffy-logo-exit' : ''}`}>
+          <div className="luffy-letters">
+            {letterItems.map((item, i) => (
               <span
                 key={i}
-                className={`netflix-letter netflix-letter-${i} ${
-                  phase === 'letters' || phase === 'streak' || phase === 'glow' || phase === 'zoom' ? 'netflix-letter-visible' : ''
-                } ${phase === 'glow' ? 'netflix-letter-glowing' : ''} ${phase === 'zoom' ? 'netflix-letter-zooming' : ''}`}
+                className={`luffy-letter ${started ? 'luffy-letter-in' : ''}`}
                 style={{
-                  '--letter-index': i,
-                  '--letter-delay': `${0.3 + i * 0.15}s`,
+                  '--l-delay': `${item.delay}s`,
+                  marginLeft: item.spaceBefore ? `${item.spaceBefore * 6}px` : undefined,
                 } as React.CSSProperties}
               >
-                {letter}
+                {item.letter}
               </span>
             ))}
           </div>
 
-          {/* ── Tagline under the logo ── */}
-          <div className={`netflix-tagline ${phase === 'glow' ? 'netflix-tagline-visible' : ''}`}>
+          {/* ── Tagline ── */}
+          <div className={`luffy-tagline ${showGlow ? 'luffy-tagline-in' : ''}`}>
             Anime &bull; Movies &bull; TV
           </div>
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════
-          ══ HORIZONTAL LIGHT STREAK — Netflix-style ══
-          ════════════════════════════════════════════════ */}
-      {phase === 'streak' && (
+      {/* ═══════════════════════════════════════════
+          ══ LIGHT STREAK — subtle sweep ══
+          ═══════════════════════════════════════════ */}
+      {showStreak && <div className="luffy-streak" />}
+
+      {/* ═══════════════════════════════════════════
+          ══ GLOW PULSE — soft radial bloom ══
+          ═══════════════════════════════════════════ */}
+      {showGlow && (
         <>
-          <div className="netflix-light-streak" />
-          {/* Sparks trailing the streak */}
-          {streakSparks.map(s => (
-            <div
-              key={s.id}
-              className="netflix-streak-spark"
-              style={{
-                top: `${s.y}%`,
-                width: `${s.size}px`,
-                height: `${s.size}px`,
-                backgroundColor: s.color,
-                boxShadow: `0 0 ${s.size * 3}px ${s.color}`,
-                '--spark-delay': `${s.delay}s`,
-                '--spark-dur': `${s.duration}s`,
-              } as React.CSSProperties}
-            />
-          ))}
+          <div className="luffy-glow-bloom" />
+          <div className="luffy-glow-ring" />
         </>
-      )}
-
-      {/* ════════════════════════════════════════════════
-          ══ GLOW PULSE — logo radiates energy ══
-          ════════════════════════════════════════════════ */}
-      {phase === 'glow' && (
-        <>
-          <div className="netflix-glow-pulse" />
-          <div className="netflix-glow-ring" />
-        </>
-      )}
-
-      {/* ════════════════════════════════════════════════
-          ══ ZOOM — logo zooms toward camera ══
-          ════════════════════════════════════════════════ */}
-      {phase === 'zoom' && (
-        <div className="netflix-zoom-flash" />
-      )}
-
-      {/* ════════════════════════════════════════════════
-          ══ REVEAL — smooth fade to main content ══
-          ════════════════════════════════════════════════ */}
-      {phase === 'reveal' && (
-        <div className="netflix-reveal-overlay" />
       )}
 
       {/* ── Skip Button ── */}
       <button
         onClick={skip}
-        className="netflix-skip-btn"
+        className="luffy-skip-btn"
         aria-label="Skip intro"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="mr-1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="mr-1">
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
         </svg>
@@ -254,7 +224,7 @@ export default function MainPage() {
 
   const handleSplashComplete = () => {
     setSplashComplete(true);
-    setTimeout(() => setShowSplash(false), 500);
+    setTimeout(() => setShowSplash(false), 400);
   };
 
   if (!mounted) {
@@ -267,7 +237,7 @@ export default function MainPage() {
             </svg>
           </div>
           <div className="space-y-1">
-            <p className="text-cyan-400 text-sm font-bold">GoAnime</p>
+            <p className="text-cyan-400 text-sm font-bold">Luffy TV</p>
             <p className="text-zinc-600 text-xs">Loading...</p>
           </div>
           <div className="w-32 h-1 bg-[#1a2530] mx-auto rounded-full overflow-hidden">
@@ -309,7 +279,7 @@ export default function MainPage() {
       {/* Splash Screen */}
       {showSplash && (
         <div className={splashComplete ? "splash-scale-out" : ""}>
-          <NetflixIntro onComplete={handleSplashComplete} />
+          <LuffyIntro onComplete={handleSplashComplete} />
         </div>
       )}
 
@@ -328,7 +298,7 @@ export default function MainPage() {
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                       <svg className="w-4.5 h-4.5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                     </div>
-                    <span className="text-base font-bold gradient-text">GoAnime</span>
+                    <span className="text-base font-bold gradient-text">Luffy TV</span>
                   </div>
                   <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">All-in-one streaming platform for anime, movies, TV shows and manga. Content sourced from third-party providers.</p>
                   <div className="flex items-center gap-3">
@@ -367,14 +337,14 @@ export default function MainPage() {
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-300 mb-4 uppercase tracking-wider">Support</h4>
                   <div className="space-y-2.5">
-                    <span className="block text-xs text-zinc-600">GoAnime v4.0</span>
+                    <span className="block text-xs text-zinc-600">Luffy TV v4.0</span>
                     <span className="block text-xs text-zinc-600">We do not host any files</span>
                   </div>
                 </div>
               </div>
               <div className="section-divider mt-10 mb-6" />
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p className="text-[10px] text-zinc-700">&copy; {new Date().getFullYear()} GoAnime. All rights reserved.</p>
+                <p className="text-[10px] text-zinc-700">&copy; {new Date().getFullYear()} Luffy TV. All rights reserved.</p>
                 <p className="text-[10px] text-zinc-700">Powered by TMDB &amp; AniList &bull; Content from third-party providers</p>
               </div>
             </div>

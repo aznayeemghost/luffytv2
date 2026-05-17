@@ -697,42 +697,41 @@ video::-webkit-media-controls { border-radius: 8px; }
 .content-reveal { animation: contentReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ================================================================
-   NETFLIX-STYLE CINEMATIC INTRO — "GOANIME"
-   Inspired by Netflix, HBO, Disney+ splash screens
-   Phases: dark → letters → streak → glow → zoom → reveal
+   SMOOTH CINEMATIC INTRO — "LUFFY TV"
+   Fluid, buttery animation — no chunky phase jumps
+   Continuous CSS transitions, minimal DOM thrashing
    ================================================================ */
 
-/* ── Vignette ── */
-.netflix-vignette {
+/* ── Intro container ── */
+.luffy-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  overflow: hidden;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), filter 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.luffy-intro-fadeout {
+  opacity: 0;
+  filter: blur(6px);
+}
+
+.luffy-intro-gone {
+  display: none;
+}
+
+/* ── Soft vignette ── */
+.luffy-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.7) 70%, rgba(0, 0, 0, 0.95) 100%);
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.5) 80%, rgba(0, 0, 0, 0.9) 100%);
   pointer-events: none;
-  z-index: 50;
+  z-index: 5;
 }
 
-/* ── Film grain ── */
-.netflix-grain {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 51;
-  opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 256px 256px;
-  animation: netflixGrainShift 0.5s steps(3) infinite;
-}
-
-@keyframes netflixGrainShift {
-  0% { transform: translate(0, 0); }
-  33% { transform: translate(-2px, 1px); }
-  66% { transform: translate(1px, -1px); }
-  100% { transform: translate(0, 0); }
-}
-
-/* ── Ambient floating particles ── */
-.netflix-ambient-container {
+/* ── Ambient particles (fewer, softer) ── */
+.luffy-particles {
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -740,58 +739,57 @@ video::-webkit-media-controls { border-radius: 8px; }
   z-index: 3;
 }
 
-@keyframes netflixParticleFloat {
+@keyframes luffyParticleFloat {
   0%, 100% {
     opacity: 0;
     transform: translateY(0) translateX(0) translateZ(0);
   }
-  10% { opacity: var(--particle-base-opacity, 0.15); }
+  15% { opacity: var(--p-base-op, 0.1); }
   50% {
-    transform: translateY(-30px) translateX(var(--particle-drift, 10px)) translateZ(0);
+    transform: translateY(-20px) translateX(var(--p-drift, 10px)) translateZ(0);
   }
-  90% { opacity: var(--particle-base-opacity, 0.1); }
+  85% { opacity: var(--p-base-op, 0.06); }
 }
 
-.netflix-ambient-particle {
+.luffy-particle {
   position: absolute;
   border-radius: 50%;
-  background: rgba(0, 168, 225, 0.5);
+  background: rgba(0, 168, 225, 0.4);
   will-change: transform, opacity;
-  transform: translateZ(0);
-  animation: netflixParticleFloat var(--particle-dur, 5s) ease-in-out infinite;
-  animation-delay: var(--particle-delay, 0s);
+  animation: luffyParticleFloat var(--p-dur, 7s) ease-in-out infinite;
+  animation-delay: var(--p-delay, 0s);
 }
 
-/* ── Deep ambient glow (Netflix-style red → our cyan) ── */
-.netflix-ambient-glow {
+/* ── Subtle ambient glow ── */
+.luffy-ambient-glow {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) translateZ(0);
-  width: 600px;
-  height: 400px;
+  width: 500px;
+  height: 350px;
   border-radius: 50%;
   background: radial-gradient(ellipse,
-    rgba(0, 168, 225, 0.08) 0%,
-    rgba(0, 80, 140, 0.04) 40%,
+    rgba(0, 168, 225, 0.06) 0%,
+    rgba(0, 80, 140, 0.03) 40%,
     transparent 70%
   );
-  filter: blur(60px);
+  filter: blur(50px);
   z-index: 2;
   pointer-events: none;
-  animation: netflixAmbientGlow 4s ease-in-out infinite alternate;
+  animation: luffyAmbientPulse 5s ease-in-out infinite alternate;
 }
 
-@keyframes netflixAmbientGlow {
-  0% { opacity: 0.6; transform: translate(-50%, -50%) scale(1) translateZ(0); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) translateZ(0); }
+@keyframes luffyAmbientPulse {
+  0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1) translateZ(0); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1.05) translateZ(0); }
 }
 
 /* ══════════════════════════════════════════════════════
-   ══ LOGO CONTAINER ──
+   ══ LOGO WRAP ──
    ══════════════════════════════════════════════════════ */
 
-.netflix-logo-container {
+.luffy-logo-wrap {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -800,400 +798,282 @@ video::-webkit-media-controls { border-radius: 8px; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
-  will-change: transform, opacity;
+  gap: 20px;
+  will-change: transform, opacity, filter;
+  transition: filter 1s ease-in-out, opacity 0.8s ease-out, transform 0.8s ease-out;
 }
 
-.netflix-logo-zoom {
-  animation: netflixLogoZoom 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+/* ── Glow state — soft bloom on letters ── */
+.luffy-logo-glow {
+  filter: brightness(1.6) drop-shadow(0 0 30px rgba(0, 168, 225, 0.6)) drop-shadow(0 0 60px rgba(0, 168, 225, 0.3));
 }
 
-@keyframes netflixLogoZoom {
-  0% { transform: translate(-50%, -50%) scale(1) translateZ(0); opacity: 1; }
-  40% { transform: translate(-50%, -50%) scale(1.3) translateZ(0); opacity: 0.8; }
-  100% { transform: translate(-50%, -50%) scale(4) translateZ(0); opacity: 0; filter: blur(10px); }
+/* ── Exit state — smooth zoom + blur ── */
+.luffy-logo-exit {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.8) translateZ(0);
+  filter: blur(12px) brightness(2);
 }
 
 /* ══════════════════════════════════════════════════════
-   ══ LETTER-BY-LETTER ANIMATION — Netflix style ══
+   ══ LETTERS — smooth slide-up reveal ══
    ══════════════════════════════════════════════════════ */
 
-.netflix-letters-row {
+.luffy-letters {
   display: flex;
   align-items: center;
-  gap: 4px;
-  perspective: 800px;
+  gap: 2px;
 }
 
-.netflix-letter {
+.luffy-letter {
   display: inline-block;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: clamp(3rem, 10vw, 7rem);
+  font-size: clamp(3rem, 10vw, 6.5rem);
   font-weight: 900;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   color: transparent;
-  background: linear-gradient(180deg, #ffffff 0%, #c0e8f8 40%, #00A8E1 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #c8edf8 35%, #00A8E1 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   opacity: 0;
-  transform: translateY(80px) scale(0.5) rotateX(40deg) translateZ(0);
-  filter: blur(12px) brightness(0.3);
+  transform: translateY(40px) translateZ(0);
+  filter: blur(8px);
   will-change: transform, opacity, filter;
-  transition: none;
 }
 
-.netflix-letter-visible {
-  animation: netflixLetterIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: var(--letter-delay, 0s);
+.luffy-letter-in {
+  animation: luffyLetterSlideIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--l-delay, 0s);
 }
 
-@keyframes netflixLetterIn {
+@keyframes luffyLetterSlideIn {
   0% {
     opacity: 0;
-    transform: translateY(80px) scale(0.5) rotateX(40deg) translateZ(0);
-    filter: blur(12px) brightness(0.3);
+    transform: translateY(40px) translateZ(0);
+    filter: blur(8px);
   }
-  25% {
-    opacity: 0.7;
-    filter: blur(4px) brightness(0.7);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-8px) scale(1.08) rotateX(-5deg) translateZ(0);
-    filter: blur(0) brightness(1.3);
+  40% {
+    opacity: 0.8;
+    filter: blur(2px);
   }
   70% {
-    transform: translateY(3px) scale(0.98) rotateX(1deg) translateZ(0);
-    filter: blur(0) brightness(1.05);
+    opacity: 1;
+    transform: translateY(-3px) translateZ(0);
+    filter: blur(0);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1) rotateX(0deg) translateZ(0);
-    filter: blur(0) brightness(1);
+    transform: translateY(0) translateZ(0);
+    filter: blur(0);
   }
-}
-
-/* ── Glow phase — letters radiate cyan energy ── */
-.netflix-letter-glowing {
-  animation: netflixLetterGlow 1.2s ease-in-out forwards;
-  animation-delay: var(--letter-delay, 0s);
-}
-
-@keyframes netflixLetterGlow {
-  0% {
-    text-shadow: none;
-    filter: brightness(1);
-  }
-  30% {
-    filter: brightness(2) drop-shadow(0 0 30px rgba(0, 168, 225, 0.8)) drop-shadow(0 0 60px rgba(0, 168, 225, 0.4));
-  }
-  60% {
-    filter: brightness(1.5) drop-shadow(0 0 20px rgba(0, 168, 225, 0.5));
-  }
-  100% {
-    filter: brightness(1.8) drop-shadow(0 0 40px rgba(0, 168, 225, 0.9)) drop-shadow(0 0 80px rgba(103, 216, 239, 0.5));
-  }
-}
-
-/* ── Zoom phase ── */
-.netflix-letter-zooming {
-  animation: netflixLetterZoomFade 0.6s ease-in forwards;
-}
-
-@keyframes netflixLetterZoomFade {
-  0% { opacity: 1; }
-  100% { opacity: 0; transform: scale(2) translateZ(0); filter: blur(8px); }
 }
 
 /* ══════════════════════════════════════════════════════
    ══ TAGLINE ──
    ══════════════════════════════════════════════════════ */
 
-.netflix-tagline {
+.luffy-tagline {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: clamp(0.75rem, 2vw, 1.1rem);
+  font-size: clamp(0.7rem, 1.8vw, 1rem);
   font-weight: 400;
   letter-spacing: 0.35em;
   text-transform: uppercase;
-  color: rgba(0, 168, 225, 0.5);
+  color: rgba(0, 168, 225, 0.45);
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(8px);
   will-change: transform, opacity;
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out, filter 0.8s ease-out;
+  filter: blur(4px);
 }
 
-.netflix-tagline-visible {
-  animation: netflixTaglineIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes netflixTaglineIn {
-  0% { opacity: 0; transform: translateY(10px); filter: blur(6px); }
-  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+.luffy-tagline-in {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
 }
 
 /* ══════════════════════════════════════════════════════
-   ══ HORIZONTAL LIGHT STREAK — Netflix signature ══
+   ══ LIGHT STREAK — smooth horizontal sweep ══
    ══════════════════════════════════════════════════════ */
 
-.netflix-light-streak {
+.luffy-streak {
   position: absolute;
   top: 50%;
   left: -10%;
   width: 120%;
-  height: 2px;
+  height: 1.5px;
   z-index: 20;
   pointer-events: none;
-  animation: netflixStreakSweep 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: luffyStreakSweep 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.netflix-light-streak::before {
+.luffy-streak::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(0, 168, 225, 0.1) 15%,
-    rgba(0, 168, 225, 0.8) 40%,
-    rgba(255, 255, 255, 1) 50%,
-    rgba(0, 168, 225, 0.8) 60%,
-    rgba(0, 168, 225, 0.1) 85%,
+    rgba(0, 168, 225, 0.15) 20%,
+    rgba(0, 168, 225, 0.7) 40%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(0, 168, 225, 0.7) 60%,
+    rgba(0, 168, 225, 0.15) 80%,
     transparent 100%
   );
   box-shadow:
-    0 0 20px rgba(0, 168, 225, 0.8),
-    0 0 60px rgba(0, 168, 225, 0.4),
-    0 0 120px rgba(0, 168, 225, 0.2);
+    0 0 15px rgba(0, 168, 225, 0.6),
+    0 0 40px rgba(0, 168, 225, 0.3);
 }
 
-.netflix-light-streak::after {
+.luffy-streak::after {
   content: '';
   position: absolute;
-  top: -30px;
-  bottom: -30px;
+  top: -20px;
+  bottom: -20px;
   left: 0;
   right: 0;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(0, 168, 225, 0.02) 15%,
-    rgba(0, 168, 225, 0.1) 40%,
-    rgba(103, 216, 239, 0.15) 50%,
-    rgba(0, 168, 225, 0.1) 60%,
-    rgba(0, 168, 225, 0.02) 85%,
+    rgba(0, 168, 225, 0.02) 20%,
+    rgba(0, 168, 225, 0.08) 40%,
+    rgba(103, 216, 239, 0.1) 50%,
+    rgba(0, 168, 225, 0.08) 60%,
+    rgba(0, 168, 225, 0.02) 80%,
     transparent 100%
   );
-  filter: blur(20px);
+  filter: blur(15px);
 }
 
-@keyframes netflixStreakSweep {
+@keyframes luffyStreakSweep {
   0% {
-    transform: translateY(0) scaleX(0.1) translateZ(0);
+    transform: scaleX(0.05) translateZ(0);
     opacity: 0;
   }
-  15% {
+  20% {
     opacity: 1;
-    transform: translateY(0) scaleX(0.3) translateZ(0);
+    transform: scaleX(0.2) translateZ(0);
   }
-  50% {
-    transform: translateY(-2px) scaleX(1) translateZ(0);
-  }
-  80% {
-    opacity: 0.7;
+  60% {
+    transform: scaleX(1) translateZ(0);
   }
   100% {
-    transform: translateY(-4px) scaleX(1.1) translateZ(0);
+    transform: scaleX(1.05) translateZ(0);
     opacity: 0;
-  }
-}
-
-/* ── Streak spark particles ── */
-.netflix-streak-spark {
-  position: absolute;
-  left: 50%;
-  border-radius: 50%;
-  z-index: 21;
-  pointer-events: none;
-  will-change: transform, opacity;
-  animation: netflixSparkBurst var(--spark-dur, 0.4s) ease-out forwards;
-  animation-delay: var(--spark-delay, 0s);
-}
-
-@keyframes netflixSparkBurst {
-  0% {
-    opacity: 0;
-    transform: translateX(0) translateY(0) scale(2) translateZ(0);
-  }
-  30% {
-    opacity: 1;
-    transform: translateX(calc((var(--spark-delay, 0s) * 500) - 100px)) translateY(calc((var(--spark-delay, 0s) * 300) - 50px)) scale(1) translateZ(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(calc((var(--spark-delay, 0s) * 800) - 200px)) translateY(calc((var(--spark-delay, 0s) * 500) - 100px)) scale(0.1) translateZ(0);
-    filter: blur(2px);
   }
 }
 
 /* ══════════════════════════════════════════════════════
-   ══ GLOW PULSE — logo radiates energy ══
+   ══ GLOW BLOOM — soft radial pulse ══
    ══════════════════════════════════════════════════════ */
 
-.netflix-glow-pulse {
+.luffy-glow-bloom {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) translateZ(0);
-  width: 400px;
-  height: 400px;
+  width: 350px;
+  height: 350px;
   border-radius: 50%;
   background: radial-gradient(circle,
-    rgba(0, 168, 225, 0.25) 0%,
-    rgba(103, 216, 239, 0.12) 30%,
-    rgba(0, 168, 225, 0.04) 55%,
-    transparent 75%
+    rgba(0, 168, 225, 0.2) 0%,
+    rgba(103, 216, 239, 0.08) 35%,
+    rgba(0, 168, 225, 0.02) 60%,
+    transparent 80%
   );
   z-index: 8;
   pointer-events: none;
   will-change: transform, opacity;
-  animation: netflixGlowPulse 1.2s ease-in-out forwards;
+  animation: luffyGlowBloom 1s ease-out forwards;
 }
 
-@keyframes netflixGlowPulse {
+@keyframes luffyGlowBloom {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.3) translateZ(0);
+    transform: translate(-50%, -50%) scale(0.4) translateZ(0);
   }
-  30% {
+  40% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1) translateZ(0);
   }
-  60% {
-    opacity: 0.8;
-    transform: translate(-50%, -50%) scale(1.2) translateZ(0);
-  }
   100% {
-    opacity: 0.3;
-    transform: translate(-50%, -50%) scale(1.8) translateZ(0);
+    opacity: 0.4;
+    transform: translate(-50%, -50%) scale(1.5) translateZ(0);
   }
 }
 
-.netflix-glow-ring {
+.luffy-glow-ring {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) translateZ(0);
-  width: 300px;
-  height: 300px;
+  width: 250px;
+  height: 250px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 168, 225, 0.4);
+  border: 1.5px solid rgba(0, 168, 225, 0.35);
   box-shadow:
-    0 0 30px rgba(0, 168, 225, 0.2),
-    0 0 60px rgba(0, 168, 225, 0.1),
-    inset 0 0 15px rgba(0, 168, 225, 0.05);
+    0 0 20px rgba(0, 168, 225, 0.15),
+    0 0 40px rgba(0, 168, 225, 0.08);
   z-index: 9;
   pointer-events: none;
   will-change: transform, opacity;
-  animation: netflixGlowRing 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: luffyGlowRing 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-@keyframes netflixGlowRing {
+@keyframes luffyGlowRing {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.2) translateZ(0);
-    border-width: 4px;
+    transform: translate(-50%, -50%) scale(0.3) translateZ(0);
   }
-  30% {
-    opacity: 0.9;
+  25% {
+    opacity: 0.8;
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(3.5) translateZ(0);
-    border-width: 0.5px;
+    transform: translate(-50%, -50%) scale(3) translateZ(0);
   }
-}
-
-/* ══════════════════════════════════════════════════════
-   ══ ZOOM FLASH ══
-   ══════════════════════════════════════════════════════ */
-
-.netflix-zoom-flash {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 50%,
-    rgba(0, 168, 225, 0.15) 0%,
-    rgba(0, 168, 225, 0.05) 30%,
-    transparent 60%
-  );
-  z-index: 30;
-  pointer-events: none;
-  animation: netflixZoomFlash 0.6s ease-out forwards;
-}
-
-@keyframes netflixZoomFlash {
-  0% { opacity: 0; }
-  20% { opacity: 1; }
-  60% { opacity: 0.5; }
-  100% { opacity: 0; }
-}
-
-/* ══════════════════════════════════════════════════════
-   ══ REVEAL — smooth transition to main content ══
-   ══════════════════════════════════════════════════════ */
-
-.netflix-reveal-overlay {
-  position: absolute;
-  inset: 0;
-  background: #000000;
-  z-index: 60;
-  pointer-events: none;
-  animation: netflixRevealFade 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes netflixRevealFade {
-  0% { opacity: 1; }
-  100% { opacity: 0; pointer-events: none; }
 }
 
 /* ══════════════════════════════════════════════════════
    ══ SKIP BUTTON ══
    ══════════════════════════════════════════════════════ */
 
-.netflix-skip-btn {
+.luffy-skip-btn {
   position: absolute;
-  bottom: 40px;
-  right: 40px;
+  bottom: 36px;
+  right: 36px;
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 22px;
+  gap: 5px;
+  padding: 8px 18px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.8);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: all 0.2s ease;
-  animation: netflixSkipFadeIn 0.6s ease-out 1.5s both;
+  transition: all 0.25s ease;
+  animation: luffySkipIn 0.5s ease-out 1.2s both;
 }
 
-.netflix-skip-btn:hover {
-  background: rgba(0, 168, 225, 0.2);
-  border-color: rgba(0, 168, 225, 0.5);
+.luffy-skip-btn:hover {
+  background: rgba(0, 168, 225, 0.15);
+  border-color: rgba(0, 168, 225, 0.4);
   color: white;
-  transform: scale(1.05);
 }
 
-.netflix-skip-btn:active {
-  transform: scale(0.97);
+.luffy-skip-btn:active {
+  transform: scale(0.96);
 }
 
-@keyframes netflixSkipFadeIn {
-  0% { opacity: 0; transform: translateY(10px); }
+@keyframes luffySkipIn {
+  0% { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 

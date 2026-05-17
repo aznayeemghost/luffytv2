@@ -266,16 +266,16 @@ export default function DubWatchPage({
           let embedUrl = src.url || "";
           // For HLS streams, use our embed player
           if (src.type === "hls" || embedUrl.includes(".m3u8")) {
-            embedUrl = `/embed?url=${encodeURIComponent(embedUrl)}&type=hls&title=${encodeURIComponent(info?.title || "GoAnime")}`;
+            embedUrl = `/embed?url=${encodeURIComponent(embedUrl)}&type=hls&title=${encodeURIComponent(info?.title || "Luffy TV")}`;
           } else if (src.type === "mp4") {
-            embedUrl = `/embed?url=${encodeURIComponent(embedUrl)}&type=mp4&title=${encodeURIComponent(info?.title || "GoAnime")}`;
+            embedUrl = `/embed?url=${encodeURIComponent(embedUrl)}&type=mp4&title=${encodeURIComponent(info?.title || "Luffy TV")}`;
           }
           // If there's a proxied URL, prefer that
           if (src.proxiedUrl) {
             if (src.type === "hls" || src.proxiedUrl.includes(".m3u8")) {
-              embedUrl = `/embed?url=${encodeURIComponent(src.proxiedUrl)}&type=hls&title=${encodeURIComponent(info?.title || "GoAnime")}`;
+              embedUrl = `/embed?url=${encodeURIComponent(src.proxiedUrl)}&type=hls&title=${encodeURIComponent(info?.title || "Luffy TV")}`;
             } else {
-              embedUrl = `/embed?url=${encodeURIComponent(src.proxiedUrl)}&type=mp4&title=${encodeURIComponent(info?.title || "GoAnime")}`;
+              embedUrl = `/embed?url=${encodeURIComponent(src.proxiedUrl)}&type=mp4&title=${encodeURIComponent(info?.title || "Luffy TV")}`;
             }
           }
           return {

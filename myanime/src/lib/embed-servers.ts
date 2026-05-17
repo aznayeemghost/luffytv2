@@ -1,4 +1,4 @@
-// Embed Server Providers for GoAnime
+// Embed Server Providers for Luffy TV
 //
 // Servers are categorized by content type:
 // - Anime servers → use AniList ID (native + anilist-based + hindi)
