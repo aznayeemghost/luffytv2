@@ -170,7 +170,11 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     setUseDirectEmbed(true); // Always start with direct embed — no sandbox restrictions
     if (server.isNative) {
       setUseNativePlayer(true);
-      loadKiwiStream();
+      if (server.id === "megaplay-decryptor") {
+        loadMegaPlayStream();
+      } else {
+        loadKiwiStream();
+      }
     } else {
       setUseNativePlayer(false);
       setEmbedUrl(server.url);
@@ -213,6 +217,59 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     setLoading(false); setKiwiLoading(false);
   }, [anilistId, episodeNum, translation, episodeList]);
 
+  // Load MegaPlay Decryptor stream — returns direct m3u8 + subtitles + skip data
+  const loadMegaPlayStream = useCallback(async () => {
+    if (!anilistId) return;
+    setLoading(true); setError(null); setPlaying(false); setKiwiLoading(true);
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+    loadTimeoutRef.current = setTimeout(() => {
+      setLoading(false); setKiwiLoading(false);
+      setError("MegaPlay stream is taking too long. Try another server.");
+    }, MAX_LOAD_TIME);
+
+    try {
+      const lang = translation === "hindi" ? "sub" : translation; // MegaPlay only supports sub/dub
+      const url = `/api/megaplay/stream?aniId=${anilistId}&epNum=${episodeNum}&lang=${lang}`;
+      const res = await fetch(url);
+      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "MegaPlay source not available"); }
+      const json = await res.json();
+
+      if (!json.success) throw new Error(json.error || "MegaPlay extraction failed");
+      const results = json.results;
+      if (!results?.m3u8) throw new Error("No m3u8 stream found");
+
+      // Build source list from MegaPlay response
+      const mpSources: StreamSource[] = [{
+        url: results.m3u8,
+        quality: "Auto",
+        isM3U8: true,
+        sourceName: "MegaPlay HLS",
+        sourceType: "internal",
+        provider: "megaplay-decryptor",
+      }];
+
+      setSources(mpSources);
+      setInternalSources(mpSources);
+      setExternalSources([]);
+      setSourceTab("internal");
+      setCurrentSource(0);
+
+      // Play the m3u8 directly
+      playSource(mpSources[0]);
+
+      // Store skip data for UI (intro/outro)
+      if (results.intro || results.outro) {
+        console.log("[MegaPlay] Skip data:", { intro: results.intro, outro: results.outro });
+      }
+    } catch (err: any) {
+      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+      setError(err.message || "Failed to load MegaPlay stream");
+    }
+    setLoading(false); setKiwiLoading(false);
+  }, [anilistId, episodeNum, translation]);
+
   const playSource = useCallback((source: StreamSource, headers?: Record<string, string>) => {
     const video = videoRef.current; if (!video) return;
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -244,8 +301,10 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
   const retryLoad = () => {
     setError(null);
     const server = servers.find(s => s.id === activeServerId);
-    if (server?.isNative) { loadKiwiStream(); }
-    else {
+    if (server?.isNative) {
+      if (server.id === "megaplay-decryptor") { loadMegaPlayStream(); }
+      else { loadKiwiStream(); }
+    } else {
       // If in proxy mode, try direct embed first; if in direct mode, try next server
       if (!useDirectEmbed) {
         setUseDirectEmbed(true);

@@ -122,3 +122,26 @@ Stage Summary:
 - Consistent design language across all detail pages
 - Data fetching unchanged - all existing APIs work with the new layout
 - Build passes cleanly
+---
+Task ID: 1
+Agent: main
+Task: Integrate 3 embed providers (TryEmbed, MegaPlay Embed, MegaPlay Decryptor) for anime streaming with AniList ID + create sandbox
+
+Work Log:
+- Read documentation for all 3 embed APIs via web reader
+- Explored full project structure at /home/z/my-project/myanime/
+- Found all 3 providers already defined in embed-servers.ts but watch-page.tsx only handled Kiwi native server
+- Fixed watch-page.tsx to properly distinguish between Kiwi (Miruro) and MegaPlay Decryptor native servers
+- Added loadMegaPlayStream() function that calls /api/megaplay/stream and plays m3u8 with hls.js
+- Fixed TryEmbed config: set supportsHindi=false (TryEmbed only supports sub/dub), fixed lang mapping
+- Created EmbedSandbox component (embed-sandbox.tsx) with full testing UI for all 3 providers
+- Added sandbox route to store.ts Route type, navigate(), and parseHash()
+- Added sandbox case to page.tsx renderPage switch
+- Verified dev server starts successfully
+
+Stage Summary:
+- Watch page now properly handles MegaPlay Decryptor as native HLS server
+- Embed sandbox accessible at #sandbox URL hash
+- All 3 providers (TryEmbed, MegaPlay Embed, MegaPlay Decryptor) integrated and testable
+- Key files modified: watch-page.tsx, embed-servers.ts, store.ts, page.tsx
+- New file created: embed-sandbox.tsx

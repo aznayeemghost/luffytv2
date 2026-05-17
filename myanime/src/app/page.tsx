@@ -20,6 +20,7 @@ import TVWatchPage from "@/components/anime/tv-watch";
 import MangaPage from "@/components/anime/manga-page";
 import MangaDetailPage from "@/components/anime/manga-detail";
 import MangaReader from "@/components/anime/manga-reader";
+import EmbedSandbox from "@/components/anime/embed-sandbox";
 
 const emptySubscribe = () => () => {};
 function useMounted() {
@@ -251,6 +252,7 @@ export default function MainPage() {
       case "tv-detail": return <TVDetailPage tvId={route.id} />;
       case "movie-watch": return <MovieWatchPage movieId={route.id} />;
       case "tv-watch": return <TVWatchPage tvId={route.id} season={route.season} episode={route.episode} />;
+      case "sandbox": return <EmbedSandbox />;
       default: return <HomePage />;
     }
   };

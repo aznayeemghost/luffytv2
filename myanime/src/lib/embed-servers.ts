@@ -55,6 +55,24 @@ const miruroKiwi: EmbedServer = {
 };
 
 // ============================================================
+// Native server — MegaPlay Decryptor (direct HLS m3u8 + subs + skip data)
+// ============================================================
+
+const megaplayDecryptor: EmbedServer = {
+  id: "megaplay-decryptor",
+  name: "Server 2",
+  priority: 1,  // Second highest after kiwi
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: false,
+  idType: "native",
+  color: "#a855f7",
+  category: "native",
+  isNative: true,
+  generateUrl: () => "native:megaplay",  // Special marker - handled by watch page
+};
+
+// ============================================================
 // TMDB-based servers — use TMDB ID for /tv/{tmdb_id}/{s}/{e}
 // Used for Movies and TV Shows
 // ============================================================
@@ -380,13 +398,13 @@ const tryembed: EmbedServer = {
   priority: 16,
   supportsSub: true,
   supportsDub: true,
-  supportsHindi: true,
+  supportsHindi: false,  // TryEmbed only supports sub/dub
   idType: "anilist",
   color: "#10B981",
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    const lang = p.translation === "hindi" ? "hindi" : p.translation;
+    const lang = p.translation === "dub" ? "dub" : "sub";  // Only sub/dub supported
     return `https://tryembed.us.cc/embed/anime/${p.anilistId}/${p.episode}/${lang}`;
   },
 };
@@ -416,7 +434,7 @@ const anixtvHindi: EmbedServer = {
 // ============================================================
 
 const ALL_SERVERS: EmbedServer[] = [
-  miruroKiwi,
+  miruroKiwi, megaplayDecryptor,
   peachify, vidcore, vidnestTv, vidfast, videasyTv, vidsrcme,
   vidplus, vidplays, embedmaster, vidlink, vidzen, vidking,
   vidnestAnime, vidnestAnimepahe, videasyAnime, megaplayEmbed, tryembed,
