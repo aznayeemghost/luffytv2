@@ -1,6 +1,6 @@
 // Miruro API Client - Direct m3u8 streaming for sub & dub
-// Based on the same API that powers miruro.tv
-// Returns AniList-based data with direct stream URLs
+// Based on the Python MiruroScraper API with auto-provider switching
+// If one provider fails, automatically tries the next one
 
 const MIRURO_API = "https://miruro-api.vercel.app";
 
@@ -9,6 +9,23 @@ const HEADERS = {
   Accept: "application/json",
   Origin: "https://miruro.tv",
   Referer: "https://miruro.tv/",
+};
+
+// Provider priority order from Python API — best providers first
+const PROVIDER_PRIORITY = [
+  "kiwi", "ax-mimi", "ax-wave", "ax-shiro", "ax-yuki", "ax-zen", "bee", "zoro",
+];
+
+// Which providers support HLS vs embed
+const PROVIDER_CAPABILITIES: Record<string, { hls: boolean; embed: boolean }> = {
+  "kiwi":     { hls: true, embed: true },
+  "ax-mimi":  { hls: true, embed: false },
+  "ax-wave":  { hls: true, embed: false },
+  "ax-shiro": { hls: true, embed: false },
+  "ax-yuki":  { hls: true, embed: false },
+  "ax-zen":   { hls: true, embed: false },
+  "bee":      { hls: true, embed: false },
+  "zoro":     { hls: false, embed: true },
 };
 
 async function fetchWithRetry(url: string, options: RequestInit, retries = 2): Promise<Response> {
@@ -59,17 +76,23 @@ export interface MiruroAnimeResult {
 export interface MiruroEpisode {
   number: number;
   slug: string;
+  id?: string;
   title?: string;
   thumbnail?: string;
+  image?: string;
   isFiller?: boolean;
+  filler?: boolean;
   airDate?: string;
+  description?: string;
 }
 
 export interface MiruroWatchSource {
   url: string;
   quality?: string;
   isM3U8?: boolean;
-  sourceType?: "internal" | "external"; // internal = direct play, external = iframe/redirect
+  sourceType?: "internal" | "external";
+  sourceName?: string;
+  type?: string;
 }
 
 export interface MiruroWatchResult {
@@ -79,12 +102,36 @@ export interface MiruroWatchResult {
   outro?: { start: number; end: number };
   headers?: Record<string, string>;
   provider: string;
+  allProviders?: string[];
+  triedProviders?: string[];
 }
 
 export interface MiruroSearchResult {
   currentPage: number;
   hasNextPage: boolean;
   results: MiruroAnimeResult[];
+}
+
+// ---- Episode Data with Providers ----
+export interface MiruroProviderEpisodes {
+  episodes: {
+    sub: MiruroEpisode[];
+    dub: MiruroEpisode[];
+  };
+  meta?: { title?: string };
+}
+
+export interface MiruroEpisodesResponse {
+  providers: Record<string, MiruroProviderEpisodes>;
+  mappings?: Record<string, any>;
+}
+
+export interface NormalizedEpisodesResult {
+  sub: MiruroEpisode[];
+  dub: MiruroEpisode[];
+  defaultProvider: string;
+  allProviders: string[];
+  providersMap: Record<string, MiruroProviderEpisodes>;
 }
 
 // ---- API Functions ----
@@ -157,26 +204,189 @@ export async function miruroRecent(page = 1, perPage = 20): Promise<MiruroAnimeR
   }
 }
 
-export async function miruroEpisodes(anilistId: number): Promise<{
-  sub: MiruroEpisode[];
-  dub: MiruroEpisode[];
-}> {
+/**
+ * Pick the best provider based on episode count with priority as tiebreaker
+ * Matches the Python _pick_best_provider logic
+ */
+function pickBestProvider(providers: Record<string, MiruroProviderEpisodes>): string | null {
+  if (!providers || Object.keys(providers).length === 0) return null;
+
+  let bestName: string | null = null;
+  let bestCount = -1;
+
+  // First pass: check providers in priority order
+  for (const name of PROVIDER_PRIORITY) {
+    if (!(name in providers)) continue;
+    const providerData = providers[name];
+    if (!providerData || !providerData.episodes) continue;
+    const subCount = (providerData.episodes.sub || []).length;
+    if (subCount > bestCount) {
+      bestCount = subCount;
+      bestName = name;
+    }
+  }
+
+  if (bestName) return bestName;
+
+  // Fallback: any provider with data
+  for (const [name, data] of Object.entries(providers)) {
+    if (!data || !data.episodes) continue;
+    const subCount = (data.episodes.sub || []).length;
+    if (subCount > bestCount) {
+      bestCount = subCount;
+      bestName = name;
+    }
+  }
+
+  return bestName;
+}
+
+/**
+ * Normalize episodes from a specific provider
+ */
+function normalizeProviderEpisodes(
+  providerData: MiruroProviderEpisodes,
+  providerName: string
+): { sub: MiruroEpisode[]; dub: MiruroEpisode[] } {
+  const subEps = (providerData.episodes?.sub || []).map(ep => ({
+    number: ep.number,
+    slug: ep.slug || ep.id || String(ep.number),
+    id: ep.id || ep.slug || String(ep.number),
+    title: ep.title || `Episode ${ep.number}`,
+    thumbnail: ep.thumbnail || ep.image || "",
+    isFiller: ep.isFiller || ep.filler || false,
+    airDate: ep.airDate || "",
+  }));
+
+  const dubEps = (providerData.episodes?.dub || []).map(ep => ({
+    number: ep.number,
+    slug: ep.slug || ep.id || String(ep.number),
+    id: ep.id || ep.slug || String(ep.number),
+    title: ep.title || `Episode ${ep.number}`,
+    thumbnail: ep.thumbnail || ep.image || "",
+    isFiller: ep.isFiller || ep.filler || false,
+    airDate: ep.airDate || "",
+  }));
+
+  // Deduplicate by episode number
+  const dedup = (eps: MiruroEpisode[]): MiruroEpisode[] => {
+    const seen = new Set<number>();
+    return eps.filter(ep => {
+      if (seen.has(ep.number)) return false;
+      seen.add(ep.number);
+      return true;
+    });
+  };
+
+  return { sub: dedup(subEps), dub: dedup(dubEps) };
+}
+
+/**
+ * Fetch episodes from Miruro API — with multi-provider support
+ * Picks the best provider automatically and returns normalized data
+ */
+export async function miruroEpisodes(anilistId: number): Promise<NormalizedEpisodesResult> {
   try {
     const res = await fetchWithRetry(`${MIRURO_API}/episodes/${anilistId}`, {
       headers: HEADERS, next: { revalidate: 600 },
     });
-    if (!res.ok) return { sub: [], dub: [] };
+    if (!res.ok) return { sub: [], dub: [], defaultProvider: "", allProviders: [], providersMap: {} };
     const data = await res.json();
+
+    // New format: data has providers object
+    if (data?.providers && typeof data.providers === "object") {
+      const providers: Record<string, MiruroProviderEpisodes> = data.providers;
+      const bestProvider = pickBestProvider(providers);
+
+      if (!bestProvider) {
+        return { sub: [], dub: [], defaultProvider: "", allProviders: Object.keys(providers), providersMap: providers };
+      }
+
+      const normalized = normalizeProviderEpisodes(providers[bestProvider], bestProvider);
+
+      return {
+        sub: normalized.sub,
+        dub: normalized.dub,
+        defaultProvider: bestProvider,
+        allProviders: Object.keys(providers),
+        providersMap: providers,
+      };
+    }
+
+    // Legacy format: data.episodes.sub / data.episodes.dub
     if (data?.episodes) {
       const sub = data.episodes.sub || data.episodes;
       const dub = data.episodes.dub || [];
-      return { sub: Array.isArray(sub) ? sub : [], dub: Array.isArray(dub) ? dub : [] };
+      return {
+        sub: Array.isArray(sub) ? sub : [],
+        dub: Array.isArray(dub) ? dub : [],
+        defaultProvider: "kiwi",
+        allProviders: ["kiwi"],
+        providersMap: {},
+      };
     }
-    if (Array.isArray(data)) return { sub: data, dub: [] };
-    return { sub: [], dub: [] };
+
+    // Array format
+    if (Array.isArray(data)) {
+      return { sub: data, dub: [], defaultProvider: "kiwi", allProviders: ["kiwi"], providersMap: {} };
+    }
+
+    return { sub: [], dub: [], defaultProvider: "", allProviders: [], providersMap: {} };
   } catch {
-    return { sub: [], dub: [] };
+    return { sub: [], dub: [], defaultProvider: "", allProviders: [], providersMap: {} };
   }
+}
+
+/**
+ * Get list of available providers for a specific episode number
+ * Used for auto-switching when a provider fails
+ */
+export function getAvailableProvidersForEpisode(
+  providersMap: Record<string, MiruroProviderEpisodes>,
+  episodeNum: number,
+  category: "sub" | "dub"
+): string[] {
+  const available: string[] = [];
+
+  for (const providerName of PROVIDER_PRIORITY) {
+    const providerData = providersMap[providerName];
+    if (!providerData?.episodes) continue;
+
+    const eps = category === "dub" ? providerData.episodes.dub : providerData.episodes.sub;
+    if (eps.some(ep => ep.number === episodeNum)) {
+      available.push(providerName);
+    }
+  }
+
+  // Add any providers not in priority list that have the episode
+  for (const [name, data] of Object.entries(providersMap)) {
+    if (available.includes(name)) continue;
+    if (!data?.episodes) continue;
+    const eps = category === "dub" ? data.episodes.dub : data.episodes.sub;
+    if (eps.some(ep => ep.number === episodeNum)) {
+      available.push(name);
+    }
+  }
+
+  return available;
+}
+
+/**
+ * Get episode slug/id for a specific provider and episode number
+ */
+export function getEpisodeSlugForProvider(
+  providersMap: Record<string, MiruroProviderEpisodes>,
+  providerName: string,
+  episodeNum: number,
+  category: "sub" | "dub"
+): string | null {
+  const providerData = providersMap[providerName];
+  if (!providerData?.episodes) return null;
+
+  const eps = category === "dub" ? providerData.episodes.dub : providerData.episodes.sub;
+  const ep = eps.find(e => e.number === episodeNum);
+  if (!ep) return null;
+  return ep.slug || ep.id || String(ep.number);
 }
 
 // Classify a URL as internal (direct play) or external (iframe/redirect)
@@ -192,7 +402,10 @@ function classifySource(url: string): "internal" | "external" {
   return "internal";
 }
 
-export async function miruroWatch(
+/**
+ * Watch a single provider — returns stream data or null
+ */
+export async function miruroWatchProvider(
   provider: string,
   anilistId: number,
   translationType: "sub" | "dub",
@@ -205,43 +418,124 @@ export async function miruroWatch(
     });
     if (!res.ok) return null;
     const data = await res.json();
-    if (data?.sources?.length > 0) {
-      return {
-        sources: data.sources.map((s: MiruroWatchSource) => ({
-          ...s,
-          isM3U8: s.isM3U8 || s.url?.includes(".m3u8"),
-          sourceType: classifySource(s.url),
-        })),
-        subtitles: data.subtitles || [],
-        intro: data.intro,
-        outro: data.outro,
-        headers: data.headers,
-        provider,
-      };
-    }
-    if (data?.data?.sources?.length > 0) {
-      return {
-        sources: data.data.sources.map((s: MiruroWatchSource) => ({
-          ...s,
-          sourceType: classifySource(s.url),
-        })),
-        subtitles: data.data.subtitles || [],
-        intro: data.data.intro,
-        outro: data.data.outro,
-        headers: data.data.headers,
-        provider,
-      };
-    }
-    return null;
+
+    const sources = data?.sources || data?.data?.sources || [];
+    if (sources.length === 0) return null;
+
+    const subtitles = data?.subtitles || data?.data?.subtitles || [];
+    const intro = data?.intro || data?.data?.intro;
+    const outro = data?.outro || data?.data?.outro;
+    const headers = data?.headers || data?.data?.headers;
+
+    return {
+      sources: sources.map((s: MiruroWatchSource) => ({
+        ...s,
+        isM3U8: s.isM3U8 || s.url?.includes(".m3u8"),
+        sourceType: classifySource(s.url),
+      })),
+      subtitles,
+      intro,
+      outro,
+      headers,
+      provider,
+    };
   } catch {
     return null;
   }
 }
 
-export const MIRURO_PROVIDERS = ["kiwi", "arc", "zoro", "jet"] as const;
-export type MiruroProvider = (typeof MIRURO_PROVIDERS)[number];
+/**
+ * Watch with auto-switching — tries providers in priority order
+ * If the first provider fails, automatically tries the next one
+ * This is the main function used by the API routes
+ */
+export async function miruroWatch(
+  provider: string,
+  anilistId: number,
+  translationType: "sub" | "dub",
+  episodeSlug: string,
+  providersMap?: Record<string, MiruroProviderEpisodes>,
+  episodeNum?: number
+): Promise<MiruroWatchResult & { triedProviders: string[] }> {
+  const triedProviders: string[] = [];
+
+  // Build provider list to try
+  let providersToTry: string[] = [];
+
+  // If we have providersMap and episodeNum, get providers that have this episode
+  if (providersMap && episodeNum) {
+    providersToTry = getAvailableProvidersForEpisode(providersMap, episodeNum, translationType);
+  }
+
+  // Always start with the requested provider if it's in the list
+  if (provider && !providersToTry.includes(provider)) {
+    providersToTry.unshift(provider);
+  } else if (provider && providersToTry.includes(provider)) {
+    // Move requested provider to front
+    providersToTry = providersToTry.filter(p => p !== provider);
+    providersToTry.unshift(provider);
+  }
+
+  // If no providers found, fall back to priority list
+  if (providersToTry.length === 0) {
+    providersToTry = [...PROVIDER_PRIORITY];
+  }
+
+  // Try each provider in order
+  for (const currentProvider of providersToTry) {
+    triedProviders.push(currentProvider);
+
+    // Get the correct slug for this provider if we have the map
+    let slug = episodeSlug;
+    if (providersMap && episodeNum) {
+      const providerSlug = getEpisodeSlugForProvider(providersMap, currentProvider, episodeNum, translationType);
+      if (providerSlug) slug = providerSlug;
+      else continue; // This provider doesn't have this episode, skip
+    }
+
+    console.log(`[MiruroWatch] Trying provider: ${currentProvider} (slug: ${slug})`);
+    const result = await miruroWatchProvider(currentProvider, anilistId, translationType, slug);
+
+    if (result && result.sources.length > 0) {
+      console.log(`[MiruroWatch] Success with provider: ${currentProvider} (${result.sources.length} sources)`);
+      return {
+        ...result,
+        allProviders: providersToTry,
+        triedProviders,
+      };
+    }
+
+    console.log(`[MiruroWatch] Provider ${currentProvider} failed, trying next...`);
+  }
+
+  // All providers failed
+  return {
+    sources: [],
+    subtitles: [],
+    intro: undefined,
+    outro: undefined,
+    headers: {},
+    provider: triedProviders[triedProviders.length - 1] || provider,
+    allProviders: providersToTry,
+    triedProviders,
+  };
+}
+
+export const MIRURO_PROVIDERS = PROVIDER_PRIORITY;
+export type MiruroProvider = typeof PROVIDER_PRIORITY[number];
 
 export function getProviderDisplayName(provider: string): string {
-  const names: Record<string, string> = { kiwi: "Kiwi", arc: "Arc", zoro: "Zoro", jet: "Jet" };
+  const names: Record<string, string> = {
+    "kiwi": "Kiwi",
+    "ax-mimi": "Ax-Mimi",
+    "ax-wave": "Ax-Wave",
+    "ax-shiro": "Ax-Shiro",
+    "ax-yuki": "Ax-Yuki",
+    "ax-zen": "Ax-Zen",
+    "bee": "Bee",
+    "zoro": "Zoro",
+    "arc": "Arc",
+    "jet": "Jet",
+  };
   return names[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
 }

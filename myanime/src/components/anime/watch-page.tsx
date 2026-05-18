@@ -295,13 +295,19 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
 
     try {
       const slug = episodeList.find(e => e.number === episodeNum)?.slug || String(episodeNum);
-      const url = `/api/miruro/watch?provider=kiwi&id=${anilistId}&type=${translation}&slug=${encodeURIComponent(slug)}`;
+      // Pass epNum so the API can auto-switch providers if the first one fails
+      const url = `/api/miruro/watch?provider=kiwi&id=${anilistId}&type=${translation}&slug=${encodeURIComponent(slug)}&epNum=${episodeNum}`;
       const res = await fetch(url);
       if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "No sources found"); }
       const json = await res.json();
       const data = json.data || json;
       if (!data.sources?.length) throw new Error("No stream sources available");
+
+      // Log which provider actually worked (for debugging auto-switch)
+      if (data.activeProvider && data.activeProvider !== "kiwi") {
+        console.log(`[WatchPage] Auto-switched from kiwi to ${data.activeProvider} (tried: ${data.triedProviders?.join(", ")})`);
+      }
 
       const intSources = data.sources.filter((s: StreamSource) => s.sourceType === "internal" || !s.sourceType);
       const extSources = data.sources.filter((s: StreamSource) => s.sourceType === "external");
