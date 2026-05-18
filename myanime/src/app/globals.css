@@ -1613,3 +1613,445 @@ video::-webkit-media-controls { border-radius: 8px; }
   0% { opacity: 0; transform: translateY(8px) scale(0.9); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   LANDING / INTRODUCTION PAGE — LunarAnime-style
+   Full-screen cosmic hero with anime-filled title
+   ═══════════════════════════════════════════════════════════════ */
+
+.landing-page {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  overflow: hidden;
+  background: #060a14;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Background image with parallax ── */
+.landing-bg-image {
+  position: absolute;
+  inset: -40px;
+  z-index: 0;
+  transition: transform 0.3s ease-out;
+}
+
+.landing-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 10, 20, 0.3) 0%,
+    rgba(6, 10, 20, 0.1) 30%,
+    rgba(6, 10, 20, 0.2) 60%,
+    rgba(6, 10, 20, 0.95) 100%
+  );
+}
+
+.landing-gradient-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(6, 10, 20, 0.6) 100%
+  );
+}
+
+/* ── Particles ── */
+.landing-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.landing-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(168, 85, 247, 0.6);
+  animation: landingParticleFloat linear infinite;
+}
+
+@keyframes landingParticleFloat {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-200px) translateX(40px); opacity: 0; }
+}
+
+/* ── Mascot ── */
+.landing-mascot-container {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease-out;
+  animation: landingMascotFloat 4s ease-in-out infinite;
+}
+
+.landing-mascot-glow {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, transparent 70%);
+  animation: landingGlowPulse 3s ease-in-out infinite alternate;
+}
+
+.landing-mascot-img {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 8px 24px rgba(168, 85, 247, 0.3));
+  animation: landingMascotBounce 3s ease-in-out infinite;
+}
+
+@keyframes landingMascotFloat {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-10px); }
+}
+
+@keyframes landingMascotBounce {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.05) rotate(2deg); }
+  75% { transform: scale(0.98) rotate(-2deg); }
+}
+
+@keyframes landingGlowPulse {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+
+/* ── Main Content ── */
+.landing-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 24px;
+  max-width: 800px;
+}
+
+/* ── Title ── */
+.landing-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.landing-title-row {
+  display: flex;
+  gap: 2px;
+}
+
+.landing-title-row-tv {
+  display: flex;
+  gap: 16px;
+}
+
+.landing-scene-letter {
+  display: inline-block;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0;
+  animation: landingLetterReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  position: relative;
+}
+
+/* LUFFY letters — large purple with anime scene fill */
+.landing-title-row .landing-scene-letter {
+  font-size: clamp(3.5rem, 12vw, 8rem);
+  letter-spacing: 0.04em;
+  color: #a855f7;
+  text-shadow:
+    0 0 20px rgba(168, 85, 247, 0.5),
+    0 0 50px rgba(168, 85, 247, 0.25),
+    0 0 100px rgba(124, 58, 237, 0.1);
+  background: linear-gradient(
+    135deg,
+    #a855f7 0%,
+    #7c3aed 25%,
+    #c084fc 50%,
+    #a855f7 75%,
+    #9333ea 100%
+  );
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: landingLetterReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+             landingGradientShift 4s ease infinite;
+  filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.4));
+}
+
+/* TV letters — smaller, white */
+.landing-title-row-tv .landing-scene-letter {
+  font-size: clamp(2rem, 6vw, 4rem);
+  letter-spacing: 0.14em;
+  color: #ffffff;
+  text-shadow:
+    0 0 15px rgba(255, 255, 255, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.15);
+}
+
+@keyframes landingLetterReveal {
+  0% { opacity: 0; transform: translateY(30px) scale(0.5) rotateX(-40deg); filter: blur(8px); }
+  60% { opacity: 1; filter: blur(0); }
+  80% { transform: translateY(-4px) scale(1.05) rotateX(3deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotateX(0deg); filter: blur(0); }
+}
+
+@keyframes landingGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ── Tagline ── */
+.landing-tagline {
+  font-size: clamp(14px, 2.5vw, 20px);
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+  margin-bottom: 28px;
+  max-width: 500px;
+  opacity: 0;
+  animation: landingFadeUp 0.8s 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.landing-highlight {
+  color: #a855f7;
+  font-weight: 700;
+  text-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+@keyframes landingFadeUp {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Feature Pills ── */
+.landing-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 36px;
+}
+
+.landing-feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  animation: landingFadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transition: all 0.25s ease;
+}
+
+.landing-feature-pill:hover {
+  background: rgba(168, 85, 247, 0.1);
+  border-color: rgba(168, 85, 247, 0.25);
+  color: #c084fc;
+  transform: translateY(-2px);
+}
+
+.landing-feature-pill svg {
+  color: #a855f7;
+}
+
+/* ── Buttons ── */
+.landing-buttons {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  opacity: 0;
+  animation: landingFadeUp 0.8s 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.landing-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  background: #ffffff;
+  color: #000000;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15), 0 0 40px rgba(168, 85, 247, 0.1);
+}
+
+.landing-btn-primary:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.25), 0 0 60px rgba(168, 85, 247, 0.2);
+}
+
+.landing-btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.landing-btn-primary svg {
+  color: #a855f7;
+}
+
+.landing-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.landing-btn-secondary:hover {
+  color: #ffffff;
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.15);
+}
+
+.landing-btn-secondary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ── Bottom Feature Bar ── */
+.landing-bottom-bar {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  opacity: 0;
+  animation: landingFadeUp 0.8s 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.landing-bottom-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  cursor: default;
+}
+
+.landing-bottom-item:hover {
+  color: #a855f7;
+}
+
+.landing-bottom-item svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ── Scroll Indicator ── */
+.landing-scroll-indicator {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  opacity: 0;
+  animation: landingFadeUp 0.8s 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.landing-scroll-mouse {
+  width: 20px;
+  height: 32px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  position: relative;
+}
+
+.landing-scroll-wheel {
+  width: 3px;
+  height: 8px;
+  background: rgba(168, 85, 247, 0.6);
+  border-radius: 2px;
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: landingScrollWheel 2s ease-in-out infinite;
+}
+
+@keyframes landingScrollWheel {
+  0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(12px); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .landing-mascot-container {
+    top: 5%;
+  }
+  .landing-mascot-glow {
+    width: 140px;
+    height: 140px;
+  }
+  .landing-mascot-img {
+    width: 80px !important;
+    height: 80px !important;
+  }
+  .landing-buttons {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 300px;
+  }
+  .landing-btn-primary,
+  .landing-btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+  .landing-bottom-bar {
+    gap: 20px;
+    bottom: 20px;
+  }
+  .landing-features {
+    gap: 6px;
+  }
+  .landing-feature-pill {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+}
