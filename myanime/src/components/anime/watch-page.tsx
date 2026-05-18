@@ -457,7 +457,6 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                   allowFullScreen
                   allow="autoplay; fullscreen; picture-in-picture; encrypted-media; screen-wake-lock; clipboard-write; document-domain"
                   referrerPolicy="no-referrer"
-                  sandbox={activeServer?.noSandbox ? undefined : "allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"}
                   onLoad={() => { setLoading(false); setPlaying(true); }}
                   onError={() => {
                     if (useDirectEmbed) {
@@ -528,7 +527,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                       ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
                       : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
                   }`}
-                  title={useDirectEmbed ? "Direct embed — bypasses proxy" : "Proxy mode — anti-sandbox enabled"}
+                  title={useDirectEmbed ? "Direct embed — original URL" : "Proxy mode — routed through server"}
                 >
                   {useDirectEmbed ? "Direct" : "Proxy"}
                 </button>
