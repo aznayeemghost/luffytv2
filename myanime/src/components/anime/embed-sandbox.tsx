@@ -397,7 +397,7 @@ export default function EmbedSandbox() {
               type="number"
               value={anilistId}
               onChange={(e) => setAnilistId(parseInt(e.target.value) || 0)}
-              className="w-full bg-[#1a2530] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500/40 transition-colors"
+              className="w-full bg-[#1a1a1a] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500/40 transition-colors"
               placeholder="e.g. 1535"
             />
           </div>
@@ -408,7 +408,7 @@ export default function EmbedSandbox() {
               min={1}
               value={episode}
               onChange={(e) => setEpisode(parseInt(e.target.value) || 1)}
-              className="w-full bg-[#1a2530] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500/40 transition-colors"
+              className="w-full bg-[#1a1a1a] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500/40 transition-colors"
               placeholder="1"
             />
           </div>
@@ -419,13 +419,13 @@ export default function EmbedSandbox() {
               min={1}
               value={season}
               onChange={(e) => setSeason(parseInt(e.target.value) || 1)}
-              className="w-full bg-[#1a2530] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500/40 transition-colors"
+              className="w-full bg-[#1a1a1a] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500/40 transition-colors"
               placeholder="1"
             />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Language</label>
-            <div className="flex items-center gap-1 bg-[#1a2530] rounded-lg p-1 border border-white/[0.08]">
+            <div className="flex items-center gap-1 bg-[#1a1a1a] rounded-lg p-1 border border-white/[0.08]">
               {(["sub", "dub", "hindi"] as const).map(l => (
                 <button
                   key={l}
@@ -440,7 +440,7 @@ export default function EmbedSandbox() {
                   }}
                   className={`flex-1 py-2 text-[11px] font-bold rounded-md transition-all ${
                     lang === l
-                      ? l === "sub" ? "bg-cyan-500/15 text-cyan-300" : l === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                      ? l === "sub" ? "bg-purple-500/15 text-purple-300" : l === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
@@ -452,7 +452,7 @@ export default function EmbedSandbox() {
         </div>
 
         {/* AniList Mapper: Title Lookup */}
-        <div className="bg-[#0b1116] rounded-lg p-4 border border-white/[0.06] space-y-3">
+        <div className="bg-[#000000] rounded-lg p-4 border border-white/[0.06] space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -466,7 +466,7 @@ export default function EmbedSandbox() {
                 : titleLookupSource === "local index"
                   ? "bg-emerald-500/15 text-emerald-300"
                   : titleLookupSource === "AniList API"
-                    ? "bg-cyan-500/15 text-cyan-300"
+                    ? "bg-purple-500/15 text-purple-300"
                     : "bg-zinc-500/15 text-zinc-400"
             }`}>
               {titleLookupLoading ? "Looking up..." : titleLookupSource || "idle"}
@@ -481,7 +481,7 @@ export default function EmbedSandbox() {
                 type="text"
                 value={animeTitle}
                 onChange={(e) => setAnimeTitle(e.target.value)}
-                className="w-full bg-[#131c26] border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/40 transition-colors"
+                className="w-full bg-[#111111] border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/40 transition-colors"
                 placeholder="Anime title (auto-filled or manual)"
               />
             </div>
@@ -501,17 +501,17 @@ export default function EmbedSandbox() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#131c26] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40 transition-colors"
+              className="w-full bg-[#111111] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500/40 transition-colors"
               placeholder="Type anime name to search AniList..."
             />
             {searchLoading && (
               <div className="flex items-center gap-2 mt-2">
-                <div className="w-3 h-3 rounded-full border border-cyan-500/20 border-t-cyan-500/60 animate-spin" />
+                <div className="w-3 h-3 rounded-full border border-purple-500/20 border-t-purple-500/60 animate-spin" />
                 <span className="text-[10px] text-zinc-500">Searching AniList...</span>
               </div>
             )}
             {searchResults.length > 0 && (
-              <div className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-[#0b1116] border border-white/[0.04]">
+              <div className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-[#000000] border border-white/[0.04]">
                 {searchResults.map((result) => (
                   <button
                     key={result.id}
@@ -523,7 +523,7 @@ export default function EmbedSandbox() {
                     }}
                     className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.04] transition-colors border-b border-white/[0.03] last:border-0"
                   >
-                    <span className="text-[10px] font-bold text-cyan-400 shrink-0">#{result.id}</span>
+                    <span className="text-[10px] font-bold text-purple-400 shrink-0">#{result.id}</span>
                     <span className="text-[11px] text-white truncate flex-1">{result.title}</span>
                     {result.type && (
                       <span className="text-[9px] text-zinc-500 shrink-0">{result.type}</span>
@@ -548,7 +548,7 @@ export default function EmbedSandbox() {
                 onClick={() => { setAnilistId(pick.id); setEpisode(1); }}
                 className={`px-3 py-1.5 text-[10px] font-semibold rounded-full border transition-all ${
                   anilistId === pick.id
-                    ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/25"
+                    ? "bg-purple-500/15 text-purple-300 border-purple-500/25"
                     : "bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:bg-white/[0.06] hover:text-zinc-300"
                 }`}
               >
@@ -579,7 +579,7 @@ export default function EmbedSandbox() {
                 }}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   activeProvider === provider.id
-                    ? "border-cyan-500/30 bg-cyan-500/[0.04]"
+                    ? "border-purple-500/30 bg-purple-500/[0.04]"
                     : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]"
                 }`}
               >
@@ -596,7 +596,7 @@ export default function EmbedSandbox() {
                 <div className="flex items-center gap-1.5 mt-2">
                   {provider.languages.map(l => (
                     <span key={l} className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
-                      l === "sub" ? "bg-cyan-500/10 text-cyan-400" :
+                      l === "sub" ? "bg-purple-500/10 text-purple-400" :
                       l === "dub" ? "bg-violet-500/10 text-violet-400" :
                       "bg-orange-500/10 text-orange-400"
                     }`}>
@@ -640,8 +640,8 @@ export default function EmbedSandbox() {
         {/* Generated URL Preview */}
         <div>
           <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Generated URL</label>
-          <div className="bg-[#0b1116] rounded-lg px-4 py-3 border border-white/[0.06]">
-            <code className="text-[11px] text-cyan-400/80 break-all">{buildUrl() || "—"}</code>
+          <div className="bg-[#000000] rounded-lg px-4 py-3 border border-white/[0.06]">
+            <code className="text-[11px] text-purple-400/80 break-all">{buildUrl() || "—"}</code>
           </div>
         </div>
       </div>
@@ -704,21 +704,21 @@ export default function EmbedSandbox() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {m3u8Url && (
-                <div className="bg-[#0b1116] rounded-lg p-3 border border-white/[0.06]">
+                <div className="bg-[#000000] rounded-lg p-3 border border-white/[0.06]">
                   <p className="text-[9px] text-zinc-600 uppercase tracking-wider font-semibold mb-1">M3U8 Stream</p>
                   <p className="text-[10px] text-emerald-400 truncate">{m3u8Url.slice(0, 40)}...</p>
                 </div>
               )}
               {nativeData.intro && (
-                <div className="bg-[#0b1116] rounded-lg p-3 border border-white/[0.06]">
+                <div className="bg-[#000000] rounded-lg p-3 border border-white/[0.06]">
                   <p className="text-[9px] text-zinc-600 uppercase tracking-wider font-semibold mb-1">Intro Skip</p>
-                  <p className="text-[10px] text-cyan-400">{nativeData.intro.start}s → {nativeData.intro.end}s</p>
+                  <p className="text-[10px] text-purple-400">{nativeData.intro.start}s → {nativeData.intro.end}s</p>
                 </div>
               )}
               {nativeData.outro && (
-                <div className="bg-[#0b1116] rounded-lg p-3 border border-white/[0.06]">
+                <div className="bg-[#000000] rounded-lg p-3 border border-white/[0.06]">
                   <p className="text-[9px] text-zinc-600 uppercase tracking-wider font-semibold mb-1">Outro Skip</p>
-                  <p className="text-[10px] text-cyan-400">{nativeData.outro.start}s → {nativeData.outro.end}s</p>
+                  <p className="text-[10px] text-purple-400">{nativeData.outro.start}s → {nativeData.outro.end}s</p>
                 </div>
               )}
             </div>
@@ -740,7 +740,7 @@ export default function EmbedSandbox() {
               <summary className="text-[10px] text-zinc-600 cursor-pointer hover:text-zinc-400 transition-colors">
                 Raw JSON Response ▾
               </summary>
-              <pre className="mt-2 bg-[#0b1116] rounded-lg p-4 text-[10px] text-zinc-400 overflow-auto max-h-64 border border-white/[0.06]">
+              <pre className="mt-2 bg-[#000000] rounded-lg p-4 text-[10px] text-zinc-400 overflow-auto max-h-64 border border-white/[0.06]">
                 {JSON.stringify(nativeData, null, 2)}
               </pre>
             </details>
@@ -749,7 +749,7 @@ export default function EmbedSandbox() {
 
         {/* Placeholder when no stream loaded */}
         {(!embedUrl && currentProvider.type === "iframe") && (
-          <div className="bg-[#131c26] aspect-video rounded-2xl border border-white/[0.04] flex items-center justify-center">
+          <div className="bg-[#111111] aspect-video rounded-2xl border border-white/[0.04] flex items-center justify-center">
             <div className="text-center space-y-3">
               <svg className="w-16 h-16 text-zinc-700 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                 <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -777,7 +777,7 @@ export default function EmbedSandbox() {
             <div
               key={provider.id}
               className={`glass-card rounded-xl p-4 border transition-all ${
-                activeProvider === provider.id ? "border-cyan-500/20" : "border-white/[0.04]"
+                activeProvider === provider.id ? "border-purple-500/20" : "border-white/[0.04]"
               }`}
             >
               <div className="flex items-center gap-2 mb-3">
@@ -861,7 +861,7 @@ export default function EmbedSandbox() {
               <div className="flex items-center gap-1.5 mt-3">
                 {provider.languages.map(l => (
                   <span key={l} className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
-                    l === "sub" ? "bg-cyan-500/10 text-cyan-400" :
+                    l === "sub" ? "bg-purple-500/10 text-purple-400" :
                     l === "dub" ? "bg-violet-500/10 text-violet-400" :
                     "bg-orange-500/10 text-orange-400"
                   }`}>

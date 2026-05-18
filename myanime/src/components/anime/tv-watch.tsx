@@ -131,10 +131,10 @@ export default function TVWatchPage({ tvId, season: initialSeason, episode: init
           </div>
 
           {/* Player controls bar */}
-          <div className="bg-[#131c26] rounded-none lg:rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-[#111111] rounded-none lg:rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Now Playing</span>
+                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Now Playing</span>
               </div>
               <h3 className="text-sm font-bold text-white truncate">
                 S{currentSeason} E{currentEpisode}
@@ -171,7 +171,7 @@ export default function TVWatchPage({ tvId, season: initialSeason, episode: init
         </div>
 
         {/* Episode Sidebar */}
-        <div className="bg-[#131c26] rounded-none lg:rounded-xl overflow-hidden border border-white/[0.04]">
+        <div className="bg-[#111111] rounded-none lg:rounded-xl overflow-hidden border border-white/[0.04]">
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h3 className="text-sm font-bold text-white">Episodes</h3>
             {show?.number_of_seasons && show.number_of_seasons > 1 && (
@@ -182,7 +182,7 @@ export default function TVWatchPage({ tvId, season: initialSeason, episode: init
                   setCurrentSeason(s);
                   setCurrentEpisode(1);
                 }}
-                className="bg-[#1a2530] text-zinc-300 text-xs px-3 py-1.5 rounded-full border border-white/[0.06] outline-none focus:border-cyan-500/30"
+                className="bg-[#1a1a1a] text-zinc-300 text-xs px-3 py-1.5 rounded-full border border-white/[0.06] outline-none focus:border-purple-500/30"
               >
                 {Array.from({ length: show.number_of_seasons }, (_, i) => (
                   <option key={i + 1} value={i + 1}>Season {i + 1}</option>
@@ -202,12 +202,12 @@ export default function TVWatchPage({ tvId, season: initialSeason, episode: init
                 }}
                 className={`w-full flex items-center gap-3 p-3 text-left transition-all ${
                   currentEpisode === ep.episode_number
-                    ? "bg-cyan-500/10 border-l-3 border-cyan-500"
+                    ? "bg-purple-500/10 border-l-3 border-purple-500"
                     : "hover:bg-white/[0.02]"
                 }`}
               >
                 {/* Thumbnail */}
-                <div className="w-24 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1a2530] relative">
+                <div className="w-24 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1a1a1a] relative">
                   {ep.still_path ? (
                     <img src={`https://image.tmdb.org/t/p/w300${ep.still_path}`} alt="" className="w-full h-full object-cover" loading="lazy" />
                   ) : (
@@ -215,14 +215,14 @@ export default function TVWatchPage({ tvId, season: initialSeason, episode: init
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-medium line-clamp-1 ${currentEpisode === ep.episode_number ? "text-cyan-300" : "text-zinc-300"}`}>{ep.name}</p>
+                  <p className={`text-xs font-medium line-clamp-1 ${currentEpisode === ep.episode_number ? "text-purple-300" : "text-zinc-300"}`}>{ep.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] text-cyan-400 font-medium">EP {ep.episode_number}</span>
+                    <span className="text-[9px] text-purple-400 font-medium">EP {ep.episode_number}</span>
                     {ep.runtime && <span className="text-[9px] text-zinc-500">{ep.runtime}m</span>}
                   </div>
                 </div>
                 {currentEpisode === ep.episode_number && (
-                  <svg className="w-4 h-4 text-cyan-400 shrink-0 animate-pulse" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                  <svg className="w-4 h-4 text-purple-400 shrink-0 animate-pulse" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                 )}
               </button>
             )) : (
@@ -264,12 +264,12 @@ export default function TVWatchPage({ tvId, season: initialSeason, episode: init
               {show.genres && (
                 <div className="flex gap-1.5 mt-2 flex-wrap">
                   {show.genres.slice(0, 4).map(g => (
-                    <span key={g.id} className="px-2.5 py-0.5 text-[9px] font-semibold rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/15">{g.name}</span>
+                    <span key={g.id} className="px-2.5 py-0.5 text-[9px] font-semibold rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/15">{g.name}</span>
                   ))}
                 </div>
               )}
               <button onClick={() => navigate({ page: "tv-detail", id: tvId })}
-                className="text-[11px] text-cyan-400/70 hover:text-cyan-400 mt-2 transition-colors font-medium">View Details →</button>
+                className="text-[11px] text-purple-400/70 hover:text-purple-400 mt-2 transition-colors font-medium">View Details →</button>
             </div>
           </div>
         </div>

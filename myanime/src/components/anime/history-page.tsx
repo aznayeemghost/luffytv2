@@ -18,7 +18,7 @@ export default function HistoryPage() {
             <button
               key={item.id}
               onClick={() => navigate({ page: "watch", id: item.animeId, episode: item.episodeNum })}
-              className="w-full flex items-center gap-3 p-3 bg-[#111827] border border-white/[0.04] hover:border-purple-500/20 rounded-xl transition-all text-left group"
+              className="w-full flex items-center gap-3 p-3 bg-[#0a0a0a] border border-white/[0.04] hover:border-purple-500/20 rounded-xl transition-all text-left group"
             >
               <div className="w-16 h-10 rounded-lg overflow-hidden bg-[#1e293b] shrink-0">
                 {item.thumbnail && <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />}
@@ -38,7 +38,7 @@ export default function HistoryPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 rounded-2xl bg-[#111827] border border-white/[0.04] p-8">
+        <div className="text-center py-20 rounded-2xl bg-[#0a0a0a] border border-white/[0.04] p-8">
           <p className="text-zinc-400 text-sm">No watch history yet</p>
           <p className="text-zinc-600 text-xs mt-2">Start watching to build your history</p>
           <button onClick={() => navigate({ page: "home" })} className="mt-4 px-4 py-2 text-xs bg-purple-500 hover:bg-purple-600 text-white rounded-xl transition-all">

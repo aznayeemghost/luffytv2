@@ -155,15 +155,15 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
         {show.backdrop_path && (
           <img src={`https://image.tmdb.org/t/p/w1280${show.backdrop_path}`} alt={show.name} className="absolute inset-0 w-full h-full object-cover" style={{ animation: 'kenBurns 12s ease-out forwards' }} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0b1116] via-[#0b1116]/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-transparent to-[#0b1116]/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-transparent to-[#000000]/30" />
         <div className="absolute inset-0 hero-gradient" />
 
         <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12">
           <div className="max-w-[1400px] mx-auto">
             {/* Badges */}
             <div className="stagger-reveal stagger-1 flex items-center gap-3 flex-wrap mb-3">
-              <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-cyan-500/15 text-cyan-300 rounded-full border border-cyan-500/20">TV Show</span>
+              <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-300 rounded-full border border-purple-500/20">TV Show</span>
               {year && <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/[0.06] text-zinc-300 rounded-full border border-white/[0.08]">{year}</span>}
               {show.number_of_seasons && (
                 <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-violet-500/15 text-violet-300 rounded-full border border-violet-500/20">
@@ -243,19 +243,19 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
             <div className="mt-4 space-y-2">
               {show.first_air_date && (
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <svg className="w-4 h-4 text-cyan-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <svg className="w-4 h-4 text-purple-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   <span className="text-zinc-300 font-medium">{new Date(show.first_air_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                 </div>
               )}
               {show.number_of_seasons && (
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <svg className="w-4 h-4 text-cyan-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+                  <svg className="w-4 h-4 text-purple-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
                   <span className="text-zinc-300 font-medium">{show.number_of_seasons} Season{show.number_of_seasons > 1 ? "s" : ""}</span>
                 </div>
               )}
               {show.number_of_episodes && (
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <svg className="w-4 h-4 text-cyan-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-4 h-4 text-purple-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   <span className="text-zinc-300 font-medium">{show.number_of_episodes} Episodes</span>
                 </div>
               )}
@@ -313,7 +313,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
                 {show.overview.length > 200 && (
                   <button
                     onClick={() => setShowFullDesc(!showFullDesc)}
-                    className="mt-2 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
+                    className="mt-2 text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors"
                   >
                     {showFullDesc ? "Show Less" : "Read More"}
                   </button>
@@ -328,7 +328,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
                   <h3 className="text-lg font-bold text-white">Media</h3>
                   <button
                     onClick={() => setShowTrailer(!showTrailer)}
-                    className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
+                    className="text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     {showTrailer ? "Hide Trailer" : "Play Trailer"}
@@ -355,7 +355,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
-                      <div className="w-16 h-16 rounded-full bg-cyan-500/90 flex items-center justify-center shadow-lg shadow-cyan-500/30 group-hover:scale-110 transition-transform">
+                      <div className="w-16 h-16 rounded-full bg-purple-500/90 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
                         <svg className="w-7 h-7 text-white ml-1" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                       </div>
                     </div>
@@ -373,7 +373,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
                     <select
                       value={selectedSeason}
                       onChange={e => setSelectedSeason(parseInt(e.target.value))}
-                      className="bg-[#1a2530] text-zinc-300 text-xs px-3 py-1.5 rounded-full border border-white/[0.06] outline-none focus:border-cyan-500/30"
+                      className="bg-[#1a1a1a] text-zinc-300 text-xs px-3 py-1.5 rounded-full border border-white/[0.06] outline-none focus:border-purple-500/30"
                     >
                       {Array.from({ length: show.number_of_seasons }, (_, i) => (
                         <option key={i + 1} value={i + 1}>Season {i + 1}</option>
@@ -388,24 +388,24 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
                   <button
                     key={ep.id}
                     onClick={() => navigate({ page: "tv-watch", id: show.id, season: ep.season_number, episode: ep.episode_number })}
-                    className="w-full flex items-center gap-4 p-3 rounded-xl text-left hover:bg-cyan-500/[0.06] transition-all group bg-[#131c26] border border-white/[0.03] hover:border-cyan-500/20"
+                    className="w-full flex items-center gap-4 p-3 rounded-xl text-left hover:bg-purple-500/[0.06] transition-all group bg-[#111111] border border-white/[0.03] hover:border-purple-500/20"
                   >
-                    <div className="w-32 h-[72px] rounded-lg overflow-hidden shrink-0 bg-[#1a2530] relative">
+                    <div className="w-32 h-[72px] rounded-lg overflow-hidden shrink-0 bg-[#1a1a1a] relative">
                       {ep.still_path ? (
                         <img src={`https://image.tmdb.org/t/p/w300${ep.still_path}`} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-cyan-500/10 to-transparent">
-                          <span className="text-sm font-bold text-cyan-400">{ep.episode_number}</span>
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500/10 to-transparent">
+                          <span className="text-sm font-bold text-purple-400">{ep.episode_number}</span>
                         </div>
                       )}
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                        <svg className="w-8 h-8 text-cyan-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                        <svg className="w-8 h-8 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-zinc-200 line-clamp-1">{ep.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-cyan-400 font-medium">EP {ep.episode_number}</span>
+                        <span className="text-[10px] text-purple-400 font-medium">EP {ep.episode_number}</span>
                         {ep.runtime && <span className="text-[10px] text-zinc-500">{ep.runtime}m</span>}
                         {ep.air_date && <span className="text-[10px] text-zinc-600">{ep.air_date}</span>}
                       </div>
@@ -454,12 +454,12 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
           {/* ── RIGHT: Cast & Credits sidebar ── */}
           {castList.length > 0 && (
             <div className="shrink-0 w-full lg:w-[280px]">
-              <div className="bg-[#151f2e] rounded-xl border border-white/[0.06] p-5 sticky top-24">
+              <div className="bg-[#0a0a0a] rounded-xl border border-white/[0.06] p-5 sticky top-24">
                 <h3 className="text-base font-bold text-white mb-4">Casts & Credits</h3>
                 <div className="space-y-3">
                   {visibleCast.map(person => (
                     <div key={person.id} className="flex items-center gap-3 group">
-                      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border-2 border-white/[0.06] bg-[#1a2530]">
+                      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border-2 border-white/[0.06] bg-[#1a1a1a]">
                         {person.profile_path ? (
                           <img src={`https://image.tmdb.org/t/p/w185${person.profile_path}`} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
@@ -467,7 +467,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-zinc-200 line-clamp-1 group-hover:text-cyan-300 transition-colors">{person.name}</p>
+                        <p className="text-xs font-semibold text-zinc-200 line-clamp-1 group-hover:text-purple-300 transition-colors">{person.name}</p>
                         {person.character && <p className="text-[10px] text-zinc-500 line-clamp-1">{person.character}</p>}
                       </div>
                     </div>
@@ -476,7 +476,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
                 {castList.length > 10 && (
                   <button
                     onClick={() => setShowAllCast(!showAllCast)}
-                    className="mt-4 w-full flex items-center justify-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors py-2 rounded-lg hover:bg-cyan-500/5"
+                    className="mt-4 w-full flex items-center justify-center gap-1 text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors py-2 rounded-lg hover:bg-purple-500/5"
                   >
                     {showAllCast ? "Show Less" : `Show All (${castList.length})`}
                     <svg className={`w-3.5 h-3.5 transition-transform ${showAllCast ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

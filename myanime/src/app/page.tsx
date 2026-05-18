@@ -153,19 +153,19 @@ export default function MainPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#0b1116] flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center space-y-5">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mx-auto shadow-lg shadow-cyan-500/20 animate-pulse">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center mx-auto shadow-lg shadow-purple-500/20 animate-pulse">
             <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
               <polygon points="5 3 19 12 5 21 5 3" />
             </svg>
           </div>
           <div className="space-y-1">
-            <p className="text-cyan-400 text-sm font-bold">Luffy TV</p>
+            <p className="text-purple-400 text-sm font-bold">Luffy TV</p>
             <p className="text-zinc-600 text-xs">Loading...</p>
           </div>
-          <div className="w-32 h-1 bg-[#1a2530] mx-auto rounded-full overflow-hidden">
-            <div className="h-full bg-cyan-500/60 animate-pulse rounded-full" style={{ width: "60%" }} />
+          <div className="w-32 h-1 bg-[#1a1a1a] mx-auto rounded-full overflow-hidden">
+            <div className="h-full bg-purple-500/60 animate-pulse rounded-full" style={{ width: "60%" }} />
           </div>
         </div>
       </div>
@@ -210,18 +210,18 @@ export default function MainPage() {
       )}
 
       {/* Main Content */}
-      <div className={`min-h-screen bg-[#0b1116] flex flex-col ${!showSplash ? "content-reveal" : "opacity-0"}`}>
+      <div className={`min-h-screen bg-black flex flex-col ${!showSplash ? "content-reveal" : "opacity-0"}`}>
         {!isMangaReader && <Navbar />}
         <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isMangaReader ? '' : 'pt-[75px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
           {renderPage()}
         </main>
         {!isWatchPage && !isMangaReader && (
-          <footer className="border-t border-white/[0.04] mt-16 bg-[#0b1116]">
+          <footer className="border-t border-white/[0.04] mt-16 bg-[#0a0a0a]">
             <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-12">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                 <div className="col-span-2 md:col-span-1">
                   <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
                       <svg className="w-4.5 h-4.5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                     </div>
                     <span className="text-base font-bold gradient-text">Luffy TV</span>
@@ -235,7 +235,7 @@ export default function MainPage() {
                       <span className="text-[9px] font-bold text-zinc-400">TMDB</span>
                     </div>
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/[0.03] rounded-lg border border-white/[0.05]">
-                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
                         <path d="M8 14s1.5 2 4 2 4-2 4-2" />
                       </svg>
@@ -246,19 +246,19 @@ export default function MainPage() {
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-300 mb-4 uppercase tracking-wider">Discover</h4>
                   <div className="space-y-2.5">
-                    <button onClick={() => navigate({ page: "home" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Home</button>
-                    <button onClick={() => navigate({ page: "movies" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Movies</button>
-                    <button onClick={() => navigate({ page: "tv" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">TV Shows</button>
-                    <button onClick={() => navigate({ page: "dub" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Anime</button>
-                    <button onClick={() => navigate({ page: "schedule" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Schedule</button>
-                    <button onClick={() => navigate({ page: "manga" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Manga</button>
+                    <button onClick={() => navigate({ page: "home" })} className="block text-xs text-zinc-500 hover:text-purple-400 transition-colors">Home</button>
+                    <button onClick={() => navigate({ page: "movies" })} className="block text-xs text-zinc-500 hover:text-purple-400 transition-colors">Movies</button>
+                    <button onClick={() => navigate({ page: "tv" })} className="block text-xs text-zinc-500 hover:text-purple-400 transition-colors">TV Shows</button>
+                    <button onClick={() => navigate({ page: "dub" })} className="block text-xs text-zinc-500 hover:text-purple-400 transition-colors">Anime</button>
+                    <button onClick={() => navigate({ page: "schedule" })} className="block text-xs text-zinc-500 hover:text-purple-400 transition-colors">Schedule</button>
+                    <button onClick={() => navigate({ page: "manga" })} className="block text-xs text-zinc-500 hover:text-purple-400 transition-colors">Manga</button>
                   </div>
                 </div>
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-300 mb-4 uppercase tracking-wider">Account</h4>
                   <div className="space-y-2.5">
-                    <button onClick={() => navigate({ page: "bookmarks" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">My List</button>
-                    <button onClick={() => navigate({ page: "history" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Watch History</button>
+                    <button onClick={() => navigate({ page: "bookmarks" })} className="block text-xs text-zinc-500 hover:text-purple-400 transition-colors">My List</button>
+                    <button onClick={() => navigate({ page: "history" })} className="block text-xs text-zinc-500 hover:text-purple-400 transition-colors">Watch History</button>
                   </div>
                 </div>
                 <div>

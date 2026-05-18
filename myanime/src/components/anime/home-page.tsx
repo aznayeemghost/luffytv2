@@ -32,8 +32,8 @@ function HeroSlide({ item, isActive }: { item: TMDBContentItem; isActive: boolea
       {image && (
         <img src={image} alt={title} className="absolute inset-0 w-full h-full object-cover ken-burns" key={`hero-${item.id}`} />
       )}
-      <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#0b1116]/40 to-[#0b1116]/95" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/50 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#000000]/40 to-[#000000]/95" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/50 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12 pb-20 lg:pb-24">
         <div className="max-w-2xl space-y-4">
           <div className="stagger-reveal stagger-1">
@@ -45,7 +45,7 @@ function HeroSlide({ item, isActive }: { item: TMDBContentItem; isActive: boolea
             </span>
           </div>
           <div className="stagger-reveal stagger-2 flex items-center gap-2 flex-wrap">
-            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${isMovie ? "bg-rose-500/15 text-rose-300 border border-rose-500/20" : "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20"}`}>
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${isMovie ? "bg-rose-500/15 text-rose-300 border border-rose-500/20" : "bg-purple-500/15 text-purple-300 border border-purple-500/20"}`}>
               {isMovie ? "MOVIE" : "TV SHOW"}
             </span>
             {year && <span className="text-[11px] text-zinc-300 font-medium">{year}</span>}
@@ -97,8 +97,8 @@ function AnimeHeroSlide({ item, isActive }: { item: MegaPlayAnimeItem | MiruroAn
   return (
     <div className="relative w-full min-h-[90vh] sm:min-h-[85vh] lg:min-h-[90vh] overflow-hidden hero-slide">
       {image && <img src={image} alt={title} className="absolute inset-0 w-full h-full object-cover ken-burns" key={`anime-hero-${item.id}`} />}
-      <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#0b1116]/40 to-[#0b1116]/95" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/50 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#000000]/40 to-[#000000]/95" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/50 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12 pb-20 lg:pb-24">
         <div className="max-w-2xl space-y-4">
           <div className="stagger-reveal stagger-1">
@@ -108,7 +108,7 @@ function AnimeHeroSlide({ item, isActive }: { item: MegaPlayAnimeItem | MiruroAn
             </span>
           </div>
           <div className="stagger-reveal stagger-2 flex items-center gap-2 flex-wrap">
-            {format && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/20">{format}</span>}
+            {format && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/20">{format}</span>}
             {seasonYear && <span className="text-[11px] text-zinc-300 font-medium">{seasonYear}</span>}
             {score && score > 0 && (
               <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
@@ -180,15 +180,15 @@ function ContentSection({ title, children, icon, viewAllAction }: { title: strin
         </div>
         <div className="flex items-center gap-2">
           {viewAllAction && (
-            <button onClick={viewAllAction} className="text-xs text-cyan-400 hover:text-cyan-300 font-medium transition-colors flex items-center gap-1">
+            <button onClick={viewAllAction} className="text-xs text-purple-400 hover:text-purple-300 font-medium transition-colors flex items-center gap-1">
               View All
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
             </button>
           )}
-          <button onClick={() => scroll("left")} className={`scroll-btn p-2 text-zinc-500 hover:text-white bg-[#1a2530]/80 hover:bg-cyan-500/20 rounded-full transition-all backdrop-blur-sm border border-white/[0.06] ${showLeftBtn ? "" : "opacity-0 pointer-events-none"}`}>
+          <button onClick={() => scroll("left")} className={`scroll-btn p-2 text-zinc-500 hover:text-white bg-[#1a1a1a]/80 hover:bg-purple-500/20 rounded-full transition-all backdrop-blur-sm border border-white/[0.06] ${showLeftBtn ? "" : "opacity-0 pointer-events-none"}`}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <button onClick={() => scroll("right")} className={`scroll-btn p-2 text-zinc-500 hover:text-white bg-[#1a2530]/80 hover:bg-cyan-500/20 rounded-full transition-all backdrop-blur-sm border border-white/[0.06] ${showRightBtn ? "" : "opacity-0 pointer-events-none"}`}>
+          <button onClick={() => scroll("right")} className={`scroll-btn p-2 text-zinc-500 hover:text-white bg-[#1a1a1a]/80 hover:bg-purple-500/20 rounded-full transition-all backdrop-blur-sm border border-white/[0.06] ${showRightBtn ? "" : "opacity-0 pointer-events-none"}`}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
@@ -325,9 +325,9 @@ export default function HomePage() {
                 return (
                   <button key={i} onClick={() => setHeroIdx(i)}
                     className={`rounded-lg overflow-hidden transition-all duration-300 border-2 ${
-                      i === heroIdx ? "w-14 h-20 border-cyan-500 shadow-lg shadow-cyan-500/30 scale-110" : "w-10 h-14 border-transparent opacity-50 hover:opacity-80"
+                      i === heroIdx ? "w-14 h-20 border-purple-500 shadow-lg shadow-purple-500/30 scale-110" : "w-10 h-14 border-transparent opacity-50 hover:opacity-80"
                     }`}>
-                    {poster ? <img src={poster} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1a2530]" />}
+                    {poster ? <img src={poster} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#1a1a1a]" />}
                   </button>
                 );
               })}
@@ -340,10 +340,10 @@ export default function HomePage() {
               {Array.from({ length: heroTotal }).map((_, i) => (
                 <button key={i} onClick={() => setHeroIdx(i)} className="group relative flex items-center justify-center">
                   <div className={`h-1 rounded-full transition-all duration-300 ${
-                    i === heroIdx ? "w-8 bg-cyan-500" : "w-2 bg-white/20 hover:bg-white/40"
+                    i === heroIdx ? "w-8 bg-purple-500" : "w-2 bg-white/20 hover:bg-white/40"
                   }`}>
                     {i === heroIdx && (
-                      <div className="h-full bg-cyan-300 rounded-full" style={{ animation: "carouselProgress 7s linear forwards" }} />
+                      <div className="h-full bg-purple-300 rounded-full" style={{ animation: "carouselProgress 7s linear forwards" }} />
                     )}
                   </div>
                 </button>
@@ -376,7 +376,7 @@ export default function HomePage() {
       {mpTrending.length > 0 && (
         <ContentSection
           title="Trending Anime"
-          icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>}
+          icon={<svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>}
           viewAllAction={() => navigate({ page: "dub" })}
         >
           {mpTrending.slice(0, 20).map((anime, i) => (
@@ -405,7 +405,7 @@ export default function HomePage() {
       {popularTV.length > 0 && (
         <ContentSection
           title="Popular TV Shows"
-          icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="2" y="7" width="20" height="15" rx="2" ry="2" /><polyline points="17 2 12 7 7 2" /></svg>}
+          icon={<svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="2" y="7" width="20" height="15" rx="2" ry="2" /><polyline points="17 2 12 7 7 2" /></svg>}
         >
           {popularTV.slice(0, 20).map((item, i) => (
             <div key={item.id} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
@@ -419,7 +419,7 @@ export default function HomePage() {
       {mpPopular.length > 0 && (
         <ContentSection
           title="Popular Anime"
-          icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
+          icon={<svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
         >
           {mpPopular.slice(0, 20).map((anime, i) => (
             <div key={`mp-p-${anime.id}`} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
@@ -433,7 +433,7 @@ export default function HomePage() {
       {animeData?.miruroTrending && animeData.miruroTrending.length > 0 && mpTrending.length === 0 && (
         <ContentSection
           title="Trending Anime"
-          icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>}
+          icon={<svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>}
         >
           {animeData!.miruroTrending.slice(0, 20).map((anime, i) => (
             <div key={anime.id} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
@@ -489,7 +489,7 @@ export default function HomePage() {
       {animeData?.miruroPopular && animeData.miruroPopular.length > 0 && mpPopular.length === 0 && (
         <ContentSection
           title="Popular Anime"
-          icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
+          icon={<svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
         >
           {animeData!.miruroPopular.slice(0, 20).map((anime, i) => (
             <div key={anime.id} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
@@ -544,7 +544,7 @@ export default function HomePage() {
 
       {/* ── Empty State ── */}
       {!animeData?.trending?.length && !trendingAll.length && !mpTrending.length && !animeData?.miruroTrending?.length && (
-        <div className="text-center py-20 rounded-2xl bg-[#151f2e] border border-white/[0.04] p-8">
+        <div className="text-center py-20 rounded-2xl bg-[#0a0a0a] border border-white/[0.04] p-8">
           <p className="text-zinc-400 text-sm">No content available. Try refreshing the page...</p>
         </div>
       )}
@@ -565,7 +565,7 @@ function TopTenSection({ data }: { data: { today: MegaPlayAnimeItem[]; week: Meg
           <svg className="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
           <h2 className="text-base sm:text-lg font-bold text-white">Top 10 Anime</h2>
         </div>
-        <div className="flex items-center gap-1 bg-[#1a2530] rounded-full p-0.5 border border-white/[0.06]">
+        <div className="flex items-center gap-1 bg-[#1a1a1a] rounded-full p-0.5 border border-white/[0.06]">
           {(["today", "week", "month"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-1.5 text-[11px] font-bold rounded-full transition-all ${
@@ -588,7 +588,7 @@ function TopTenSection({ data }: { data: { today: MegaPlayAnimeItem[]; week: Meg
               onClick={() => navigate({ page: "anime", id: String(anime.id) })}
               className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px] text-left group"
             >
-              <div className="relative aspect-[2/3] overflow-hidden bg-[#1a2530] rounded-xl">
+              <div className="relative aspect-[2/3] overflow-hidden bg-[#1a1a1a] rounded-xl">
                 {image && <img src={image} alt={title} className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110" loading="lazy" />}
                 {/* Rank number */}
                 <div className="absolute top-0 left-0 w-8 h-10 flex items-center justify-center bg-gradient-to-br from-amber-500 to-orange-600 rounded-br-xl">
@@ -596,12 +596,12 @@ function TopTenSection({ data }: { data: { today: MegaPlayAnimeItem[]; week: Meg
                 </div>
                 {/* Score */}
                 {score && score > 0 && (
-                  <div className="absolute top-2 right-2 bg-[#0b1116]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                  <div className="absolute top-2 right-2 bg-[#000000]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">
                     {(score > 10 ? score / 10 : score).toFixed(1)}
                   </div>
                 )}
                 {/* Bottom gradient */}
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0b1116] to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#000000] to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-2">
                   <p className="text-[11px] font-semibold text-white line-clamp-2">{title}</p>
                 </div>

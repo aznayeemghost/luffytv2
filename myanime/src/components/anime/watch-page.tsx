@@ -528,7 +528,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             {showSkipButton && (
               <button
                 onClick={showSkipButton === "intro" ? skipIntro : skipOutro}
-                className="absolute bottom-20 right-4 z-30 flex items-center gap-2 px-4 py-2.5 bg-cyan-500/90 hover:bg-cyan-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-cyan-500/30 transition-all backdrop-blur-sm"
+                className="absolute bottom-20 right-4 z-30 flex items-center gap-2 px-4 py-2.5 bg-purple-500/90 hover:bg-purple-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-purple-500/30 transition-all backdrop-blur-sm"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -540,8 +540,8 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20">
                 <div className="text-center space-y-4">
-                  <div className="w-14 h-14 rounded-full border-2 border-cyan-500/20 border-t-cyan-500/60 animate-spin mx-auto" />
-                  <p className="text-cyan-300/60 text-xs font-medium">
+                  <div className="w-14 h-14 rounded-full border-2 border-purple-500/20 border-t-purple-500/60 animate-spin mx-auto" />
+                  <p className="text-purple-300/60 text-xs font-medium">
                     {useNativePlayer ? "Loading stream..." : `Loading from ${activeServer?.name || "server"}...`}
                   </p>
                 </div>
@@ -582,13 +582,13 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
           </div>
 
           {/* Player controls bar — with ALL servers */}
-          <div className="bg-[#131c26] rounded-none lg:rounded-xl p-4 space-y-3">
+          <div className="bg-[#111] rounded-none lg:rounded-xl p-4 space-y-3">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Now Playing</span>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Now Playing</span>
                   <span className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold rounded-full ${
-                    translation === "sub" ? "bg-cyan-500/15 text-cyan-300" : translation === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                    translation === "sub" ? "bg-purple-500/15 text-purple-300" : translation === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
                   }`}>
                     {translation.toUpperCase()}
                   </span>
@@ -628,19 +628,19 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                 </span>
                 <button
                   onClick={() => setShowServerList(!showServerList)}
-                  className="sm:hidden text-[10px] text-cyan-400 hover:text-cyan-300 font-medium"
+                  className="sm:hidden text-[10px] text-purple-400 hover:text-purple-300 font-medium"
                 >
                   {showServerList ? "Hide" : "Show All"}
                 </button>
               </div>
 
               {/* Sub/Dub/Hindi translation tabs */}
-              <div className="flex items-center gap-1 bg-[#0b1116] rounded-full p-0.5">
+              <div className="flex items-center gap-1 bg-[#0a0a0a] rounded-full p-0.5">
                 {(["sub", "dub", "hindi"] as const).map(t => (
                   <button key={t} onClick={() => switchTranslation(t)}
                     className={`flex-1 py-1.5 text-[10px] font-bold rounded-full transition-all flex items-center justify-center gap-1 ${
                       translation === t
-                        ? t === "sub" ? "bg-cyan-500/15 text-cyan-300" : t === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                        ? t === "sub" ? "bg-purple-500/15 text-purple-300" : t === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
                         : "text-zinc-500 hover:text-zinc-300"
                     }`}>
                     {t === "hindi" ? "🇮🇳 HINDI DUB" : t.toUpperCase()}
@@ -743,7 +743,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             {/* Subtitle indicator */}
             {subtitleTracks.length > 0 && useNativePlayer && (
               <div className="flex items-center gap-2">
-                <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-3.5 h-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                 </svg>
                 <span className="text-[10px] text-zinc-400">{subtitleTracks.length} subtitle track{subtitleTracks.length !== 1 ? 's' : ''} available</span>
@@ -758,7 +758,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
         </div>
 
         {/* Episode Sidebar */}
-        <div className="bg-[#131c26] rounded-none lg:rounded-xl overflow-hidden border border-white/[0.04]">
+        <div className="bg-[#111] rounded-none lg:rounded-xl overflow-hidden border border-white/[0.04]">
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h3 className="text-sm font-bold text-white">Episodes</h3>
             <span className="text-[10px] text-zinc-500">{episodeList.length || "?"} episodes</span>
@@ -766,12 +766,12 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
 
           {/* Translation quick toggle in sidebar */}
           <div className="p-3 border-b border-white/[0.04]">
-            <div className="flex items-center gap-1 bg-[#0b1116] rounded-full p-0.5">
+            <div className="flex items-center gap-1 bg-[#0a0a0a] rounded-full p-0.5">
               {(["sub", "dub", "hindi"] as const).map(t => (
                 <button key={t} onClick={() => switchTranslation(t)}
                   className={`flex-1 py-1.5 text-[10px] font-bold rounded-full transition-all flex items-center justify-center gap-1 ${
                     translation === t
-                      ? t === "sub" ? "bg-cyan-500/15 text-cyan-300" : t === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                      ? t === "sub" ? "bg-purple-500/15 text-purple-300" : t === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}>
                   {t === "hindi" ? "🇮🇳 HIN" : t.toUpperCase()}
@@ -796,24 +796,24 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                 onClick={() => switchEpisode(ep.number)}
                 className={`w-full flex items-center gap-3 p-3 text-left transition-all ${
                   ep.number === episodeNum
-                    ? "bg-cyan-500/10 border-l-3 border-cyan-500"
+                    ? "bg-purple-500/10 border-l-3 border-purple-500"
                     : "hover:bg-white/[0.02]"
                 }`}
               >
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
                   ep.number === episodeNum
-                    ? "bg-cyan-500 text-white"
-                    : "bg-[#1a2530] text-zinc-500"
+                    ? "bg-purple-500 text-white"
+                    : "bg-[#1a1a1a] text-zinc-500"
                 }`}>
                   {ep.number}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium line-clamp-1 ${ep.number === episodeNum ? "text-cyan-300" : "text-zinc-300"}`}>
+                  <p className={`text-sm font-medium line-clamp-1 ${ep.number === episodeNum ? "text-purple-300" : "text-zinc-300"}`}>
                     Episode {ep.number}
                   </p>
                 </div>
                 {ep.number === episodeNum && (
-                  <svg className="w-4 h-4 text-cyan-400 shrink-0 animate-pulse" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                  <svg className="w-4 h-4 text-purple-400 shrink-0 animate-pulse" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                 )}
               </button>
             )) : (
@@ -862,7 +862,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                 </p>
               )}
               <button onClick={() => navigate({ page: "anime", id: animeId })}
-                className="text-[11px] text-cyan-400/70 hover:text-cyan-400 mt-2 transition-colors font-medium">View Details →</button>
+                className="text-[11px] text-purple-400/70 hover:text-purple-400 mt-2 transition-colors font-medium">View Details →</button>
             </div>
           </div>
         </div>
@@ -870,7 +870,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
 
       {/* Quality selector for native/kiwi */}
       {useNativePlayer && (internalSources.length > 0 || externalSources.length > 0) && (
-        <div className="mt-3 -mx-4 lg:-mx-8 bg-[#131c26] rounded-xl p-4 border border-white/[0.04]">
+        <div className="mt-3 -mx-4 lg:-mx-8 bg-[#111] rounded-xl p-4 border border-white/[0.04]">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Quality</span>
           </div>

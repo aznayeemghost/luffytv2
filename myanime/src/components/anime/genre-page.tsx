@@ -70,7 +70,7 @@ export default function GenrePage({ genre }: GenrePageProps) {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 rounded-2xl bg-[#111827] border border-white/[0.04] p-8">
+        <div className="text-center py-20 rounded-2xl bg-[#0a0a0a] border border-white/[0.04] p-8">
           <p className="text-zinc-400 text-sm">No anime found for {genre}</p>
         </div>
       )}

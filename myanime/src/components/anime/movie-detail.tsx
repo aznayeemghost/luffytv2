@@ -135,8 +135,8 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
             style={{ animation: 'kenBurns 12s ease-out forwards' }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0b1116] via-[#0b1116]/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-transparent to-[#0b1116]/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-transparent to-[#000000]/30" />
         <div className="absolute inset-0 hero-gradient" />
 
         <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12">
@@ -219,19 +219,19 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
             <div className="mt-4 space-y-2">
               {movie.release_date && (
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <svg className="w-4 h-4 text-cyan-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <svg className="w-4 h-4 text-purple-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   <span className="text-zinc-300 font-medium">{new Date(movie.release_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                 </div>
               )}
               {movie.runtime && (
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <svg className="w-4 h-4 text-cyan-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-4 h-4 text-purple-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   <span className="text-zinc-300 font-medium">{hours}h {minutes}m</span>
                 </div>
               )}
               {movie.status && (
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <svg className="w-4 h-4 text-cyan-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-4 h-4 text-purple-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   <span className="text-zinc-300 font-medium">{movie.status}</span>
                 </div>
               )}
@@ -242,7 +242,7 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
                   <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-2">Director</p>
                   <div className="flex items-center gap-2">
                     {director.profile_path && (
-                      <div className="w-8 h-8 rounded-full overflow-hidden border border-white/[0.06] bg-[#1a2530]">
+                      <div className="w-8 h-8 rounded-full overflow-hidden border border-white/[0.06] bg-[#1a1a1a]">
                         <img src={`https://image.tmdb.org/t/p/w92${director.profile_path}`} alt={director.name} className="w-full h-full object-cover" />
                       </div>
                     )}
@@ -304,7 +304,7 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
                 {movie.overview.length > 200 && (
                   <button
                     onClick={() => setShowFullDesc(!showFullDesc)}
-                    className="mt-2 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
+                    className="mt-2 text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors"
                   >
                     {showFullDesc ? "Show Less" : "Read More"}
                   </button>
@@ -319,7 +319,7 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
                   <h3 className="text-lg font-bold text-white">Media</h3>
                   <button
                     onClick={() => setShowTrailer(!showTrailer)}
-                    className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
+                    className="text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     {showTrailer ? "Hide Trailer" : "Play Trailer"}
@@ -346,7 +346,7 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
-                      <div className="w-16 h-16 rounded-full bg-cyan-500/90 flex items-center justify-center shadow-lg shadow-cyan-500/30 group-hover:scale-110 transition-transform">
+                      <div className="w-16 h-16 rounded-full bg-purple-500/90 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
                         <svg className="w-7 h-7 text-white ml-1" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                       </div>
                     </div>
@@ -383,12 +383,12 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
           {/* ── RIGHT: Cast & Credits sidebar ── */}
           {castList.length > 0 && (
             <div className="shrink-0 w-full lg:w-[280px]">
-              <div className="bg-[#151f2e] rounded-xl border border-white/[0.06] p-5 sticky top-24">
+              <div className="bg-[#0a0a0a] rounded-xl border border-white/[0.06] p-5 sticky top-24">
                 <h3 className="text-base font-bold text-white mb-4">Casts & Credits</h3>
                 <div className="space-y-3">
                   {visibleCast.map(person => (
                     <div key={person.id} className="flex items-center gap-3 group">
-                      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border-2 border-white/[0.06] bg-[#1a2530]">
+                      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border-2 border-white/[0.06] bg-[#1a1a1a]">
                         {person.profile_path ? (
                           <img src={`https://image.tmdb.org/t/p/w185${person.profile_path}`} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
@@ -396,7 +396,7 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-zinc-200 line-clamp-1 group-hover:text-cyan-300 transition-colors">{person.name}</p>
+                        <p className="text-xs font-semibold text-zinc-200 line-clamp-1 group-hover:text-purple-300 transition-colors">{person.name}</p>
                         {person.character && <p className="text-[10px] text-zinc-500 line-clamp-1">{person.character}</p>}
                       </div>
                     </div>
@@ -405,7 +405,7 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
                 {castList.length > 10 && (
                   <button
                     onClick={() => setShowAllCast(!showAllCast)}
-                    className="mt-4 w-full flex items-center justify-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors py-2 rounded-lg hover:bg-cyan-500/5"
+                    className="mt-4 w-full flex items-center justify-center gap-1 text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors py-2 rounded-lg hover:bg-purple-500/5"
                   >
                     {showAllCast ? "Show Less" : `Show All (${castList.length})`}
                     <svg className={`w-3.5 h-3.5 transition-transform ${showAllCast ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

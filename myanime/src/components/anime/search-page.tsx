@@ -183,12 +183,12 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
             onKeyDown={handleKeyDown}
             onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
             placeholder="Search anime, movies, TV shows..."
-            className="w-full pl-10 pr-4 py-3 bg-[#111827] border border-white/[0.06] rounded-xl text-sm text-white placeholder-zinc-500 outline-none focus:border-purple-500/30 focus:shadow-[0_0_20px_rgba(139,92,246,0.1)] transition-all"
+            className="w-full pl-10 pr-4 py-3 bg-[#0a0a0a] border border-white/[0.06] rounded-xl text-sm text-white placeholder-zinc-500 outline-none focus:border-purple-500/30 focus:shadow-[0_0_20px_rgba(139,92,246,0.1)] transition-all"
           />
 
           {/* Autocomplete dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#151f2e] rounded-xl border border-white/[0.08] shadow-2xl shadow-black/60 z-50 overflow-hidden">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-[#0a0a0a] rounded-xl border border-white/[0.08] shadow-2xl shadow-black/60 z-50 overflow-hidden">
               {suggestions.map((s, i) => (
                 <button
                   key={i}
@@ -281,13 +281,13 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
           )}
         </div>
       ) : query && searched ? (
-        <div className="text-center py-20 rounded-2xl bg-[#111827] border border-white/[0.04] p-8">
+        <div className="text-center py-20 rounded-2xl bg-[#0a0a0a] border border-white/[0.04] p-8">
           <p className="text-zinc-400 text-sm">No results found for &quot;{query}&quot;</p>
           <p className="text-zinc-600 text-xs mt-2">Try a different search term</p>
         </div>
       ) : (
         <div className="text-center py-20">
-          <div className="bg-[#111827] rounded-2xl px-8 py-6 inline-block border border-white/[0.04]">
+          <div className="bg-[#0a0a0a] rounded-2xl px-8 py-6 inline-block border border-white/[0.04]">
             <p className="text-zinc-500 text-sm">Type to search for anime, movies, and TV shows</p>
           </div>
         </div>

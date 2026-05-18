@@ -93,7 +93,7 @@ export default function SchedulePage() {
               <div className="h-6 w-40 skeleton rounded" />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {Array.from({ length: 3 }).map((_, j) => (
-                  <div key={j} className="flex items-center gap-3 p-3 bg-[#131c26] rounded-xl">
+                  <div key={j} className="flex items-center gap-3 p-3 bg-[#111111] rounded-xl">
                     <div className="w-12 h-16 skeleton rounded-lg" />
                     <div className="flex-1 space-y-2">
                       <div className="h-3 w-3/4 skeleton rounded" />
@@ -134,22 +134,22 @@ export default function SchedulePage() {
                     <button
                       key={`${item.id}-${item.episode_no}`}
                       onClick={() => navigate({ page: "anime", id: String(item.id) })}
-                      className="flex items-center gap-3 p-3 bg-[#131c26] rounded-xl border border-white/[0.03] hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all group text-left"
+                      className="flex items-center gap-3 p-3 bg-[#111111] rounded-xl border border-white/[0.03] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all group text-left"
                     >
                       {/* Cover image */}
-                      <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 bg-[#1a2530]">
+                      <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 bg-[#1a1a1a]">
                         {image ? (
                           <img src={image} alt={title} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-cyan-500/10 to-transparent">
-                            <span className="text-xs font-bold text-cyan-400">EP{item.episode_no}</span>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500/10 to-transparent">
+                            <span className="text-xs font-bold text-purple-400">EP{item.episode_no}</span>
                           </div>
                         )}
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-cyan-300 transition-colors">
+                        <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-purple-300 transition-colors">
                           {title}
                         </p>
                         <p className="text-[10px] text-zinc-500 mt-0.5">
@@ -160,7 +160,7 @@ export default function SchedulePage() {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             isAiring
                               ? "bg-emerald-500/15 text-emerald-300"
-                              : "bg-cyan-500/10 text-cyan-400"
+                              : "bg-purple-500/10 text-purple-400"
                           }`}>
                             {isAiring ? "🔴 Airing" : `⏱ ${countdown}`}
                           </span>
@@ -177,7 +177,7 @@ export default function SchedulePage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 rounded-2xl bg-[#111827] border border-white/[0.04] p-8">
+        <div className="text-center py-20 rounded-2xl bg-[#0a0a0a] border border-white/[0.04] p-8">
           <svg className="w-12 h-12 text-zinc-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
             <line x1="16" y1="2" x2="16" y2="6" />
