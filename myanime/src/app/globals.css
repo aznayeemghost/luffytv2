@@ -697,146 +697,116 @@ video::-webkit-media-controls { border-radius: 8px; }
 .content-reveal { animation: contentReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ================================================================
-   LUFFY TV SPLIT INTRO — "CURTAIN REVEAL"
-   Text assembles → crack forms → splits in half → reveals website
-   Two full-screen halves, each clipped to show their portion
-   Pure CSS, GPU-composited, cinematic split animation
+   LUFFY TV SIDEWAYS INTRO
+   "LUFFY" slides in from left (purple) → "TV" slides in from right (white)
+   Glow pulse → fade out → reveal website
+   Pure CSS, GPU-composited, cinematic sideways animation
    ================================================================ */
 
 /* ── Main container ── */
-.split-intro {
+.side-intro {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: transparent; /* Website shows through when halves separate */
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   pointer-events: all;
+  animation: side-intro-fadeout 0.6s 2.6s ease forwards;
 }
 
-/* ── Each half covers the full viewport but is clipped ── */
-.split-half {
+@keyframes side-intro-fadeout {
+  0%   { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+/* ── Ambient glow behind text ── */
+.side-glow {
   position: absolute;
-  left: 0;
-  right: 0;
-  height: 100vh;
-  background: #000;
-  overflow: hidden;
-  will-change: transform, filter;
-}
-
-/* Top half: shows top 50% of viewport */
-.split-top {
-  top: 0;
-  clip-path: inset(0 0 50% 0);
-  animation:
-    split-top-slide 1.4s 2.7s cubic-bezier(0.76, 0, 0.24, 1) forwards,
-    split-top-fade 0.6s 3.8s ease forwards;
-}
-
-/* Bottom half: shows bottom 50% of viewport */
-.split-bottom {
-  bottom: 0;
-  clip-path: inset(50% 0 0 0);
-  animation:
-    split-bottom-slide 1.4s 2.7s cubic-bezier(0.76, 0, 0.24, 1) forwards,
-    split-bottom-fade 0.6s 3.8s ease forwards;
-}
-
-@keyframes split-top-slide {
-  0%   { transform: translate3d(0, 0, 0) rotateX(0deg); filter: blur(0px); }
-  30%  { transform: translate3d(0, -15vh, 0) rotateX(1deg); filter: blur(0px); }
-  100% { transform: translate3d(0, -110vh, 0) rotateX(4deg); filter: blur(6px); }
-}
-
-@keyframes split-bottom-slide {
-  0%   { transform: translate3d(0, 0, 0) rotateX(0deg); filter: blur(0px); }
-  30%  { transform: translate3d(0, 15vh, 0) rotateX(-1deg); filter: blur(0px); }
-  100% { transform: translate3d(0, 110vh, 0) rotateX(-4deg); filter: blur(6px); }
-}
-
-@keyframes split-top-fade {
-  to { opacity: 0; }
-}
-
-@keyframes split-bottom-fade {
-  to { opacity: 0; }
-}
-
-/* ── Red ambient glow behind text ── */
-.split-glow {
-  position: absolute;
-  width: 900px;
-  height: 900px;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  width: 800px;
+  height: 800px;
   border-radius: 50%;
-  background: radial-gradient(circle,
-    rgba(228, 9, 19, 0.25) 0%,
-    rgba(228, 9, 19, 0.12) 15%,
-    rgba(228, 9, 19, 0.05) 35%,
-    transparent 70%
-  );
   pointer-events: none;
-  animation: split-glow-pulse 1.5s ease-in-out infinite alternate;
   will-change: transform, opacity;
 }
 
-@keyframes split-glow-pulse {
-  0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
-  100% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+.side-glow-purple {
+  left: 30%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle,
+    rgba(124, 58, 237, 0.2) 0%,
+    rgba(124, 58, 237, 0.08) 30%,
+    transparent 70%
+  );
+  animation: side-glow-breathe 2s ease-in-out infinite alternate;
 }
 
-/* ── Text centering — places text at viewport center ── */
-.split-text-center {
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* Place text at the 50vh mark so both halves show their portion */
+.side-glow-white {
+  right: 10%;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(50%, -50%);
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.04) 30%,
+    transparent 70%
+  );
+  animation: side-glow-breathe 2s 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes side-glow-breathe {
+  0%   { opacity: 0.4; transform: translate(-50%, -50%) scale(0.95); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* ── Text rows ── */
+.side-text-wrap {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  z-index: 2;
 }
 
-.split-row {
+.side-row {
   display: flex;
   gap: 2px;
 }
 
-.split-row-sm {
-  gap: 14px;
+.side-row-tv {
+  gap: 18px;
 }
 
-/* ── Character styling ── */
-.split-char {
+/* ── Purple "LUFFY" letters — slide from left ── */
+.side-char-luffy {
   display: inline-block;
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   font-size: clamp(4rem, 14vw, 9rem);
   font-weight: 900;
   letter-spacing: 0.04em;
   line-height: 1;
-  color: #e40913;
+  color: #a855f7;
   text-shadow:
-    0 0 30px rgba(228, 9, 19, 0.6),
-    0 0 60px rgba(228, 9, 19, 0.3),
-    0 0 100px rgba(228, 9, 19, 0.15);
+    0 0 20px rgba(168, 85, 247, 0.6),
+    0 0 50px rgba(168, 85, 247, 0.3),
+    0 0 100px rgba(124, 58, 237, 0.15);
   opacity: 0;
   animation:
-    split-char-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
-    split-char-pulse 0.6s 2s ease-in-out forwards;
-  animation-delay: calc(0.3s + var(--i) * 0.09s), 2s;
+    side-char-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    side-char-glow-purple 0.8s 1.6s ease-in-out forwards;
+  animation-delay: calc(0.2s + var(--i) * 0.1s), 1.6s;
   will-change: transform, opacity;
   position: relative;
 }
 
-/* Chromatic aberration flash on entry */
-.split-char::before,
-.split-char::after {
+/* Chromatic flash on entry */
+.side-char-luffy::before,
+.side-char-luffy::after {
   content: attr(data-char);
   position: absolute;
   top: 0;
@@ -850,203 +820,124 @@ video::-webkit-media-controls { border-radius: 8px; }
   pointer-events: none;
 }
 
-.split-char::before {
-  color: rgba(255, 0, 50, 0.6);
-  animation: split-rgb-l 0.4s calc(0.7s + var(--i) * 0.09s) ease-out forwards;
+.side-char-luffy::before {
+  color: rgba(200, 120, 255, 0.7);
+  animation: side-rgb-l 0.35s calc(0.6s + var(--i) * 0.1s) ease-out forwards;
 }
 
-.split-char::after {
-  color: rgba(0, 100, 255, 0.6);
-  animation: split-rgb-r 0.4s calc(0.7s + var(--i) * 0.09s) ease-out forwards;
+.side-char-luffy::after {
+  color: rgba(80, 20, 160, 0.5);
+  animation: side-rgb-r 0.35s calc(0.6s + var(--i) * 0.1s) ease-out forwards;
 }
 
-@keyframes split-rgb-l {
-  0%   { opacity: 0.7; transform: translate3d(-6px, 0, 0); }
-  100% { opacity: 0; transform: translate3d(0, 0, 0); }
-}
-
-@keyframes split-rgb-r {
-  0%   { opacity: 0.7; transform: translate3d(6px, 0, 0); }
-  100% { opacity: 0; transform: translate3d(0, 0, 0); }
-}
-
-.split-char-sm {
-  font-size: clamp(2.2rem, 7vw, 4.5rem);
-  letter-spacing: 0.12em;
-}
-
-@keyframes split-char-in {
-  0%   { opacity: 0; transform: translate3d(0, 30px, 0) scale(0.4) rotateX(20deg); }
-  60%  { opacity: 1; transform: translate3d(0, -3px, 0) scale(1.06) rotateX(-2deg); }
-  80%  { transform: translate3d(0, 1px, 0) scale(0.98) rotateX(1deg); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotateX(0deg); }
-}
-
-/* Pulse right before split — intensify glow */
-@keyframes split-char-pulse {
-  0%   { text-shadow: 0 0 30px rgba(228,9,19,0.6), 0 0 60px rgba(228,9,19,0.3), 0 0 100px rgba(228,9,19,0.15); }
-  50%  { text-shadow: 0 0 40px rgba(228,9,19,0.9), 0 0 80px rgba(228,9,19,0.5), 0 0 140px rgba(228,9,19,0.3); }
-  100% { text-shadow: 0 0 30px rgba(228,9,19,0.6), 0 0 60px rgba(228,9,19,0.3), 0 0 100px rgba(228,9,19,0.15); }
-}
-
-/* ── Glowing edges at the split line ── */
-.split-edge {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
-  z-index: 3;
-  opacity: 0;
-  animation: split-edge-glow 0.3s 2.5s ease forwards;
-}
-
-/* Bottom edge of top half (at the 50% mark) */
-.split-edge-bottom {
-  bottom: 0;
-  background: linear-gradient(90deg,
-    transparent 5%,
-    rgba(228, 9, 19, 0.8) 20%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(228, 9, 19, 0.8) 80%,
-    transparent 95%
-  );
-  box-shadow: 0 0 20px rgba(228, 9, 19, 0.6), 0 0 40px rgba(228, 9, 19, 0.3);
-}
-
-/* Top edge of bottom half (at the 50% mark) */
-.split-edge-top {
-  top: 0;
-  background: linear-gradient(90deg,
-    transparent 5%,
-    rgba(228, 9, 19, 0.8) 20%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(228, 9, 19, 0.8) 80%,
-    transparent 95%
-  );
-  box-shadow: 0 0 20px rgba(228, 9, 19, 0.6), 0 0 40px rgba(228, 9, 19, 0.3);
-}
-
-@keyframes split-edge-glow {
-  0%   { opacity: 0; }
-  40%  { opacity: 1; }
-  100% { opacity: 1; }
-}
-
-/* ── Crack/energy line at the split point ── */
-.split-crack {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 0;
-  transform: translateY(-50%);
-  z-index: 10;
-  pointer-events: none;
-}
-
-.split-crack-core {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: white;
+/* ── White "TV" letters — slide from right ── */
+.side-char-tv {
+  display: inline-block;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-size: clamp(2.4rem, 7vw, 4.5rem);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  color: #ffffff;
+  text-shadow:
+    0 0 15px rgba(255, 255, 255, 0.5),
+    0 0 40px rgba(255, 255, 255, 0.2);
   opacity: 0;
   animation:
-    split-crack-appear 0.2s 2.2s ease-out forwards,
-    split-crack-intensify 0.5s 2.3s ease forwards;
-  box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.8);
-}
-
-.split-crack-glow {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: linear-gradient(180deg,
-    transparent,
-    rgba(228, 9, 19, 0.4) 40%,
-    rgba(255, 255, 255, 0.6) 50%,
-    rgba(228, 9, 19, 0.4) 60%,
-    transparent
-  );
-  opacity: 0;
-  animation:
-    split-crack-appear 0.2s 2.2s ease-out forwards,
-    split-crack-intensify 0.5s 2.3s ease forwards,
-    split-crack-fade 0.6s 2.7s ease forwards;
-  filter: blur(4px);
-}
-
-@keyframes split-crack-appear {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes split-crack-intensify {
-  0%   { box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.8); }
-  100% { box-shadow: 0 0 30px 8px rgba(228, 9, 19, 0.9), 0 0 60px 15px rgba(255, 255, 255, 0.5); }
-}
-
-@keyframes split-crack-fade {
-  to { opacity: 0; }
-}
-
-/* ── Shard particles that burst from the crack ── */
-.split-shards {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.split-shard {
-  position: absolute;
-  top: 50%;
-  border-radius: 50%;
-  background: #e40913;
-  box-shadow: 0 0 4px 1px rgba(228, 9, 19, 0.6), 0 0 8px rgba(255, 255, 255, 0.3);
-  opacity: 0;
-  animation: split-shard-fly 1.2s ease-out forwards;
+    side-char-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    side-char-glow-white 0.8s 1.6s ease-in-out forwards;
+  animation-delay: calc(0.7s + var(--i) * 0.12s), 1.6s;
   will-change: transform, opacity;
+  position: relative;
 }
 
-@keyframes split-shard-fly {
-  0%   { opacity: 0; transform: translate3d(0, 0, 0) scale(1); }
-  5%   { opacity: 1; }
-  50%  { opacity: 0.7; }
-  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) scale(0); }
-}
-
-/* ── Screen shake effect ── */
-.split-shake {
+.side-char-tv::before,
+.side-char-tv::after {
+  content: attr(data-char);
   position: absolute;
-  inset: 0;
-  z-index: 11;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
   pointer-events: none;
-  animation: split-screen-shake 0.4s 2.7s ease-out;
 }
 
-@keyframes split-screen-shake {
-  0%   { transform: translate3d(0, 0, 0); }
-  10%  { transform: translate3d(-3px, 2px, 0); }
-  20%  { transform: translate3d(4px, -2px, 0); }
-  30%  { transform: translate3d(-2px, 3px, 0); }
-  40%  { transform: translate3d(3px, -1px, 0); }
-  50%  { transform: translate3d(-1px, 2px, 0); }
-  60%  { transform: translate3d(2px, -2px, 0); }
-  70%  { transform: translate3d(-2px, 1px, 0); }
-  80%  { transform: translate3d(1px, -1px, 0); }
-  90%  { transform: translate3d(-1px, 1px, 0); }
-  100% { transform: translate3d(0, 0, 0); }
+.side-char-tv::before {
+  color: rgba(200, 220, 255, 0.6);
+  animation: side-rgb-l 0.35s calc(1.1s + var(--i) * 0.12s) ease-out forwards;
+}
+
+.side-char-tv::after {
+  color: rgba(150, 180, 255, 0.4);
+  animation: side-rgb-r 0.35s calc(1.1s + var(--i) * 0.12s) ease-out forwards;
+}
+
+/* ── Letter slide-in from LEFT ── */
+@keyframes side-char-left {
+  0%   { opacity: 0; transform: translate3d(-120px, 0, 0) scale(0.6) rotateY(-25deg); }
+  50%  { opacity: 1; transform: translate3d(8px, 0, 0) scale(1.04) rotateY(3deg); }
+  75%  { transform: translate3d(-3px, 0, 0) scale(0.98) rotateY(-1deg); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotateY(0deg); }
+}
+
+/* ── Letter slide-in from RIGHT ── */
+@keyframes side-char-right {
+  0%   { opacity: 0; transform: translate3d(120px, 0, 0) scale(0.6) rotateY(25deg); }
+  50%  { opacity: 1; transform: translate3d(-8px, 0, 0) scale(1.04) rotateY(-3deg); }
+  75%  { transform: translate3d(3px, 0, 0) scale(0.98) rotateY(1deg); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotateY(0deg); }
+}
+
+/* ── Chromatic aberration ── */
+@keyframes side-rgb-l {
+  0%   { opacity: 0.8; transform: translate3d(-8px, 0, 0); }
+  100% { opacity: 0; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes side-rgb-r {
+  0%   { opacity: 0.8; transform: translate3d(8px, 0, 0); }
+  100% { opacity: 0; transform: translate3d(0, 0, 0); }
+}
+
+/* ── Glow intensify pulse after assembly ── */
+@keyframes side-char-glow-purple {
+  0%   { text-shadow: 0 0 20px rgba(168,85,247,0.6), 0 0 50px rgba(168,85,247,0.3), 0 0 100px rgba(124,58,237,0.15); }
+  50%  { text-shadow: 0 0 30px rgba(168,85,247,0.9), 0 0 70px rgba(168,85,247,0.5), 0 0 130px rgba(124,58,237,0.3); }
+  100% { text-shadow: 0 0 20px rgba(168,85,247,0.6), 0 0 50px rgba(168,85,247,0.3), 0 0 100px rgba(124,58,237,0.15); }
+}
+
+@keyframes side-char-glow-white {
+  0%   { text-shadow: 0 0 15px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.2); }
+  50%  { text-shadow: 0 0 25px rgba(255,255,255,0.8), 0 0 60px rgba(255,255,255,0.4), 0 0 100px rgba(200,220,255,0.2); }
+  100% { text-shadow: 0 0 15px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.2); }
+}
+
+/* ── Underline sweep after all letters land ── */
+.side-underline {
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 3px;
+  width: 0;
+  background: linear-gradient(90deg, #a855f7, #c084fc, #ffffff, #c084fc, #a855f7);
+  border-radius: 2px;
+  animation: side-underline-sweep 0.5s 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5), 0 0 20px rgba(168, 85, 247, 0.2);
+}
+
+@keyframes side-underline-sweep {
+  0%   { width: 0; opacity: 0; }
+  30%  { opacity: 1; }
+  100% { width: min(90vw, 600px); opacity: 1; }
 }
 
 /* ── Skip button ── */
-.split-skip {
+.side-skip {
   position: absolute;
   bottom: 32px;
   right: 32px;
@@ -1066,20 +957,20 @@ video::-webkit-media-controls { border-radius: 8px; }
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  animation: split-skip-in 0.4s ease-out 0.5s both;
+  animation: side-skip-in 0.4s ease-out 0.5s both;
 }
 
-.split-skip:hover {
-  background: rgba(228, 9, 19, 0.25);
-  border-color: rgba(228, 9, 19, 0.4);
+.side-skip:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.4);
   color: white;
 }
 
-.split-skip:active {
+.side-skip:active {
   transform: scale(0.95);
 }
 
-@keyframes split-skip-in {
+@keyframes side-skip-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }

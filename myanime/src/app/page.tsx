@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useSyncExternalStore, useRef, useCallback } from "react";
 import { useAppStore, parseHash } from "@/components/anime/store";
 import Navbar from "@/components/anime/navbar";
 import HomePage from "@/components/anime/home-page";
@@ -33,9 +33,9 @@ function useMounted() {
 }
 
 // ================================================================
-// LUFFY TV SPLIT INTRO — "CURTAIN REVEAL"
-// Text assembles → crack forms → splits in half → reveals website
-// Two full-screen halves, each clipped to show their portion
+// LUFFY TV SIDEWAYS INTRO
+// "LUFFY" slides in from left (purple) → "TV" slides in from right (white)
+// Glow pulse → underline sweep → fade out → reveal website
 // Pure CSS animation, React only mounts/unmounts
 // ================================================================
 
@@ -50,122 +50,60 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     onCompleteRef.current();
   }, []);
 
-  // Unmount after all animations complete (4s split + buffer)
+  // Unmount after all animations complete (2.6s fadeout + buffer)
   useEffect(() => {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 4800);
+    }, 3400);
     return () => clearTimeout(t);
   }, []);
 
-  // Shard particles for the split line — memoized once
-  // MUST be before the early return to keep hooks order stable
-  const shards = useMemo(() => [
-    { x: '8%',  dx: '-60px',  dy: '-200px', size: 3, delay: '2.7s', dur: '1.2s' },
-    { x: '18%', dx: '80px',   dy: '180px',  size: 2, delay: '2.72s', dur: '1.1s' },
-    { x: '28%', dx: '-90px',  dy: '-160px', size: 4, delay: '2.68s', dur: '1.3s' },
-    { x: '38%', dx: '70px',   dy: '220px',  size: 2, delay: '2.74s', dur: '1s' },
-    { x: '48%', dx: '-100px', dy: '-240px', size: 5, delay: '2.66s', dur: '1.4s' },
-    { x: '52%', dx: '110px',  dy: '200px',  size: 3, delay: '2.7s', dur: '1.2s' },
-    { x: '62%', dx: '-75px',  dy: '-190px', size: 3, delay: '2.72s', dur: '1.1s' },
-    { x: '72%', dx: '95px',   dy: '170px',  size: 4, delay: '2.68s', dur: '1.3s' },
-    { x: '82%', dx: '-65px',  dy: '-210px', size: 2, delay: '2.74s', dur: '1s' },
-    { x: '92%', dx: '85px',   dy: '230px',  size: 3, delay: '2.7s', dur: '1.2s' },
-    { x: '15%', dx: '55px',   dy: '-180px', size: 2, delay: '2.69s', dur: '1.15s' },
-    { x: '45%', dx: '-85px',  dy: '190px',  size: 3, delay: '2.71s', dur: '1.25s' },
-    { x: '55%', dx: '100px',  dy: '-220px', size: 2, delay: '2.73s', dur: '1.05s' },
-    { x: '75%', dx: '-70px',  dy: '160px',  size: 4, delay: '2.67s', dur: '1.35s' },
-  ], []);
-
   if (gone) return null;
 
-  // Render the text rows (shared between both halves)
-  const renderText = () => (
-    <>
-      <div className="split-row">
-        {['L','U','F','F','Y'].map((c, i) => (
-          <span
-            key={i}
-            className="split-char"
-            data-char={c}
-            style={{ '--i': i } as React.CSSProperties}
-          >
-            {c}
-          </span>
-        ))}
-      </div>
-      <div className="split-row split-row-sm">
-        {['T','V'].map((c, i) => (
-          <span
-            key={i}
-            className="split-char split-char-sm"
-            data-char={c}
-            style={{ '--i': i + 5 } as React.CSSProperties}
-          >
-            {c}
-          </span>
-        ))}
-      </div>
-    </>
-  );
-
   return (
-    <div className="split-intro">
-      {/* ── Top half — slides UP to reveal ── */}
-      <div className="split-half split-top">
-        {/* Red ambient glow behind text */}
-        <div className="split-glow" />
-        {/* Text centered in viewport */}
-        <div className="split-text-center">
-          {renderText()}
+    <div className="side-intro">
+      {/* Purple ambient glow behind LUFFY */}
+      <div className="side-glow side-glow-purple" />
+      {/* White ambient glow behind TV */}
+      <div className="side-glow side-glow-white" />
+
+      {/* Text wrapper */}
+      <div className="side-text-wrap">
+        {/* LUFFY — slides from left, purple */}
+        <div className="side-row">
+          {['L','U','F','F','Y'].map((c, i) => (
+            <span
+              key={i}
+              className="side-char-luffy"
+              data-char={c}
+              style={{ '--i': i } as React.CSSProperties}
+            >
+              {c}
+            </span>
+          ))}
         </div>
-        {/* Glowing edge at the split line (bottom edge) */}
-        <div className="split-edge split-edge-bottom" />
-      </div>
 
-      {/* ── Bottom half — slides DOWN to reveal ── */}
-      <div className="split-half split-bottom">
-        {/* Red ambient glow behind text */}
-        <div className="split-glow" />
-        {/* Text centered in viewport — same position, clipped to bottom half */}
-        <div className="split-text-center">
-          {renderText()}
+        {/* TV — slides from right, white */}
+        <div className="side-row side-row-tv">
+          {['T','V'].map((c, i) => (
+            <span
+              key={i}
+              className="side-char-tv"
+              data-char={c}
+              style={{ '--i': i } as React.CSSProperties}
+            >
+              {c}
+            </span>
+          ))}
         </div>
-        {/* Glowing edge at the split line (top edge) */}
-        <div className="split-edge split-edge-top" />
+
+        {/* Underline sweep */}
+        <div className="side-underline" />
       </div>
 
-      {/* ── Crack/energy line at the split point ── */}
-      <div className="split-crack">
-        <div className="split-crack-core" />
-        <div className="split-crack-glow" />
-      </div>
-
-      {/* ── Shard particles that burst from the crack ── */}
-      <div className="split-shards">
-        {shards.map((s, i) => (
-          <span
-            key={i}
-            className="split-shard"
-            style={{
-              left: s.x,
-              '--dx': s.dx,
-              '--dy': s.dy,
-              width: s.size,
-              height: s.size,
-              animationDelay: s.delay,
-              animationDuration: s.dur,
-            } as React.CSSProperties}
-          />
-        ))}
-      </div>
-
-      {/* ── Screen shake wrapper ── */}
-      <div className="split-shake" />
-
-      {/* ── Skip button ── */}
-      <button onClick={skip} className="split-skip" aria-label="Skip intro">
+      {/* Skip button */}
+      <button onClick={skip} className="side-skip" aria-label="Skip intro">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
