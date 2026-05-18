@@ -27,10 +27,12 @@ interface ServerInfo {
   color: string;
   icon?: string;
   idType: "tmdb" | "anilist" | "native";
+  supportsSub: boolean;
   supportsDub: boolean;
   supportsHindi: boolean;
   category: "anime" | "tmdb" | "hindi" | "native";
   isNative?: boolean;
+  customName?: string;
 }
 
 interface SkipData {
@@ -86,6 +88,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
   const [showSkipButton, setShowSkipButton] = useState<"intro" | "outro" | null>(null);
   const [showServerList, setShowServerList] = useState(false);
+  const [hindiDubAvailable, setHindiDubAvailable] = useState<boolean | null>(null); // null = not checked yet
 
   // Parse anime ID
   useEffect(() => {
@@ -145,6 +148,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
   useEffect(() => {
     const animeServers = getAnimeServers();
     const availableServers: ServerInfo[] = [];
+    let hasHindiSupport = false;
 
     for (const server of animeServers) {
       // Show all servers regardless of translation — just mark which are available
@@ -153,9 +157,11 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
         availableServers.push({
           id: server.id, name: server.name, url: server.id === "megaplay-decryptor" ? "native:megaplay" : "native:kiwi",
           color: server.color, idType: "native",
-          supportsDub: server.supportsDub, supportsHindi: server.supportsHindi,
+          supportsSub: server.supportsSub, supportsDub: server.supportsDub, supportsHindi: server.supportsHindi,
           category: server.category, isNative: true,
+          customName: server.customName,
         });
+        if (server.supportsHindi) hasHindiSupport = true;
         continue;
       }
 
@@ -172,12 +178,15 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
         availableServers.push({
           id: server.id, name: server.name, url,
           color: server.color, idType: server.idType,
-          supportsDub: server.supportsDub, supportsHindi: server.supportsHindi,
+          supportsSub: server.supportsSub, supportsDub: server.supportsDub, supportsHindi: server.supportsHindi,
           category: server.category, isNative: false,
+          customName: server.customName,
         });
+        if (server.supportsHindi) hasHindiSupport = true;
       }
     }
     setServers(availableServers);
+    setHindiDubAvailable(hasHindiSupport);
     if (availableServers.length > 0) {
       const currentStillValid = availableServers.some(s => s.id === activeServerId);
       if (!currentStillValid) setActiveServerId(availableServers[0].id);
@@ -225,6 +234,16 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
   useEffect(() => {
     const server = servers.find(s => s.id === activeServerId);
     if (!server) return;
+
+    // Guard: if Hindi mode and no Hindi servers available, show error
+    if (translation === "hindi" && hindiDubAvailable === false) {
+      setUseNativePlayer(false);
+      setEmbedUrl("");
+      setLoading(false);
+      setError("Hindi Dub not available for this anime");
+      return;
+    }
+
     setUseDirectEmbed(true);
     setSkipData({});
     setSubtitleTracks([]);
@@ -260,7 +279,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
         }
       }, 12000);
     }
-  }, [activeServerId, episodeNum, anilistId, translation]);
+  }, [activeServerId, episodeNum, anilistId, translation, hindiDubAvailable]);
 
   const loadKiwiStream = useCallback(async () => {
     if (!anilistId) return;
@@ -531,17 +550,32 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             {error && !loading && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20">
                 <div className="text-center space-y-4 max-w-sm px-6">
-                  <svg className="w-10 h-10 text-rose-400/60 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-zinc-300 text-sm">{error}</p>
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
-                    <button onClick={retryLoad} className="pill-btn pill-btn-primary text-xs py-2 px-4">Retry</button>
-                    <button onClick={() => {
-                      const currentIdx = servers.findIndex(s => s.id === activeServerId);
-                      if (currentIdx < servers.length - 1) setActiveServerId(servers[currentIdx + 1].id);
-                    }} className="pill-btn pill-btn-ghost text-xs py-2 px-4">Next Server</button>
-                  </div>
+                  {translation === "hindi" && hindiDubAvailable === false ? (
+                    <>
+                      <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto">
+                        <span className="text-2xl">🇮🇳</span>
+                      </div>
+                      <p className="text-orange-400 text-base font-bold">Hindi Dub Not Available</p>
+                      <p className="text-zinc-400 text-sm">No streaming found — Hindi Dub is not available for this anime.</p>
+                      <button onClick={() => switchTranslation("sub")} className="pill-btn pill-btn-primary text-xs py-2 px-4">
+                        Switch to SUB
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-10 h-10 text-rose-400/60 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <p className="text-zinc-300 text-sm">{error}</p>
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
+                        <button onClick={retryLoad} className="pill-btn pill-btn-primary text-xs py-2 px-4">Retry</button>
+                        <button onClick={() => {
+                          const currentIdx = servers.findIndex(s => s.id === activeServerId);
+                          if (currentIdx < servers.length - 1) setActiveServerId(servers[currentIdx + 1].id);
+                        }} className="pill-btn pill-btn-ghost text-xs py-2 px-4">Next Server</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -586,10 +620,12 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
               </div>
             </div>
 
-            {/* Server Switcher — ALL servers */}
+            {/* Sub/Dub Server Switcher — non-Hindi servers */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Servers ({servers.length})</span>
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                  {translation === "hindi" ? "Hindi Dub Servers" : `Servers (${servers.filter(s => !s.supportsHindi || s.supportsSub || s.supportsDub).length})`}
+                </span>
                 <button
                   onClick={() => setShowServerList(!showServerList)}
                   className="sm:hidden text-[10px] text-cyan-400 hover:text-cyan-300 font-medium"
@@ -597,40 +633,111 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                   {showServerList ? "Hide" : "Show All"}
                 </button>
               </div>
-              <div className={`flex items-center gap-1.5 flex-wrap ${!showServerList ? 'hidden sm:flex' : 'flex'}`}>
-                {servers.map((s) => {
-                  const supported = serverSupportsTranslation(s);
-                  return (
-                    <button key={s.id}
-                      onClick={() => { setActiveServerId(s.id); setLoading(true); setError(null); }}
-                      className={`server-pill text-[11px] py-1.5 px-3 flex items-center gap-1.5 ${
-                        activeServerId === s.id ? "active" : ""
-                      } ${!supported ? "opacity-40" : ""}`}
-                      title={!supported ? `${s.name} doesn't support ${translation}` : s.name}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                      {s.name}
-                      {!supported && (
-                        <span className="text-[8px] text-zinc-600 ml-0.5">N/A</span>
-                      )}
-                    </button>
-                  );
-                })}
-                {/* Proxy / Direct toggle */}
-                {!useNativePlayer && (
-                  <button
-                    onClick={() => { setUseDirectEmbed(!useDirectEmbed); setLoading(true); setError(null); }}
-                    className={`ml-1 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
-                      useDirectEmbed
-                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
-                        : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
-                    }`}
-                    title={useDirectEmbed ? "Direct embed — bypasses proxy" : "Proxy mode — anti-sandbox enabled"}
-                  >
-                    {useDirectEmbed ? "Direct" : "Proxy"}
+
+              {/* Sub/Dub/Hindi translation tabs */}
+              <div className="flex items-center gap-1 bg-[#0b1116] rounded-full p-0.5">
+                {(["sub", "dub", "hindi"] as const).map(t => (
+                  <button key={t} onClick={() => switchTranslation(t)}
+                    className={`flex-1 py-1.5 text-[10px] font-bold rounded-full transition-all flex items-center justify-center gap-1 ${
+                      translation === t
+                        ? t === "sub" ? "bg-cyan-500/15 text-cyan-300" : t === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}>
+                    {t === "hindi" ? "🇮🇳 HINDI DUB" : t.toUpperCase()}
+                    {t === "hindi" && hindiDubAvailable === false && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                    )}
                   </button>
-                )}
+                ))}
               </div>
+
+              {/* Server pills for current translation */}
+              {translation === "hindi" ? (
+                /* Hindi Dub — separate section */
+                hindiDubAvailable === false ? (
+                  <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
+                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
+                      <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      </svg>
+                    </div>
+                    <p className="text-orange-400 text-sm font-bold mb-1">Hindi Dub Not Available</p>
+                    <p className="text-zinc-500 text-[11px] leading-relaxed">
+                      No streaming found — Hindi Dub is not available for this anime.
+                    </p>
+                    <p className="text-zinc-600 text-[10px] mt-2">
+                      Try switching to SUB or DUB to watch this anime.
+                    </p>
+                  </div>
+                ) : (
+                  <div className={`flex items-center gap-1.5 flex-wrap ${!showServerList ? 'hidden sm:flex' : 'flex'}`}>
+                    {servers.filter(s => s.supportsHindi).map((s) => (
+                      <button key={s.id}
+                        onClick={() => { setActiveServerId(s.id); setLoading(true); setError(null); }}
+                        className={`server-pill text-[11px] py-1.5 px-3 flex items-center gap-1.5 ${
+                          activeServerId === s.id ? "active" : ""
+                        }`}
+                        title={s.name}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                        <span className="text-[9px]">🇮🇳</span>
+                        {s.customName || s.name}
+                      </button>
+                    ))}
+                    {/* Proxy / Direct toggle */}
+                    {!useNativePlayer && (
+                      <button
+                        onClick={() => { setUseDirectEmbed(!useDirectEmbed); setLoading(true); setError(null); }}
+                        className={`ml-1 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
+                          useDirectEmbed
+                            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                            : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
+                        }`}
+                        title={useDirectEmbed ? "Direct embed — bypasses proxy" : "Proxy mode — anti-sandbox enabled"}
+                      >
+                        {useDirectEmbed ? "Direct" : "Proxy"}
+                      </button>
+                    )}
+                  </div>
+                )
+              ) : (
+                /* Sub/Dub servers */
+                <div className={`flex items-center gap-1.5 flex-wrap ${!showServerList ? 'hidden sm:flex' : 'flex'}`}>
+                  {servers.map((s) => {
+                    const supported = serverSupportsTranslation(s);
+                    // In sub/dub mode, still show Hindi Dub server but marked as N/A
+                    return (
+                      <button key={s.id}
+                        onClick={() => { if (supported) { setActiveServerId(s.id); setLoading(true); setError(null); } }}
+                        className={`server-pill text-[11px] py-1.5 px-3 flex items-center gap-1.5 ${
+                          activeServerId === s.id ? "active" : ""
+                        } ${!supported ? "opacity-40 cursor-not-allowed" : ""}`}
+                        title={!supported ? `${s.name} doesn't support ${translation}` : s.name}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                        {s.customName || s.name}
+                        {!supported && (
+                          <span className="text-[8px] text-zinc-600 ml-0.5">N/A</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {/* Proxy / Direct toggle */}
+                  {!useNativePlayer && (
+                    <button
+                      onClick={() => { setUseDirectEmbed(!useDirectEmbed); setLoading(true); setError(null); }}
+                      className={`ml-1 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
+                        useDirectEmbed
+                          ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                          : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
+                      }`}
+                      title={useDirectEmbed ? "Direct embed — bypasses proxy" : "Proxy mode — anti-sandbox enabled"}
+                    >
+                      {useDirectEmbed ? "Direct" : "Proxy"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Subtitle indicator */}
@@ -657,20 +764,28 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             <span className="text-[10px] text-zinc-500">{episodeList.length || "?"} episodes</span>
           </div>
 
-          {/* Translation toggle */}
+          {/* Translation quick toggle in sidebar */}
           <div className="p-3 border-b border-white/[0.04]">
             <div className="flex items-center gap-1 bg-[#0b1116] rounded-full p-0.5">
               {(["sub", "dub", "hindi"] as const).map(t => (
                 <button key={t} onClick={() => switchTranslation(t)}
-                  className={`flex-1 py-1.5 text-[10px] font-bold rounded-full transition-all ${
+                  className={`flex-1 py-1.5 text-[10px] font-bold rounded-full transition-all flex items-center justify-center gap-1 ${
                     translation === t
                       ? t === "sub" ? "bg-cyan-500/15 text-cyan-300" : t === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}>
-                  {t.toUpperCase()}
+                  {t === "hindi" ? "🇮🇳 HIN" : t.toUpperCase()}
+                  {t === "hindi" && hindiDubAvailable === false && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                  )}
                 </button>
               ))}
             </div>
+            {translation === "hindi" && hindiDubAvailable === false && (
+              <div className="mt-2 p-2 rounded-lg bg-red-500/5 border border-red-500/10 text-center">
+                <p className="text-[10px] text-red-400/80 font-medium">Hindi Dub not available for this anime</p>
+              </div>
+            )}
           </div>
 
           {/* Episode list */}

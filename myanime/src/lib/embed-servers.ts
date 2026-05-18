@@ -18,6 +18,7 @@ export interface EmbedServer {
   color: string;
   category: "anime" | "tmdb" | "hindi" | "native";
   isNative?: boolean;     // If true, this server uses native HLS player (not iframe)
+  customName?: string;    // If set, overrides auto-numbered name (e.g. "Hindi Dub")
   generateUrl: (params: EmbedUrlParams) => string;
 }
 
@@ -458,7 +459,7 @@ const tryembed: EmbedServer = {
 
 const anixtvHindi: EmbedServer = {
   id: "anixtv-hindi",
-  name: "Server 8",
+  name: "Hindi Dub",
   priority: 18,
   supportsSub: false,
   supportsDub: false,
@@ -466,6 +467,7 @@ const anixtvHindi: EmbedServer = {
   idType: "anilist",
   color: "#FF6B35",
   category: "hindi",
+  customName: "Hindi Dub",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
     const title = p.title ? encodeURIComponent(p.title) : `Anime-${p.anilistId}`;
@@ -499,7 +501,7 @@ export function getAnimeServers(): EmbedServer[] {
   );
   return servers.map((s, i) => ({
     ...s,
-    name: `Server ${i + 1}`,
+    name: s.customName || `Server ${i + 1}`,
     priority: i,
   }));
 }
