@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTrending, getPopular, getTopRated } from "@/lib/anilist-api";
-import { jikanTopAnime, jikanSeasonNow } from "@/lib/jikan-api";
 import { miruroTrending, miruroPopular, miruroRecent } from "@/lib/miruro-api";
+import { jikanTopAnime, jikanSeasonNow } from "@/lib/jikan-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,14 +70,14 @@ function normalizeItem(item: any): Record<string, any> {
 
 /**
  * GET /api/anime/home
- * 3-LAYER FALLBACK: AniList (primary) → Jikan/MAL (backup 1) → Miruro (backup 2)
+ * 3-LAYER FALLBACK: AniList (primary) → Miruro (backup 1) → Jikan/MAL (backup 2)
  *
  * Returns home page data with proper cascading fallback for all sections.
  * All data is normalized to MiruroAnimeResult format for consistent rendering.
  */
 export async function GET(request: NextRequest) {
   try {
-    // ---- TRENDING: AniList → Jikan → Miruro ----
+    // ---- TRENDING: AniList → Miruro → Jikan ----
     let trendingData: any[] = [];
     let trendingSource = "anilist";
 
@@ -92,18 +92,6 @@ export async function GET(request: NextRequest) {
 
     if (trendingData.length === 0) {
       try {
-        const jikanData = await jikanTopAnime(1, 20, "airing");
-        if (jikanData && jikanData.length > 0) {
-          trendingData = jikanData.map(normalizeItem);
-          trendingSource = "mal";
-        }
-      } catch (err) {
-        console.error("[home] Jikan trending error:", err);
-      }
-    }
-
-    if (trendingData.length === 0) {
-      try {
         const miruroData = await miruroTrending(1, 20);
         if (miruroData && miruroData.length > 0) {
           trendingData = miruroData.map(normalizeItem);
@@ -114,7 +102,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ---- POPULAR: AniList → Jikan → Miruro ----
+    if (trendingData.length === 0) {
+      try {
+        const jikanData = await jikanTopAnime(1, 20, "airing");
+        if (jikanData && jikanData.length > 0) {
+          trendingData = jikanData.map(normalizeItem);
+          trendingSource = "mal";
+        }
+      } catch (err) {
+        console.error("[home] Jikan trending error:", err);
+      }
+    }
+
+    // ---- POPULAR: AniList → Miruro → Jikan ----
     let popularData: any[] = [];
     let popularSource = "anilist";
 
@@ -129,18 +129,6 @@ export async function GET(request: NextRequest) {
 
     if (popularData.length === 0) {
       try {
-        const jikanData = await jikanTopAnime(1, 20, "bypopularity");
-        if (jikanData && jikanData.length > 0) {
-          popularData = jikanData.map(normalizeItem);
-          popularSource = "mal";
-        }
-      } catch (err) {
-        console.error("[home] Jikan popular error:", err);
-      }
-    }
-
-    if (popularData.length === 0) {
-      try {
         const miruroData = await miruroPopular(1, 20);
         if (miruroData && miruroData.length > 0) {
           popularData = miruroData.map(normalizeItem);
@@ -151,7 +139,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ---- RECENT: Miruro primary → Jikan airing backup ----
+    if (popularData.length === 0) {
+      try {
+        const jikanData = await jikanTopAnime(1, 20, "bypopularity");
+        if (jikanData && jikanData.length > 0) {
+          popularData = jikanData.map(normalizeItem);
+          popularSource = "mal";
+        }
+      } catch (err) {
+        console.error("[home] Jikan popular error:", err);
+      }
+    }
+
+    // ---- RECENT: Miruro primary → AniList trending → Jikan airing backup ----
     let recentData: any[] = [];
     let recentSource = "miruro";
 
@@ -163,6 +163,19 @@ export async function GET(request: NextRequest) {
       }
     } catch (err) {
       console.error("[home] Miruro recent error:", err);
+    }
+
+    if (recentData.length === 0) {
+      try {
+        // Use AniList trending as a proxy for recent
+        const alData = await getTrending(1, 20);
+        if (alData && alData.length > 0) {
+          recentData = alData.map(normalizeItem);
+          recentSource = "anilist";
+        }
+      } catch (err) {
+        console.error("[home] AniList recent error:", err);
+      }
     }
 
     if (recentData.length === 0) {

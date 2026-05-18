@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnimeDetails } from "@/lib/anilist-api";
-import { jikanAnimeById, jikanAnimeCharacters, jikanAnimeRelations, jikanAnimeRecommendations, jikanToMiruro, jikanCharacterToAniListFormat, jikanRelationToAniListFormat, jikanRecommendationToAniListFormat } from "@/lib/jikan-api";
 import { miruroInfo } from "@/lib/miruro-api";
+import { jikanAnimeById, jikanAnimeCharacters, jikanAnimeRelations, jikanAnimeRecommendations, jikanToMiruro, jikanCharacterToAniListFormat, jikanRelationToAniListFormat, jikanRecommendationToAniListFormat } from "@/lib/jikan-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,7 +95,53 @@ async function fetchAniList(anilistId: number) {
   }
 }
 
-// Layer 2: MAL/Jikan (backup 1)
+// Layer 2: Miruro (backup 1)
+async function fetchMiruro(anilistId: number) {
+  try {
+    const data = await miruroInfo(anilistId);
+    if (!data) return null;
+
+    const anilistInfo = {
+      id: anilistId,
+      idMal: null,
+      title: data.title,
+      coverImage: data.coverImage,
+      bannerImage: data.bannerImage,
+      description: data.description,
+      type: data.type,
+      format: data.format,
+      status: data.status,
+      episodes: data.episodes,
+      duration: data.duration,
+      genres: data.genres,
+      averageScore: data.averageScore,
+      season: data.season,
+      seasonYear: data.seasonYear,
+      countryOfOrigin: data.countryOfOrigin,
+      isAdult: data.isAdult,
+      studios: [],
+      characters: [],
+      staff: [],
+      recommendations: [],
+      relations: [],
+      trailer: null,
+      externalLinks: [],
+    };
+
+    return {
+      anime: null,
+      anilistInfo,
+      totalEpisodes: data.episodes || null,
+      nextAiringEpisode: null,
+      _source: "miruro",
+    };
+  } catch (err: any) {
+    console.error("[anime/info] Miruro error:", err?.message || err);
+    return null;
+  }
+}
+
+// Layer 3: MAL/Jikan (backup 2 — last resort)
 async function fetchMAL(malId: number) {
   try {
     const jikanData = await jikanAnimeById(malId);
@@ -162,52 +208,6 @@ async function fetchMAL(malId: number) {
   }
 }
 
-// Layer 3: Miruro (backup 2)
-async function fetchMiruro(anilistId: number) {
-  try {
-    const data = await miruroInfo(anilistId);
-    if (!data) return null;
-
-    const anilistInfo = {
-      id: anilistId,
-      idMal: null,
-      title: data.title,
-      coverImage: data.coverImage,
-      bannerImage: data.bannerImage,
-      description: data.description,
-      type: data.type,
-      format: data.format,
-      status: data.status,
-      episodes: data.episodes,
-      duration: data.duration,
-      genres: data.genres,
-      averageScore: data.averageScore,
-      season: data.season,
-      seasonYear: data.seasonYear,
-      countryOfOrigin: data.countryOfOrigin,
-      isAdult: data.isAdult,
-      studios: [],
-      characters: [],
-      staff: [],
-      recommendations: [],
-      relations: [],
-      trailer: null,
-      externalLinks: [],
-    };
-
-    return {
-      anime: null,
-      anilistInfo,
-      totalEpisodes: data.episodes || null,
-      nextAiringEpisode: null,
-      _source: "miruro",
-    };
-  } catch (err: any) {
-    console.error("[anime/info] Miruro error:", err?.message || err);
-    return null;
-  }
-}
-
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -219,18 +219,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid anime ID", anime: null, anilistInfo: null });
   }
 
-  // 3-layer cascade: AniList → MAL → Miruro
+  // 3-layer cascade: AniList → Miruro → MAL/Jikan
   // Layer 1: Try AniList first
   const anilistResult = await fetchAniList(numericId);
   if (anilistResult) return NextResponse.json(anilistResult);
 
-  // Layer 2: Try MAL/Jikan
-  const malResult = await fetchMAL(numericId);
-  if (malResult) return NextResponse.json(malResult);
-
-  // Layer 3: Try Miruro
+  // Layer 2: Try Miruro
   const miruroResult = await fetchMiruro(numericId);
   if (miruroResult) return NextResponse.json(miruroResult);
+
+  // Layer 3: Try MAL/Jikan (last resort)
+  const malResult = await fetchMAL(numericId);
+  if (malResult) return NextResponse.json(malResult);
 
   // All 3 failed
   return NextResponse.json({

@@ -46,7 +46,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
 
   const [useDirectEmbed, setUseDirectEmbed] = useState(true);
   const [useNativePlayer, setUseNativePlayer] = useState(false);
-  const [kiwiLoading, setKiwiLoading] = useState(false);
+  const [mikuLoading, setMikuLoading] = useState(false);
   const [servers, setServers] = useState<ServerInfo[]>([]);
   const [activeServerId, setActiveServerId] = useState<string>("");
   const [embedUrl, setEmbedUrl] = useState<string>("");
@@ -236,8 +236,8 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     if (server.isNative) {
       setUseDirectEmbed(true);
       setUseNativePlayer(true);
-      if (server.id === "miruro-kiwi") {
-        loadKiwiStream();
+      if (server.id === "miruro-miku" || server.id === "miruro-kiwi") {
+        loadMikuStream();
       } else if (server.id === "megaplay-decrypter") {
         loadMegaplayStream();
       }
@@ -324,20 +324,20 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     }
   }, [anilistId, episodeNum, translation]);
 
-  const loadKiwiStream = useCallback(async () => {
+  const loadMikuStream = useCallback(async () => {
     if (!anilistId) return;
-    setLoading(true); setError(null); setPlaying(false); setKiwiLoading(true);
+    setLoading(true); setError(null); setPlaying(false); setMikuLoading(true);
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
     loadTimeoutRef.current = setTimeout(() => {
-      setLoading(false); setKiwiLoading(false);
+      setLoading(false); setMikuLoading(false);
       setError("Stream is taking too long. Try another server.");
     }, MAX_LOAD_TIME);
 
     try {
       const slug = episodeList.find(e => e.number === episodeNum)?.slug || String(episodeNum);
       // Pass epNum so the API can auto-switch providers if the first one fails
-      const url = `/api/miruro/watch?provider=kiwi&id=${anilistId}&type=${translation}&slug=${encodeURIComponent(slug)}&epNum=${episodeNum}`;
+      const url = `/api/miruro/watch?provider=miku&id=${anilistId}&type=${translation}&slug=${encodeURIComponent(slug)}&epNum=${episodeNum}`;
       const res = await fetch(url);
       if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "No sources found"); }
@@ -346,8 +346,8 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       if (!data.sources?.length) throw new Error("No stream sources available");
 
       // Log which provider actually worked (for debugging auto-switch)
-      if (data.activeProvider && data.activeProvider !== "kiwi") {
-        console.log(`[WatchPage] Auto-switched from kiwi to ${data.activeProvider} (tried: ${data.triedProviders?.join(", ")})`);
+      if (data.activeProvider && data.activeProvider !== "miku") {
+        console.log(`[WatchPage] Auto-switched from miku to ${data.activeProvider} (tried: ${data.triedProviders?.join(", ")})`);
       }
 
       const intSources = data.sources.filter((s: StreamSource) => s.sourceType === "internal" || !s.sourceType);
@@ -361,7 +361,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
       setError(err.message || "Failed to load stream");
     }
-    setLoading(false); setKiwiLoading(false);
+    setLoading(false); setMikuLoading(false);
   }, [anilistId, episodeNum, translation, episodeList]);
 
   const playSource = useCallback((source: StreamSource, headers?: Record<string, string>) => {
@@ -397,7 +397,8 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     const server = servers.find(s => s.id === activeServerId);
     if (server?.isNative) {
       if (server.id === "megaplay-decrypter") loadMegaplayStream();
-      else loadKiwiStream();
+      else if (server.id === "miruro-miku") loadMikuStream();
+      else if (server.id === "miruro-kiwi") loadMikuStream(); // kiwi also uses miku stream loader
     } else {
       if (!useDirectEmbed) {
         setUseDirectEmbed(true);

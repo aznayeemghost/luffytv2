@@ -38,11 +38,12 @@ export interface EmbedUrlParams {
 // =====================================================
 
 // ============================================================
-// Native servers — Miruro Kiwi (direct HLS, no iframe)
+// Native servers — Miruro Miku (direct HLS, no iframe)
+// Miku is the primary provider — user requested
 // ============================================================
 
-const miruroKiwi: EmbedServer = {
-  id: "miruro-kiwi",
+const miruroMiku: EmbedServer = {
+  id: "miruro-miku",
   name: "Server 1",
   priority: 0,
   supportsSub: true,
@@ -50,6 +51,20 @@ const miruroKiwi: EmbedServer = {
   supportsHindi: false,
   idType: "native",
   color: "#00ff88",
+  category: "native",
+  isNative: true,
+  generateUrl: () => "native:miku",
+};
+
+const miruroKiwi: EmbedServer = {
+  id: "miruro-kiwi",
+  name: "Server 2",
+  priority: 1,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: false,
+  idType: "native",
+  color: "#22d3ee",
   category: "native",
   isNative: true,
   generateUrl: () => "native:kiwi",
@@ -62,8 +77,8 @@ const miruroKiwi: EmbedServer = {
 
 const megaplayDecrypter: EmbedServer = {
   id: "megaplay-decrypter",
-  name: "Server 2",
-  priority: 1,
+  name: "Server 3",
+  priority: 2,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -80,8 +95,8 @@ const megaplayDecrypter: EmbedServer = {
 
 const vidnestAnime: EmbedServer = {
   id: "vidnest-anime",
-  name: "Server 3",
-  priority: 3,
+  name: "Server 4",
+  priority: 4,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -97,8 +112,8 @@ const vidnestAnime: EmbedServer = {
 
 const vidnestAnimepahe: EmbedServer = {
   id: "vidnest-animepahe",
-  name: "Server 4",
-  priority: 4,
+  name: "Server 5",
+  priority: 5,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -114,8 +129,8 @@ const vidnestAnimepahe: EmbedServer = {
 
 const videasyAnime: EmbedServer = {
   id: "videasy-anime",
-  name: "Server 5",
-  priority: 5,
+  name: "Server 6",
+  priority: 6,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -131,8 +146,8 @@ const videasyAnime: EmbedServer = {
 
 const megaplayEmbed: EmbedServer = {
   id: "megaplay-embed",
-  name: "Server 6",
-  priority: 6,
+  name: "Server 7",
+  priority: 7,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -148,8 +163,8 @@ const megaplayEmbed: EmbedServer = {
 
 const tryembed: EmbedServer = {
   id: "tryembed",
-  name: "Server 7",
-  priority: 7,
+  name: "Server 8",
+  priority: 8,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -165,8 +180,8 @@ const tryembed: EmbedServer = {
 
 const vidplusAnime: EmbedServer = {
   id: "vidplus-anime",
-  name: "Server 8",
-  priority: 8,
+  name: "Server 9",
+  priority: 9,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -518,7 +533,7 @@ const vidking: EmbedServer = {
 // ============================================================
 
 const ALL_SERVERS: EmbedServer[] = [
-  miruroKiwi,
+  miruroMiku, miruroKiwi,
   megaplayDecrypter,
   vidnestAnime, vidnestAnimepahe, videasyAnime, megaplayEmbed, tryembed, vidplusAnime,
   anixtvHindi, megaplayHindi, vidnestHindi, vidnestPaheHindi, tryembedHindi,
@@ -528,7 +543,7 @@ const ALL_SERVERS: EmbedServer[] = [
 
 /**
  * Get servers available for Anime content (SUB/DUB)
- * Includes: native (kiwi + megaplay decrypter), anilist-based
+ * Includes: native (miku + kiwi + megaplay decrypter), anilist-based
  * Excludes: Hindi-specific servers and TMDB-based servers
  */
 export function getAnimeServers(): EmbedServer[] {
@@ -584,7 +599,7 @@ export function getEmbedUrl(serverId: string, params: EmbedUrlParams): string {
 }
 
 /**
- * Get native servers (Miruro Kiwi + MegaPlay Decrypter)
+ * Get native servers (Miruro Miku + Kiwi + MegaPlay Decrypter)
  */
 export function getNativeServers(): EmbedServer[] {
   return ALL_SERVERS.filter(s => s.isNative);

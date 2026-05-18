@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTrending, getPopular, getTopRated, getSeasonAnime } from "@/lib/anilist-api";
-import { jikanTopAnime, jikanSeasonNow } from "@/lib/jikan-api";
 import { miruroTrending, miruroPopular } from "@/lib/miruro-api";
+import { jikanTopAnime, jikanSeasonNow } from "@/lib/jikan-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/anime/anilist-trending
- * 3-LAYER FALLBACK: AniList (primary) → Jikan/MAL (backup 1) → Miruro (backup 2)
+ * 3-LAYER FALLBACK: AniList (primary) → Miruro (backup 1) → MAL/Jikan (backup 2)
  *
  * Optional query params:
  *   - section: "trending" | "popular" | "topRated" | "season" | "all" (default: all)
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     const results: Record<string, any> = {};
 
-    // ---- TRENDING: AniList → Jikan → Miruro ----
+    // ---- TRENDING: AniList → Miruro → Jikan ----
     if (section === "all" || section === "trending") {
       let trendingData: any[] = [];
       let source = "anilist";
@@ -37,17 +37,7 @@ export async function GET(request: NextRequest) {
         console.error("[anilist-trending] AniList trending error:", err);
       }
 
-      // Layer 2: Jikan/MAL backup
-      if (trendingData.length === 0) {
-        try {
-          trendingData = await jikanTopAnime(1, 25, "airing");
-          if (trendingData.length > 0) source = "mal";
-        } catch (err) {
-          console.error("[anilist-trending] Jikan trending error:", err);
-        }
-      }
-
-      // Layer 3: Miruro backup
+      // Layer 2: Miruro backup
       if (trendingData.length === 0) {
         try {
           trendingData = await miruroTrending(1, 25);
@@ -57,11 +47,21 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Layer 3: Jikan/MAL backup (last resort)
+      if (trendingData.length === 0) {
+        try {
+          trendingData = await jikanTopAnime(1, 25, "airing");
+          if (trendingData.length > 0) source = "mal";
+        } catch (err) {
+          console.error("[anilist-trending] Jikan trending error:", err);
+        }
+      }
+
       results.trending = trendingData;
       results._trendingSource = source;
     }
 
-    // ---- POPULAR: AniList → Jikan → Miruro ----
+    // ---- POPULAR: AniList → Miruro → Jikan ----
     if (section === "all" || section === "popular") {
       let popularData: any[] = [];
       let source = "anilist";
@@ -74,17 +74,7 @@ export async function GET(request: NextRequest) {
         console.error("[anilist-trending] AniList popular error:", err);
       }
 
-      // Layer 2: Jikan/MAL backup
-      if (popularData.length === 0) {
-        try {
-          popularData = await jikanTopAnime(1, 25, "bypopularity");
-          if (popularData.length > 0) source = "mal";
-        } catch (err) {
-          console.error("[anilist-trending] Jikan popular error:", err);
-        }
-      }
-
-      // Layer 3: Miruro backup
+      // Layer 2: Miruro backup
       if (popularData.length === 0) {
         try {
           popularData = await miruroPopular(1, 25);
@@ -94,11 +84,21 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Layer 3: Jikan/MAL backup (last resort)
+      if (popularData.length === 0) {
+        try {
+          popularData = await jikanTopAnime(1, 25, "bypopularity");
+          if (popularData.length > 0) source = "mal";
+        } catch (err) {
+          console.error("[anilist-trending] Jikan popular error:", err);
+        }
+      }
+
       results.popular = popularData;
       results._popularSource = source;
     }
 
-    // ---- TOP RATED: AniList → Jikan → Miruro ----
+    // ---- TOP RATED: AniList → Miruro → Jikan ----
     if (section === "all" || section === "topRated") {
       let topRatedData: any[] = [];
       let source = "anilist";
@@ -111,17 +111,7 @@ export async function GET(request: NextRequest) {
         console.error("[anilist-trending] AniList topRated error:", err);
       }
 
-      // Layer 2: Jikan/MAL backup (top anime without filter = by score)
-      if (topRatedData.length === 0) {
-        try {
-          topRatedData = await jikanTopAnime(1, 25);
-          if (topRatedData.length > 0) source = "mal";
-        } catch (err) {
-          console.error("[anilist-trending] Jikan topRated error:", err);
-        }
-      }
-
-      // Layer 3: Miruro backup (use popular as topRated proxy)
+      // Layer 2: Miruro backup (use popular as topRated proxy)
       if (topRatedData.length === 0) {
         try {
           topRatedData = await miruroPopular(1, 25);
@@ -131,11 +121,21 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Layer 3: Jikan/MAL backup (last resort)
+      if (topRatedData.length === 0) {
+        try {
+          topRatedData = await jikanTopAnime(1, 25);
+          if (topRatedData.length > 0) source = "mal";
+        } catch (err) {
+          console.error("[anilist-trending] Jikan topRated error:", err);
+        }
+      }
+
       results.topRated = topRatedData;
       results._topRatedSource = source;
     }
 
-    // ---- SEASON: AniList → Jikan ----
+    // ---- SEASON: AniList → Miruro → Jikan ----
     if (section === "season" || section === "all") {
       const currentMonth = new Date().getMonth();
       let currentSeason = season;
@@ -157,7 +157,20 @@ export async function GET(request: NextRequest) {
         console.error("[anilist-trending] AniList season error:", err);
       }
 
-      // Layer 2: Jikan/MAL backup
+      // Layer 2: Miruro backup (use trending and filter by season)
+      if (seasonData.length === 0) {
+        try {
+          const miruroData = await miruroTrending(1, 50);
+          seasonData = miruroData.filter((a: any) =>
+            a.season?.toUpperCase() === currentSeason && a.seasonYear === year
+          );
+          if (seasonData.length > 0) source = "miruro";
+        } catch (err) {
+          console.error("[anilist-trending] Miruro season error:", err);
+        }
+      }
+
+      // Layer 3: Jikan/MAL backup (last resort)
       if (seasonData.length === 0) {
         try {
           seasonData = await jikanSeasonNow(1, 25);

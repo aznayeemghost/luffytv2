@@ -24,74 +24,124 @@ const SEASONS = [
 
 // Map AniList media to MiruroAnimeResult format for compatibility with AnimeCard
 function mapAniListToMiruro(items: any[]): MiruroAnimeResult[] {
-  return items.map(item => ({
-    id: item.id,
-    title: {
-      romaji: item.title?.romaji,
-      english: item.title?.english,
-      native: item.title?.native,
-    },
-    coverImage: {
-      extraLarge: item.coverImage?.extraLarge,
-      large: item.coverImage?.large,
-      medium: item.coverImage?.medium,
-      color: item.coverImage?.color,
-    },
-    bannerImage: item.bannerImage,
-    type: item.type,
-    format: item.format,
-    status: item.status,
-    description: item.description,
-    season: item.season,
-    seasonYear: item.seasonYear,
-    episodes: item.episodes,
-    duration: item.duration,
-    genres: item.genres,
-    averageScore: item.averageScore,
-    popularity: item.popularity,
-    trending: item.trending,
-    countryOfOrigin: item.countryOfOrigin,
-    isAdult: item.isAdult,
-  }));
+  return items.map(item => {
+    if (!item) return { id: 0, title: { romaji: "Unknown" } };
+    return {
+      id: item.id || 0,
+      title: {
+        romaji: typeof item.title?.romaji === "string" ? item.title.romaji : undefined,
+        english: typeof item.title?.english === "string" ? item.title.english : undefined,
+        native: typeof item.title?.native === "string" ? item.title.native : undefined,
+      },
+      coverImage: item.coverImage ? {
+        extraLarge: typeof item.coverImage.extraLarge === "string" ? item.coverImage.extraLarge : undefined,
+        large: typeof item.coverImage.large === "string" ? item.coverImage.large : undefined,
+        medium: typeof item.coverImage.medium === "string" ? item.coverImage.medium : undefined,
+        color: typeof item.coverImage.color === "string" ? item.coverImage.color : undefined,
+      } : undefined,
+      bannerImage: typeof item.bannerImage === "string" ? item.bannerImage : undefined,
+      type: typeof item.type === "string" ? item.type : undefined,
+      format: typeof item.format === "string" ? item.format : undefined,
+      status: typeof item.status === "string" ? item.status : undefined,
+      description: typeof item.description === "string" ? item.description : undefined,
+      season: typeof item.season === "string" ? item.season : undefined,
+      seasonYear: typeof item.seasonYear === "number" ? item.seasonYear : undefined,
+      episodes: typeof item.episodes === "number" ? item.episodes : undefined,
+      duration: typeof item.duration === "number" ? item.duration : undefined,
+      genres: Array.isArray(item.genres) ? item.genres.filter((g: any) => typeof g === "string") : undefined,
+      averageScore: typeof item.averageScore === "number" ? item.averageScore : undefined,
+      popularity: typeof item.popularity === "number" ? item.popularity : undefined,
+      trending: typeof item.trending === "number" ? item.trending : undefined,
+      countryOfOrigin: typeof item.countryOfOrigin === "string" ? item.countryOfOrigin : undefined,
+      isAdult: !!item.isAdult,
+    };
+  });
 }
 
 // Normalize any anime result to MiruroAnimeResult format
 // Handles both AniList format and already-Miruro format
+// CRITICAL: Ensures all fields are safe for React rendering (no objects as children)
 function normalizeAnimeItem(item: any): MiruroAnimeResult {
-  // If it already has AniList-style title object with romaji, it came from AniList
-  if (item.title?.romaji !== undefined || item.title?.english !== undefined) {
-    return {
-      id: item.id,
-      title: {
-        romaji: item.title?.romaji,
-        english: item.title?.english,
-        native: item.title?.native,
-      },
-      coverImage: item.coverImage ? {
-        extraLarge: item.coverImage?.extraLarge,
-        large: item.coverImage?.large,
-        medium: item.coverImage?.medium,
-        color: item.coverImage?.color,
-      } : undefined,
-      bannerImage: item.bannerImage,
-      type: item.type,
-      format: item.format,
-      status: item.status,
-      description: item.description,
-      season: item.season,
-      seasonYear: item.seasonYear,
-      episodes: item.episodes,
-      duration: item.duration,
-      genres: item.genres,
-      averageScore: item.averageScore,
-      popularity: item.popularity,
-      trending: item.trending,
-      countryOfOrigin: item.countryOfOrigin,
-      isAdult: item.isAdult,
-    };
+  if (!item) {
+    return { id: 0, title: { romaji: "Unknown" } };
   }
-  // Already in Miruro format
-  return item as MiruroAnimeResult;
+
+  // Safely extract title — ensure it's always a {romaji?, english?, native?} object
+  let title: { romaji?: string; english?: string; native?: string };
+  if (item.title && typeof item.title === "object") {
+    title = {
+      romaji: typeof item.title.romaji === "string" ? item.title.romaji : undefined,
+      english: typeof item.title.english === "string" ? item.title.english : undefined,
+      native: typeof item.title.native === "string" ? item.title.native : undefined,
+    };
+  } else if (typeof item.title === "string" && item.title) {
+    title = { romaji: item.title, english: item.title };
+  } else if (item.name) {
+    title = { romaji: item.name, english: item.englishName || item.name };
+  } else {
+    title = { romaji: "Unknown" };
+  }
+
+  // Safely extract coverImage
+  let coverImage: { extraLarge?: string; large?: string; medium?: string; color?: string } | undefined;
+  if (item.coverImage && typeof item.coverImage === "object") {
+    coverImage = {
+      extraLarge: typeof item.coverImage.extraLarge === "string" ? item.coverImage.extraLarge : undefined,
+      large: typeof item.coverImage.large === "string" ? item.coverImage.large : undefined,
+      medium: typeof item.coverImage.medium === "string" ? item.coverImage.medium : undefined,
+      color: typeof item.coverImage.color === "string" ? item.coverImage.color : undefined,
+    };
+  } else if (item.thumbnail) {
+    coverImage = { extraLarge: item.thumbnail, large: item.thumbnail, medium: item.thumbnail };
+  } else {
+    coverImage = undefined;
+  }
+
+  // Ensure genres is always string[] or undefined
+  let genres: string[] | undefined;
+  if (Array.isArray(item.genres)) {
+    genres = item.genres.filter((g: any) => typeof g === "string");
+  } else {
+    genres = undefined;
+  }
+
+  // Ensure numeric fields are actually numbers
+  const averageScore = typeof item.averageScore === "number" ? item.averageScore : undefined;
+  const popularity = typeof item.popularity === "number" ? item.popularity : undefined;
+  const trending = typeof item.trending === "number" ? item.trending : undefined;
+  const episodes = typeof item.episodes === "number" ? item.episodes : undefined;
+  const duration = typeof item.duration === "number" ? item.duration : undefined;
+  const seasonYear = typeof item.seasonYear === "number" ? item.seasonYear : undefined;
+
+  // Ensure string fields are actually strings
+  const type = typeof item.type === "string" ? item.type : undefined;
+  const format = typeof item.format === "string" ? item.format : undefined;
+  const status = typeof item.status === "string" ? item.status : undefined;
+  const season = typeof item.season === "string" ? item.season : undefined;
+  const description = typeof item.description === "string" ? item.description : undefined;
+  const bannerImage = typeof item.bannerImage === "string" ? item.bannerImage : undefined;
+  const countryOfOrigin = typeof item.countryOfOrigin === "string" ? item.countryOfOrigin : undefined;
+
+  return {
+    id: item.id || 0,
+    title,
+    coverImage,
+    bannerImage,
+    type,
+    format,
+    status,
+    description,
+    season,
+    seasonYear,
+    episodes,
+    duration,
+    genres,
+    averageScore,
+    popularity,
+    trending,
+    countryOfOrigin,
+    isAdult: !!item.isAdult,
+  };
 }
 
 function ContentSection({ title, children, icon }: { title: string; children: React.ReactNode; icon?: React.ReactNode }) {
@@ -218,13 +268,16 @@ export default function AnimeHomePage() {
           const data = await res.json();
           // Convert AllAnime results to Miruro format if needed
           setGenreResults((data.anime || data.results || []).map((a: any) => ({
-            id: a.id || a._id,
-            title: { romaji: a.name, english: a.englishName || a.name },
-            coverImage: { extraLarge: a.thumbnail, large: a.thumbnail },
-            averageScore: a.score ? a.score * 10 : undefined,
-            type: a.type,
-            status: a.status,
-            genres: a.genres,
+            id: a.id || a._id || 0,
+            title: {
+              romaji: typeof a.name === "string" ? a.name : "Unknown",
+              english: typeof (a.englishName || a.name) === "string" ? (a.englishName || a.name) : "Unknown",
+            },
+            coverImage: a.thumbnail ? { extraLarge: a.thumbnail, large: a.thumbnail } : undefined,
+            averageScore: typeof a.score === "number" ? Math.round(a.score * 10) : undefined,
+            type: typeof a.type === "string" ? a.type : undefined,
+            status: typeof a.status === "string" ? a.status : undefined,
+            genres: Array.isArray(a.genres) ? a.genres.filter((g: any) => typeof g === "string") : undefined,
           })));
         }
       } catch { /* ignore */ }

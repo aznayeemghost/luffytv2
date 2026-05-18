@@ -11,13 +11,14 @@ const HEADERS = {
   Referer: "https://miruro.tv/",
 };
 
-// Provider priority order from Python API — best providers first
+// Provider priority order — miku first (user requested), then other reliable providers
 const PROVIDER_PRIORITY = [
-  "kiwi", "ax-mimi", "ax-wave", "ax-shiro", "ax-yuki", "ax-zen", "bee", "zoro",
+  "miku", "kiwi", "ax-mimi", "ax-wave", "ax-shiro", "ax-yuki", "ax-zen", "bee", "zoro",
 ];
 
 // Which providers support HLS vs embed
 const PROVIDER_CAPABILITIES: Record<string, { hls: boolean; embed: boolean }> = {
+  "miku":     { hls: true, embed: true },
   "kiwi":     { hls: true, embed: true },
   "ax-mimi":  { hls: true, embed: false },
   "ax-wave":  { hls: true, embed: false },
@@ -320,15 +321,15 @@ export async function miruroEpisodes(anilistId: number): Promise<NormalizedEpiso
       return {
         sub: Array.isArray(sub) ? sub : [],
         dub: Array.isArray(dub) ? dub : [],
-        defaultProvider: "kiwi",
-        allProviders: ["kiwi"],
+        defaultProvider: "miku",
+        allProviders: ["miku"],
         providersMap: {},
       };
     }
 
     // Array format
     if (Array.isArray(data)) {
-      return { sub: data, dub: [], defaultProvider: "kiwi", allProviders: ["kiwi"], providersMap: {} };
+      return { sub: data, dub: [], defaultProvider: "miku", allProviders: ["miku"], providersMap: {} };
     }
 
     return { sub: [], dub: [], defaultProvider: "", allProviders: [], providersMap: {} };
@@ -526,6 +527,7 @@ export type MiruroProvider = typeof PROVIDER_PRIORITY[number];
 
 export function getProviderDisplayName(provider: string): string {
   const names: Record<string, string> = {
+    "miku": "Miku",
     "kiwi": "Kiwi",
     "ax-mimi": "Ax-Mimi",
     "ax-wave": "Ax-Wave",
