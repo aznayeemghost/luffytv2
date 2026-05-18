@@ -58,9 +58,8 @@ function useMounted() {
 }
 
 // ================================================================
-// LUFFY TV INTRO — Ultra-smooth letter-by-letter reveal
-// "LUFFY" purple left | "TV" white right | thin purple divider
-// Each letter opens one by one — smooth, cinematic, satisfying
+// LUFFY TV INTRO — Clean, modern, simple
+// Play icon scales in → Text fades up → Glow pulse → Fade out
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
@@ -78,7 +77,7 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 5000);
+    }, 3200);
     return () => clearTimeout(t);
   }, []);
 
@@ -86,36 +85,39 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="ltv-intro">
-      {/* Left half — LUFFY */}
-      <div className="ltv-left">
-        <div className="ltv-ambience ltv-amb-purple" />
-        <div className="ltv-letters ltv-letters-left">
-          {['L','U','F','F','Y'].map((c, i) => (
-            <span key={i} className="ltv-ltr ltv-ltr-purple" style={{ '--d': i } as React.CSSProperties}>{c}</span>
-          ))}
-        </div>
+      {/* Glow ring behind icon */}
+      <div className="ltv-glow-ring" />
+
+      {/* Play icon */}
+      <div className="ltv-icon">
+        <svg viewBox="0 0 48 48" fill="none">
+          <rect x="2" y="2" width="44" height="44" rx="12" stroke="url(#iconGrad)" strokeWidth="2" />
+          <path d="M20 16L34 24L20 32V16Z" fill="url(#iconGrad)" />
+          <defs>
+            <linearGradient id="iconGrad" x1="0" y1="0" x2="48" y2="48">
+              <stop offset="0%" stopColor="#a855f7" />
+              <stop offset="100%" stopColor="#06b6d4" />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
 
-      {/* Right half — TV */}
-      <div className="ltv-right">
-        <div className="ltv-ambience ltv-amb-white" />
-        <div className="ltv-letters ltv-letters-right">
-          {['T','V'].map((c, i) => (
-            <span key={i} className="ltv-ltr ltv-ltr-white" style={{ '--d': i + 5 } as React.CSSProperties}>{c}</span>
-          ))}
-        </div>
+      {/* Brand text */}
+      <div className="ltv-brand">
+        <span className="ltv-brand-luffy">LUFFY</span>
+        <span className="ltv-brand-tv">TV</span>
       </div>
 
-      {/* Center divider line */}
-      <div className="ltv-line" />
+      {/* Thin line accent */}
+      <div className="ltv-accent-line" />
 
       {/* Skip */}
       <button onClick={skip} className="ltv-skip" aria-label="Skip intro">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
+        Skip
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
         </svg>
-        Skip
       </button>
     </div>
   );
