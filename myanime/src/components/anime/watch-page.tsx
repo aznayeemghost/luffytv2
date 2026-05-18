@@ -459,35 +459,24 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
           </div>
 
           {/* Player controls bar */}
-          <div className="bg-[#131c26] rounded-none lg:rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Now Playing</span>
-                <span className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold rounded-full ${
-                  translation === "sub" ? "bg-cyan-500/15 text-cyan-300" : translation === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
-                }`}>
-                  {translation === "hindi" ? "HINDI DUB" : translation.toUpperCase()}
-                </span>
+          <div className="bg-[#131c26] rounded-none lg:rounded-xl p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Now Playing</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold rounded-full ${
+                    translation === "sub" ? "bg-cyan-500/15 text-cyan-300" : translation === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                  }`}>
+                    {translation === "hindi" ? "HINDI DUB" : translation.toUpperCase()}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-white truncate">{animeTitle}</h3>
+                <p className="text-xs text-zinc-500">Episode {episodeNum}</p>
               </div>
-              <h3 className="text-sm font-bold text-white truncate">{animeTitle}</h3>
-              <p className="text-xs text-zinc-500">Episode {episodeNum}</p>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap shrink-0">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mr-1">Switch Server</span>
-              {servers.slice(0, 5).map((s, idx) => (
-                <button key={s.id}
-                  onClick={() => { setActiveServerId(s.id); setLoading(true); setError(null); }}
-                  className={`server-pill text-[11px] py-1.5 px-3 ${activeServerId === s.id ? "active" : ""}`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                  {s.name}
-                </button>
-              ))}
               {!useNativePlayer && (
                 <button
                   onClick={() => { setUseDirectEmbed(!useDirectEmbed); setLoading(true); setError(null); }}
-                  className={`ml-1 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
+                  className={`shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
                     useDirectEmbed
                       ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
                       : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
@@ -498,6 +487,24 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                 </button>
               )}
             </div>
+
+            {/* All servers — full grid */}
+            {servers.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Servers ({servers.length})</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {servers.map((s) => (
+                    <button key={s.id}
+                      onClick={() => { setActiveServerId(s.id); setLoading(true); setError(null); }}
+                      className={`server-pill text-[11px] py-1.5 px-3 ${activeServerId === s.id ? "active" : ""}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
