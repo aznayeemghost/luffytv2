@@ -58,7 +58,7 @@ function useMounted() {
 }
 
 // ================================================================
-// LUFFY TV INTRO — LUFFY slides from left (purple), TV slides from right (white)
+// LUFFY TV INTRO — Each letter slides in one by one, LUFFY purple from left, TV white from right
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
@@ -76,7 +76,7 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 3000);
+    }, 3500);
     return () => clearTimeout(t);
   }, []);
 
@@ -84,8 +84,15 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="ltv-intro">
-      <span className="ltv-luffy">LUFFY</span>
-      <span className="ltv-tv">TV</span>
+      <div className="ltv-letters">
+        {['L','U','F','F','Y'].map((c, i) => (
+          <span key={i} className="ltv-ltr ltv-ltr-purple" style={{ '--i': i } as React.CSSProperties}>{c}</span>
+        ))}
+        <span className="ltv-space" />
+        {['T','V'].map((c, i) => (
+          <span key={i+5} className="ltv-ltr ltv-ltr-white" style={{ '--i': i + 5 } as React.CSSProperties}>{c}</span>
+        ))}
+      </div>
       <button onClick={skip} className="ltv-skip" aria-label="Skip intro">Skip</button>
     </div>
   );

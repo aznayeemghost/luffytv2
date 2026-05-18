@@ -697,7 +697,8 @@ video::-webkit-media-controls { border-radius: 8px; }
 .content-reveal { animation: contentReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ================================================================
-   LUFFY TV INTRO — LUFFY purple slides from left, TV white slides from right
+   LUFFY TV INTRO — Letters slide in one by one
+   LUFFY purple from left, TV white from right
    ================================================================ */
 
 .ltv-intro {
@@ -708,41 +709,47 @@ video::-webkit-media-controls { border-radius: 8px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  animation: ltv-fade-out 0.6s 2.4s ease forwards;
+  animation: ltv-fade-out 0.5s 2.9s ease forwards;
 }
 
-.ltv-luffy {
+.ltv-letters {
+  display: flex;
+  align-items: baseline;
+}
+
+.ltv-space {
+  width: 8px;
+}
+
+.ltv-ltr {
+  display: inline-block;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-size: clamp(2rem, 6vw, 3.5rem);
   font-weight: 800;
-  letter-spacing: 0.02em;
+  opacity: 0;
+}
+
+.ltv-ltr-purple {
   color: #a855f7;
-  display: inline-block;
-  opacity: 0;
-  transform: translateX(-80px);
-  animation: ltv-slide-left 0.6s 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform: translateX(-50px);
+  animation: ltv-slide-left 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(0.1s + var(--i) * 0.12s);
 }
 
-.ltv-tv {
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: clamp(2rem, 6vw, 3.5rem);
-  font-weight: 800;
-  letter-spacing: 0.02em;
+.ltv-ltr-white {
   color: #ffffff;
-  display: inline-block;
-  opacity: 0;
-  transform: translateX(80px);
-  animation: ltv-slide-right 0.6s 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform: translateX(50px);
+  animation: ltv-slide-right 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(0.1s + var(--i) * 0.12s);
 }
 
 @keyframes ltv-slide-left {
-  0%   { opacity: 0; transform: translateX(-80px); }
+  0%   { opacity: 0; transform: translateX(-50px); }
   100% { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes ltv-slide-right {
-  0%   { opacity: 0; transform: translateX(80px); }
+  0%   { opacity: 0; transform: translateX(50px); }
   100% { opacity: 1; transform: translateX(0); }
 }
 
@@ -767,7 +774,7 @@ video::-webkit-media-controls { border-radius: 8px; }
   cursor: pointer;
   transition: all 0.15s ease;
   opacity: 0;
-  animation: ltv-skip-in 0.2s ease-out 0.6s both;
+  animation: ltv-skip-in 0.2s ease-out 0.8s both;
 }
 
 .ltv-skip:hover {
