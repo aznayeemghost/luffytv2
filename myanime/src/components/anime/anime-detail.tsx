@@ -379,7 +379,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
       {/* ═══════════════════════════════════════════════
           HERO SECTION — Full-width backdrop
           ═══════════════════════════════════════════════ */}
-      <div className="relative min-h-[75vh] -mt-[75px] overflow-hidden">
+      <div className="relative min-h-[60vh] sm:min-h-[70vh] lg:min-h-[75vh] -mt-[75px] overflow-hidden">
         {banner && (
           <img src={banner} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ animation: 'kenBurns 12s ease-out forwards' }} key={`banner-${animeId}`} />
         )}
@@ -389,10 +389,10 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
         <div className="absolute inset-0 hero-gradient" />
 
         {/* Content inside hero */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12">
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-12">
           <div className="max-w-[1400px] mx-auto">
             {/* Title area */}
-            <div className="stagger-reveal stagger-1 flex items-center gap-3 flex-wrap mb-3">
+            <div className="stagger-reveal stagger-1 flex items-center gap-2 flex-wrap mb-2 sm:mb-3">
               {type && (
                 <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-300 rounded-full border border-purple-500/20">
                   {type}
@@ -419,7 +419,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
               )}
             </div>
 
-            <h1 className="stagger-reveal stagger-2 text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-2">{displayTitle}</h1>
+            <h1 className="stagger-reveal stagger-2 text-2xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white leading-tight mb-2 break-words">{displayTitle}</h1>
 
             {anilistTitleRomaji && anilistTitleRomaji !== displayTitle && (
               <p className="stagger-reveal stagger-2 text-base text-zinc-400 line-clamp-1 mb-1">{anilistTitleRomaji}</p>
@@ -436,15 +436,15 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
             )}
 
             {/* Action buttons */}
-            <div className="stagger-reveal stagger-4 flex items-center gap-3 mt-5">
+            <div className="stagger-reveal stagger-4 flex items-center gap-2 sm:gap-3 mt-4 sm:mt-5 flex-wrap">
               <button onClick={() => handleWatch(1)} className="pill-btn pill-btn-primary text-sm">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                Play EP.1
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                <span className="hidden xs:inline">Play</span> EP.1
               </button>
               {/* Next airing countdown */}
               {nextAiringCountdown && (
-                <div className="pill-btn text-sm bg-amber-500/15 text-amber-300 border border-amber-500/25 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                <div className="pill-btn text-xs sm:text-sm bg-amber-500/15 text-amber-300 border border-amber-500/25 flex items-center gap-1.5 sm:gap-2">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                   {nextAiringCountdown}
                 </div>
               )}
@@ -455,15 +455,15 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill={bookmarked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2}>
                   <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                 </svg>
-                {bookmarked ? "Watchlist" : "Watchlist"}
+                <span className="hidden sm:inline">Watchlist</span>
               </button>
-              <button className="pill-btn pill-btn-ghost text-sm">
+              <button className="pill-btn pill-btn-ghost text-sm hidden sm:inline-flex">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
                 Favorite
               </button>
-              <button className="pill-btn pill-btn-ghost text-sm">
+              <button className="pill-btn pill-btn-ghost text-sm hidden md:inline-flex">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
@@ -482,12 +482,12 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
 
           {/* ── LEFT COLUMN: Poster + Quick Info ── */}
           <div className="shrink-0 w-full lg:w-[240px]">
-            <div className="relative">
+            <div className="relative inline-block">
               {image && (
                 <img
                   src={image}
                   alt={displayTitle}
-                  className="w-[200px] lg:w-[240px] rounded-xl shadow-2xl shadow-black/60 border border-white/[0.08]"
+                  className="w-[140px] sm:w-[180px] lg:w-[240px] rounded-xl shadow-2xl shadow-black/60 border border-white/[0.08]"
                 />
               )}
               {/* Score badge on poster */}
@@ -543,24 +543,24 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           <div className="flex-1 min-w-0 space-y-8">
 
             {/* Where to Watch / Streaming */}
-            <div className="flex items-center gap-4 flex-wrap">
-              <span className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">Where to Watch</span>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
-                  <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /></svg>
-                  <span className="text-[10px] font-bold text-zinc-300">AniList</span>
+            <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
+              <span className="text-xs text-zinc-500 font-semibold uppercase tracking-wider shrink-0">Where to Watch</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <div className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /></svg>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-zinc-300">AniList</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
-                  <svg className="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth={1.5} fill="none" /></svg>
-                  <span className="text-[10px] font-bold text-zinc-300">TMDB</span>
+                <div className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth={1.5} fill="none" /></svg>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-zinc-300">TMDB</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
-                  <svg className="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                  <span className="text-[10px] font-bold text-zinc-300">Sub & Dub</span>
+                <div className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-zinc-300">Sub & Dub</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
-                  <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polygon points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
-                  <span className="text-[10px] font-bold text-zinc-300">MegaPlay</span>
+                <div className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polygon points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-zinc-300">MegaPlay</span>
                 </div>
               </div>
             </div>
@@ -646,7 +646,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
             {anilistCharacters.length > 0 && (
               <div>
                 <h3 className="text-lg font-bold text-white mb-4">Characters</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                   {anilistCharacters.filter(c => c.role === "MAIN" || c.role === "SUPPORTING").slice(0, 12).map(c => {
                     const va = c.voiceActors?.[0];
                     return (
@@ -654,9 +654,9 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                         key={c.id}
                         className="bg-[#0a0a0a] rounded-xl border border-white/[0.04] overflow-hidden hover:border-purple-500/20 transition-all group"
                       >
-                        <div className="flex items-center gap-3 p-3">
+                        <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3">
                           {/* Character image */}
-                          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-purple-500/20 bg-[#1a1a1a]">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shrink-0 border-2 border-purple-500/20 bg-[#1a1a1a]">
                             {c.image?.large || c.image?.medium ? (
                               <img src={c.image.large || c.image.medium} alt={c.name.full} className="w-full h-full object-cover" />
                             ) : (
@@ -718,7 +718,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
                   {hasMiruroEps
                     ? currentEps.map((ep) => {
                         const epThumbnail = ep.thumbnail || null;
@@ -729,31 +729,31 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                             onClick={() => handleWatch(ep.number)}
                             className="flex items-center gap-3 p-2.5 bg-[#111111] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all group text-left"
                           >
-                            <div className="w-24 h-14 rounded-md overflow-hidden shrink-0 bg-[#1a1a1a] relative">
+                            <div className="w-16 sm:w-24 h-10 sm:h-14 rounded-md overflow-hidden shrink-0 bg-[#1a1a1a] relative">
                               {epThumbnail ? (
                                 <img src={epThumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500/10 to-transparent">
-                                  <span className="text-sm font-bold text-purple-400">{ep.number}</span>
+                                  <span className="text-xs sm:text-sm font-bold text-purple-400">{ep.number}</span>
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                               </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-purple-300 transition-colors">
+                              <p className="text-[11px] sm:text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-purple-300 transition-colors">
                                 EP {ep.number}
                               </p>
-                              {epTitle && <p className="text-[10px] text-zinc-500 line-clamp-1">{epTitle}</p>}
+                              {epTitle && <p className="text-[9px] sm:text-[10px] text-zinc-500 line-clamp-1">{epTitle}</p>}
                               {/* Sub/Dub indicators from MegaPlay */}
                               {megaplayEpMap.has(ep.number) && (
-                                <div className="flex gap-1 mt-1">
+                                <div className="flex gap-1 mt-0.5 sm:mt-1">
                                   {megaplayEpMap.get(ep.number)!.hasSub && (
-                                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400">SUB</span>
+                                    <span className="text-[7px] sm:text-[8px] font-bold px-1 sm:px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400">SUB</span>
                                   )}
                                   {megaplayEpMap.get(ep.number)!.hasDub && (
-                                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400">DUB</span>
+                                    <span className="text-[7px] sm:text-[8px] font-bold px-1 sm:px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400">DUB</span>
                                   )}
                                 </div>
                               )}
@@ -768,18 +768,18 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                           <button
                             key={`aa-${ep.episodeIdNum}`}
                             onClick={() => handleWatch(ep.episodeIdNum)}
-                            className="flex items-center gap-3 p-2.5 bg-[#111111] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all group text-left"
+                            className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-[#111111] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all group text-left"
                           >
-                            <div className="w-24 h-14 rounded-md overflow-hidden shrink-0 bg-[#1a1a1a] relative">
+                            <div className="w-16 sm:w-24 h-10 sm:h-14 rounded-md overflow-hidden shrink-0 bg-[#1a1a1a] relative">
                               {epThumbnail ? (
                                 <img src={epThumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500/10 to-transparent">
-                                  <span className="text-sm font-bold text-purple-400">{ep.episodeIdNum}</span>
+                                  <span className="text-xs sm:text-sm font-bold text-purple-400">{ep.episodeIdNum}</span>
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                               </div>
                             </div>
                             <div className="flex-1 min-w-0">

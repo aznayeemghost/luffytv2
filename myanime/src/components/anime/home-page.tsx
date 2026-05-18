@@ -28,13 +28,13 @@ function HeroSlide({ item, isActive }: { item: TMDBContentItem; isActive: boolea
   if (!isActive) return null;
 
   return (
-    <div className="relative w-full min-h-[90vh] sm:min-h-[85vh] lg:min-h-[90vh] overflow-hidden hero-slide">
+    <div className="relative w-full min-h-[60vh] sm:min-h-[75vh] lg:min-h-[85vh] lg:min-h-[90vh] overflow-hidden hero-slide">
       {image && (
         <img src={image} alt={title} className="absolute inset-0 w-full h-full object-cover ken-burns" key={`hero-${item.id}`} />
       )}
       <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#000000]/40 to-[#000000]/95" />
       <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/50 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12 pb-20 lg:pb-24">
+      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-12 pb-16 sm:pb-20 lg:pb-24">
         <div className="max-w-2xl space-y-4">
           <div className="stagger-reveal stagger-1">
             <span className="badge-trending text-[10px] font-bold inline-flex items-center gap-1.5">
@@ -56,18 +56,18 @@ function HeroSlide({ item, isActive }: { item: TMDBContentItem; isActive: boolea
               </span>
             )}
           </div>
-          <h2 className="stagger-reveal stagger-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-white line-clamp-2 leading-tight">{title}</h2>
+          <h2 className="stagger-reveal stagger-3 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white line-clamp-2 leading-tight break-words">{title}</h2>
           {item.overview && (
             <p className="stagger-reveal stagger-4 text-sm sm:text-base text-zinc-400 line-clamp-3 max-w-lg leading-relaxed">{item.overview}</p>
           )}
-          <div className="stagger-reveal stagger-5 flex items-center gap-3 pt-2">
+          <div className="stagger-reveal stagger-5 flex items-center gap-2 sm:gap-3 pt-2 flex-wrap">
             <button onClick={() => isMovie ? navigate({ page: "movie-watch", id: item.id }) : navigate({ page: "tv-detail", id: item.id })} className="pill-btn pill-btn-primary">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
               Play
             </button>
             <button onClick={() => isMovie ? navigate({ page: "movie-detail", id: item.id }) : navigate({ page: "tv-detail", id: item.id })} className="pill-btn pill-btn-ghost">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Details
+              <span className="hidden sm:inline">Details</span>
             </button>
           </div>
         </div>
@@ -95,11 +95,11 @@ function AnimeHeroSlide({ item, isActive }: { item: MegaPlayAnimeItem | MiruroAn
   if (!isActive) return null;
 
   return (
-    <div className="relative w-full min-h-[90vh] sm:min-h-[85vh] lg:min-h-[90vh] overflow-hidden hero-slide">
+    <div className="relative w-full min-h-[60vh] sm:min-h-[75vh] lg:min-h-[85vh] lg:min-h-[90vh] overflow-hidden hero-slide">
       {image && <img src={image} alt={title} className="absolute inset-0 w-full h-full object-cover ken-burns" key={`anime-hero-${item.id}`} />}
       <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#000000]/40 to-[#000000]/95" />
       <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/50 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12 pb-20 lg:pb-24">
+      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-12 pb-16 sm:pb-20 lg:pb-24">
         <div className="max-w-2xl space-y-4">
           <div className="stagger-reveal stagger-1">
             <span className="badge-anime text-[10px] font-bold inline-flex items-center gap-1.5">
@@ -117,7 +117,7 @@ function AnimeHeroSlide({ item, isActive }: { item: MegaPlayAnimeItem | MiruroAn
               </span>
             )}
           </div>
-          <h2 className="stagger-reveal stagger-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-white line-clamp-2 leading-tight">{title}</h2>
+          <h2 className="stagger-reveal stagger-3 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white line-clamp-2 leading-tight break-words">{title}</h2>
           {genres.length > 0 && (
             <div className="stagger-reveal stagger-3.5 flex gap-1.5 flex-wrap">
               {genres.slice(0, 4).map(g => (
@@ -128,14 +128,14 @@ function AnimeHeroSlide({ item, isActive }: { item: MegaPlayAnimeItem | MiruroAn
           {description && (
             <p className="stagger-reveal stagger-4 text-sm sm:text-base text-zinc-400 line-clamp-3 max-w-lg leading-relaxed">{description}</p>
           )}
-          <div className="stagger-reveal stagger-5 flex items-center gap-3 pt-2">
+          <div className="stagger-reveal stagger-5 flex items-center gap-2 sm:gap-3 pt-2 flex-wrap">
             <button onClick={() => navigate({ page: "watch", id: String(item.id), episode: 1 })} className="pill-btn pill-btn-primary">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
               Play EP.1
             </button>
             <button onClick={() => navigate({ page: "anime", id: String(item.id) })} className="pill-btn pill-btn-ghost">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Details
+              <span className="hidden sm:inline">Details</span>
             </button>
           </div>
         </div>

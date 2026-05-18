@@ -89,8 +89,8 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
 
         {/* Default: Bottom gradient + title overlay */}
         <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#000000] via-[#000000]/60 to-transparent opacity-80 group-hover:opacity-0 transition-opacity duration-300" />
-        <div className="absolute inset-x-0 bottom-0 p-3 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
-          <h3 className="text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">
+        <div className="absolute inset-x-0 bottom-0 p-2 sm:p-3 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
+          <h3 className="text-[11px] sm:text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">
             {title}
           </h3>
         </div>
@@ -107,9 +107,9 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
         </div>
 
         {/* Hover: Full info reveal overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/80 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-3">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/80 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-2 sm:p-3">
           {/* Title */}
-          <h3 className="text-sm font-bold text-white line-clamp-2 leading-tight mb-2">
+          <h3 className="text-xs sm:text-sm font-bold text-white line-clamp-2 leading-tight mb-1 sm:mb-2">
             {title}
           </h3>
 
@@ -127,7 +127,7 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
           )}
 
           {/* Year + Type row */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 flex-wrap min-w-0">
             {year && (
               <span className="text-[10px] text-zinc-400">{year}</span>
             )}
@@ -143,13 +143,13 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => {
                 handlePlayClick();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-[11px] font-semibold rounded-full transition-all shadow-lg shadow-purple-500/25 cursor-pointer"
+              className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-[10px] sm:text-[11px] font-semibold rounded-full transition-all shadow-lg shadow-purple-500/25 cursor-pointer"
             >
               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
@@ -161,24 +161,24 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
               onClick={() => {
                 handleDetailClick();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white text-[11px] font-medium rounded-full transition-all backdrop-blur-sm border border-white/10 cursor-pointer"
+              className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/15 text-white text-[10px] sm:text-[11px] font-medium rounded-full transition-all backdrop-blur-sm border border-white/10 cursor-pointer"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Details
+              <span className="hidden sm:inline">Details</span>
             </button>
           </div>
         </div>
 
         {/* Episode count / Year badge — bottom right (default view) */}
         {(episodes && episodes > 0) && (
-          <div className="absolute bottom-2 right-2 bg-[#000000]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-500/20 z-[5] group-hover:opacity-0 transition-opacity duration-300">
+          <div className="absolute bottom-2 right-2 bg-[#000000]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-medium text-emerald-400 border border-emerald-500/20 z-[5] group-hover:opacity-0 transition-opacity duration-300">
             EP:{episodes}
           </div>
         )}
         {(isTMDB && year) && (
-          <div className="absolute bottom-9 left-3 bg-[#000000]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 border border-white/10 z-[5] group-hover:opacity-0 transition-opacity duration-300">
+          <div className="absolute bottom-9 left-3 bg-[#000000]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-medium text-zinc-400 border border-white/10 z-[5] group-hover:opacity-0 transition-opacity duration-300">
             {year}
           </div>
         )}

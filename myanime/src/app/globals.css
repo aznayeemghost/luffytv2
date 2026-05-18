@@ -107,6 +107,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
 }
 
@@ -184,10 +185,10 @@ html { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) var(--bg-c
   overflow: hidden;
 }
 .content-card:hover {
-  transform: translateY(-10px) scale(1.15);
+  transform: translateY(-6px) scale(1.05);
   box-shadow:
-    0 25px 50px rgba(0, 0, 0, 0.7),
-    0 0 30px rgba(168, 85, 247, 0.12);
+    0 20px 40px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(168, 85, 247, 0.12);
   z-index: 10;
 }
 
@@ -455,13 +456,20 @@ video::-webkit-media-controls { border-radius: 8px; }
 /* ===== PILL BUTTON — lunar style ===== */
 .pill-btn {
   border-radius: 50px;
-  padding: 8px 20px;
+  padding: 6px 14px;
   font-weight: 600;
   font-size: 13px;
   transition: all 0.25s ease;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  white-space: nowrap;
+}
+@media (min-width: 640px) {
+  .pill-btn {
+    padding: 8px 20px;
+    gap: 8px;
+  }
 }
 .pill-btn-primary {
   background: var(--primary-color);
@@ -1179,18 +1187,23 @@ video::-webkit-media-controls { border-radius: 8px; }
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 999px;
-    padding: 4px;
+    padding: 3px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    max-width: calc(100vw - 280px);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
+  .lunar-nav-links::-webkit-scrollbar { display: none; }
 }
 
 .lunar-nav-link {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
   border-radius: 999px;
@@ -1198,6 +1211,13 @@ video::-webkit-media-controls { border-radius: 8px; }
   position: relative;
   cursor: pointer;
   white-space: nowrap;
+}
+@media (min-width: 1024px) {
+  .lunar-nav-link {
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 12px;
+  }
 }
 
 .lunar-nav-link:hover {
@@ -1239,8 +1259,8 @@ video::-webkit-media-controls { border-radius: 8px; }
 .lunar-search-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 16px;
+  gap: 6px;
+  padding: 7px 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;
@@ -1248,6 +1268,12 @@ video::-webkit-media-controls { border-radius: 8px; }
   font-size: 13px;
   cursor: pointer;
   transition: all 0.25s ease;
+}
+@media (min-width: 640px) {
+  .lunar-search-btn {
+    gap: 8px;
+    padding: 7px 16px;
+  }
 }
 
 .lunar-search-btn:hover {

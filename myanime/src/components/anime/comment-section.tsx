@@ -132,15 +132,15 @@ function CommentCard({
 
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <span className="text-sm font-semibold text-zinc-200">{comment.username}</span>
             {comment.rating && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 sm:gap-1">
                 <StarDisplay rating={comment.rating} />
-                <span className="text-[10px] font-bold text-amber-400">{comment.rating}.0</span>
+                <span className="text-[9px] sm:text-[10px] font-bold text-amber-400">{comment.rating}.0</span>
               </div>
             )}
-            <span className="text-[10px] text-zinc-600">{timeAgo(comment.createdAt)}</span>
+            <span className="text-[9px] sm:text-[10px] text-zinc-600">{timeAgo(comment.createdAt)}</span>
           </div>
 
           {/* Content */}
@@ -318,10 +318,10 @@ export default function CommentSection({ animeId, animeTitle }: CommentSectionPr
   return (
     <div className="space-y-6">
       {/* ══════ Rating Overview ══════ */}
-      <div className="flex flex-col sm:flex-row gap-6 p-5 bg-[#0d0d0d] rounded-xl border border-white/[0.06]">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 bg-[#0d0d0d] rounded-xl border border-white/[0.06]">
         {/* Average rating */}
-        <div className="flex flex-col items-center justify-center sm:w-[140px] shrink-0">
-          <div className="text-5xl font-black text-white">
+        <div className="flex flex-col items-center justify-center sm:w-[120px] shrink-0">
+          <div className="text-3xl sm:text-5xl font-black text-white">
             {stats.ratingAvg > 0 ? stats.ratingAvg.toFixed(1) : "—"}
           </div>
           <div className="mt-1">
@@ -335,14 +335,14 @@ export default function CommentSection({ animeId, animeTitle }: CommentSectionPr
         </div>
 
         {/* Distribution bars */}
-        <div className="flex-1 space-y-1.5">
+        <div className="flex-1 space-y-1 sm:space-y-1.5 min-w-0">
           {[5, 4, 3, 2, 1].map(star => {
             const dist = stats.distribution.find(d => d.star === star);
             const count = dist?.count || 0;
             const pct = stats.ratingCount > 0 ? (count / stats.ratingCount) * 100 : 0;
             return (
-              <div key={star} className="flex items-center gap-2">
-                <span className="text-[11px] text-zinc-400 w-3 text-right">{star}</span>
+              <div key={star} className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[10px] sm:text-[11px] text-zinc-400 w-3 text-right">{star}</span>
                 <svg className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
@@ -352,7 +352,7 @@ export default function CommentSection({ animeId, animeTitle }: CommentSectionPr
                     style={{ width: `${Math.max(pct, stats.ratingCount > 0 ? 2 : 0)}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-zinc-500 w-6 text-right">{count}</span>
+                <span className="text-[9px] sm:text-[10px] text-zinc-500 w-5 sm:w-6 text-right">{count}</span>
               </div>
             );
           })}
@@ -432,12 +432,12 @@ export default function CommentSection({ animeId, animeTitle }: CommentSectionPr
             Reviews & Comments
             <span className="text-[10px] font-normal text-zinc-500">({comments.length})</span>
           </h4>
-          <div className="flex items-center gap-1 bg-[#1a1a1a] rounded-full p-0.5 border border-white/[0.06]">
+          <div className="flex items-center gap-0.5 bg-[#1a1a1a] rounded-full p-0.5 border border-white/[0.06]">
             {(["newest", "oldest", "top"] as const).map(s => (
               <button
                 key={s}
                 onClick={() => setSort(s)}
-                className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all ${
+                className={`px-2.5 sm:px-3 py-1 text-[9px] sm:text-[10px] font-bold rounded-full transition-all ${
                   sort === s ? "bg-purple-500/15 text-purple-300" : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
