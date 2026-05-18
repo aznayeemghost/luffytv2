@@ -55,6 +55,45 @@ function mapAniListToMiruro(items: any[]): MiruroAnimeResult[] {
   }));
 }
 
+// Normalize any anime result to MiruroAnimeResult format
+// Handles both AniList format and already-Miruro format
+function normalizeAnimeItem(item: any): MiruroAnimeResult {
+  // If it already has AniList-style title object with romaji, it came from AniList
+  if (item.title?.romaji !== undefined || item.title?.english !== undefined) {
+    return {
+      id: item.id,
+      title: {
+        romaji: item.title?.romaji,
+        english: item.title?.english,
+        native: item.title?.native,
+      },
+      coverImage: item.coverImage ? {
+        extraLarge: item.coverImage?.extraLarge,
+        large: item.coverImage?.large,
+        medium: item.coverImage?.medium,
+        color: item.coverImage?.color,
+      } : undefined,
+      bannerImage: item.bannerImage,
+      type: item.type,
+      format: item.format,
+      status: item.status,
+      description: item.description,
+      season: item.season,
+      seasonYear: item.seasonYear,
+      episodes: item.episodes,
+      duration: item.duration,
+      genres: item.genres,
+      averageScore: item.averageScore,
+      popularity: item.popularity,
+      trending: item.trending,
+      countryOfOrigin: item.countryOfOrigin,
+      isAdult: item.isAdult,
+    };
+  }
+  // Already in Miruro format
+  return item as MiruroAnimeResult;
+}
+
 function ContentSection({ title, children, icon }: { title: string; children: React.ReactNode; icon?: React.ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -100,55 +139,70 @@ export default function AnimeHomePage() {
   const [genreResults, setGenreResults] = useState<MiruroAnimeResult[]>([]);
   const [seasonResults, setSeasonResults] = useState<MiruroAnimeResult[]>([]);
 
-  // Load main data — AniList PRIMARY, Miruro fallback for recent, TMDB fallback for anime lists
+  // Load main data with 3-LAYER FALLBACK: AniList → MAL → Miruro
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        // Fetch AniList as PRIMARY source + Miruro for recent data
-        const [alRes, miruroRes] = await Promise.all([
+        // Fetch from both endpoints — both now have 3-layer fallback built in
+        const [alRes, homeRes] = await Promise.all([
           fetch("/api/anime/anilist-trending").catch(() => null),
           fetch("/api/anime/home").catch(() => null),
         ]);
 
-        // Parse AniList data first
+        // Parse anilist-trending data (trending, popular, topRated with 3-layer fallback)
         let alData: any = null;
         if (alRes?.ok) {
-          alData = await alRes.json();
+          try { alData = await alRes.json(); } catch { alData = null; }
         }
 
-        // Parse Miruro data (for recent + fallback)
-        let miruroData: any = null;
-        if (miruroRes?.ok) {
-          miruroData = await miruroRes.json();
+        // Parse home data (miruroTrending, miruroPopular, miruroRecent with 3-layer fallback)
+        let homeData: any = null;
+        if (homeRes?.ok) {
+          try { homeData = await homeRes.json(); } catch { homeData = null; }
         }
 
-        // Set AniList as PRIMARY
-        if (alData?.trending?.length > 0) {
-          setTrending(mapAniListToMiruro(alData.trending));
-        }
-        if (alData?.popular?.length > 0) {
-          setPopular(mapAniListToMiruro(alData.popular));
-        }
-        if (alData?.topRated?.length > 0) {
-          setTopRated(mapAniListToMiruro(alData.topRated));
+        // ---- TRENDING: Combine from both sources ----
+        const alTrending = alData?.trending || [];
+        const homeTrending = homeData?.miruroTrending || [];
+
+        if (alTrending.length > 0) {
+          setTrending(mapAniListToMiruro(alTrending));
+        } else if (homeTrending.length > 0) {
+          setTrending(homeTrending.map(normalizeAnimeItem));
         }
 
-        // Miruro for recently updated (AniList doesn't have this)
-        if (miruroData?.miruroRecent?.length > 0) {
-          setRecent(miruroData.miruroRecent);
+        // ---- POPULAR: Combine from both sources ----
+        const alPopular = alData?.popular || [];
+        const homePopular = homeData?.miruroPopular || [];
+
+        if (alPopular.length > 0) {
+          setPopular(mapAniListToMiruro(alPopular));
+        } else if (homePopular.length > 0) {
+          setPopular(homePopular.map(normalizeAnimeItem));
         }
 
-        // If AniList failed, fall back to Miruro data from home API
-        if (!alData?.trending?.length && miruroData?.miruroTrending?.length > 0) {
-          setTrending(miruroData.miruroTrending);
-        }
-        if (!alData?.popular?.length && miruroData?.miruroPopular?.length > 0) {
-          setPopular(miruroData.miruroPopular);
+        // ---- TOP RATED: From anilist-trending (has 3-layer fallback) ----
+        const alTopRated = alData?.topRated || [];
+        if (alTopRated.length > 0) {
+          setTopRated(mapAniListToMiruro(alTopRated));
+        } else if (homePopular.length > 0) {
+          // Fallback: use popular as top rated proxy
+          setTopRated(homePopular.map(normalizeAnimeItem));
         }
 
-        // No TMDB fallback — anime section uses AniList only
-      } catch { /* ignore */ }
+        // ---- RECENT: From home data (Miruro primary, Jikan airing backup) ----
+        const homeRecent = homeData?.miruroRecent || [];
+        if (homeRecent.length > 0) {
+          setRecent(homeRecent.map(normalizeAnimeItem));
+        } else if (alTrending.length > 0) {
+          // Last resort: use trending as recent proxy
+          setRecent(mapAniListToMiruro(alTrending).slice(0, 10));
+        }
+
+      } catch (err) {
+        console.error("[AnimeHome] Load error:", err);
+      }
       setLoading(false);
     }
     load();
@@ -178,7 +232,7 @@ export default function AnimeHomePage() {
     loadGenre();
   }, [activeGenre]);
 
-  // Load season anime — use AniList API directly
+  // Load season anime — use AniList API directly with Jikan fallback
   useEffect(() => {
     if (!activeSeason) { return; }
     async function loadSeason() {
@@ -191,11 +245,11 @@ export default function AnimeHomePage() {
           if (data.season?.length > 0) {
             setSeasonResults(mapAniListToMiruro(data.season));
           } else {
-            // Fallback to Miruro and filter
-            const mRes = await fetch(`/api/miruro/trending?page=1&perPage=30`);
+            // Try Miruro trending and filter
+            const mRes = await fetch(`/api/anime/home`);
             if (mRes.ok) {
               const mData = await mRes.json();
-              const all = mData.results || mData.media || mData || [];
+              const all = mData.miruroTrending || [];
               setSeasonResults(all.filter((a: MiruroAnimeResult) =>
                 a.season?.toUpperCase() === seasonData.season && a.seasonYear === seasonData.year
               ));
@@ -206,6 +260,9 @@ export default function AnimeHomePage() {
     }
     loadSeason();
   }, [activeSeason]);
+
+  // Check if we have ANY data at all
+  const hasAnyData = trending.length > 0 || popular.length > 0 || recent.length > 0 || topRated.length > 0;
 
   return (
     <div className="space-y-8 fade-in">
@@ -347,7 +404,7 @@ export default function AnimeHomePage() {
               icon={<svg className="w-5 h-5 text-cyan-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" /></svg>}
             >
               {trending.slice(0, 20).map((anime, i) => (
-                <div key={anime.id} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
+                <div key={`${anime.id}-${i}`} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
                   <AnimeCard anime={anime} index={i} />
                 </div>
               ))}
@@ -361,7 +418,7 @@ export default function AnimeHomePage() {
               icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
             >
               {popular.slice(0, 20).map((anime, i) => (
-                <div key={anime.id} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
+                <div key={`${anime.id}-${i}`} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
                   <AnimeCard anime={anime} index={i} />
                 </div>
               ))}
@@ -375,14 +432,14 @@ export default function AnimeHomePage() {
               icon={<svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>}
             >
               {recent.slice(0, 20).map((anime, i) => (
-                <div key={anime.id} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
+                <div key={`${anime.id}-${i}`} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
                   <AnimeCard anime={anime} index={i} />
                 </div>
               ))}
             </ContentSection>
           )}
 
-          {/* Top Rated — from AniList */}
+          {/* Top Rated */}
           {topRated.length > 0 && (
             <section className="space-y-3">
               <div className="section-header flex items-center gap-2">
@@ -391,13 +448,13 @@ export default function AnimeHomePage() {
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
                 {topRated.slice(0, 14).map((anime, i) => (
-                  <AnimeCard key={`top-${anime.id}`} anime={anime} index={i} />
+                  <AnimeCard key={`top-${anime.id}-${i}`} anime={anime} index={i} />
                 ))}
               </div>
             </section>
           )}
 
-          {/* Fallback: Show popular as Top Rated if no AniList topRated */}
+          {/* Fallback: Show popular as Top Rated if no topRated */}
           {topRated.length === 0 && popular.length > 0 && (
             <section className="space-y-3">
               <div className="section-header flex items-center gap-2">
@@ -406,16 +463,29 @@ export default function AnimeHomePage() {
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
                 {popular.slice(0, 14).map((anime, i) => (
-                  <AnimeCard key={`top-${anime.id}`} anime={anime} index={i} />
+                  <AnimeCard key={`top-${anime.id}-${i}`} anime={anime} index={i} />
                 ))}
               </div>
             </section>
           )}
 
-          {/* Empty State */}
-          {trending.length === 0 && popular.length === 0 && recent.length === 0 && topRated.length === 0 && (
+          {/* Empty State with retry */}
+          {!hasAnyData && (
             <div className="text-center py-20 bg-[#151f2e] rounded-2xl border border-white/[0.04]">
-              <p className="text-zinc-400 text-sm">No anime available. Try refreshing...</p>
+              <div className="space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-full bg-cyan-500/10 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
+                </div>
+                <p className="text-zinc-400 text-sm">Loading anime from backup sources...</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 text-xs font-bold bg-cyan-500/15 text-cyan-300 rounded-full hover:bg-cyan-500/25 transition-all border border-cyan-500/20"
+                >
+                  Refresh Page
+                </button>
+              </div>
             </div>
           )}
         </>
