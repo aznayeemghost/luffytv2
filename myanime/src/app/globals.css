@@ -697,211 +697,123 @@ video::-webkit-media-controls { border-radius: 8px; }
 .content-reveal { animation: contentReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ================================================================
-   LUFFY TV CINEMATIC INTRO — v2 "WARP EDITION"
-   Brush sweep → RGB split text → power aura → scanlines → warp exit
-   Pure CSS, GPU-composited, zero-lag exit animation
+   LUFFY TV SPLIT INTRO — "CURTAIN REVEAL"
+   Text assembles → crack forms → splits in half → reveals website
+   Two full-screen halves, each clipped to show their portion
+   Pure CSS, GPU-composited, cinematic split animation
    ================================================================ */
 
-/* ── Container — NO zoom on the whole container, exit is on .nf-logo only ── */
-.nf-intro {
+/* ── Main container ── */
+.split-intro {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: transparent; /* Website shows through when halves separate */
   overflow: hidden;
-  animation: nf-fade-out 0.6s 3.6s ease forwards;
   -webkit-font-smoothing: antialiased;
+  pointer-events: all;
 }
 
-/* Vignette */
-.nf-intro::after {
-  content: '';
+/* ── Each half covers the full viewport but is clipped ── */
+.split-half {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.7) 100%);
-  pointer-events: none;
-  z-index: 50;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  background: #000;
+  overflow: hidden;
+  will-change: transform, filter;
 }
 
-/* ── Tunnel overlay — creates "flying into screen" illusion during exit ── */
-.nf-tunnel {
-  position: absolute;
-  inset: 0;
-  z-index: 7;
-  pointer-events: none;
-  opacity: 0;
-  animation: nf-tunnel-in 0.8s 3s ease-in forwards;
+/* Top half: shows top 50% of viewport */
+.split-top {
+  top: 0;
+  clip-path: inset(0 0 50% 0);
+  animation:
+    split-top-slide 1.4s 2.7s cubic-bezier(0.76, 0, 0.24, 1) forwards,
+    split-top-fade 0.6s 3.8s ease forwards;
 }
 
-.nf-tunnel::before {
-  content: '';
-  position: absolute;
-  inset: -50%;
-  background: repeating-conic-gradient(
-    from 0deg,
-    rgba(228, 9, 19, 0.08) 0deg 5deg,
-    transparent 5deg 10deg
-  );
-  animation: nf-tunnel-spin 1s linear infinite;
+/* Bottom half: shows bottom 50% of viewport */
+.split-bottom {
+  bottom: 0;
+  clip-path: inset(50% 0 0 0);
+  animation:
+    split-bottom-slide 1.4s 2.7s cubic-bezier(0.76, 0, 0.24, 1) forwards,
+    split-bottom-fade 0.6s 3.8s ease forwards;
 }
 
-.nf-tunnel::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, transparent 10%, rgba(0,0,0,0.5) 40%, #000 70%);
+@keyframes split-top-slide {
+  0%   { transform: translate3d(0, 0, 0) rotateX(0deg); filter: blur(0px); }
+  30%  { transform: translate3d(0, -15vh, 0) rotateX(1deg); filter: blur(0px); }
+  100% { transform: translate3d(0, -110vh, 0) rotateX(4deg); filter: blur(6px); }
 }
 
-@keyframes nf-tunnel-in {
-  0%   { opacity: 0; }
-  100% { opacity: 1; }
+@keyframes split-bottom-slide {
+  0%   { transform: translate3d(0, 0, 0) rotateX(0deg); filter: blur(0px); }
+  30%  { transform: translate3d(0, 15vh, 0) rotateX(-1deg); filter: blur(0px); }
+  100% { transform: translate3d(0, 110vh, 0) rotateX(-4deg); filter: blur(6px); }
 }
 
-@keyframes nf-tunnel-spin {
-  0%   { transform: rotate(0deg) scale(1); }
-  100% { transform: rotate(90deg) scale(3); }
+@keyframes split-top-fade {
+  to { opacity: 0; }
 }
 
-/* ── Scanline overlay — CRT anime feel ── */
-.nf-scanlines {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  pointer-events: none;
-  opacity: 0;
-  animation: nf-scanlines-in 0.3s 1.2s ease forwards;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.08) 2px,
-    rgba(0, 0, 0, 0.08) 4px
-  );
+@keyframes split-bottom-fade {
+  to { opacity: 0; }
 }
 
-@keyframes nf-scanlines-in {
-  0%   { opacity: 0; }
-  100% { opacity: 0.5; }
-}
-
-/* ── Film grain overlay ── */
-.nf-grain {
-  position: absolute;
-  inset: 0;
-  z-index: 9;
-  pointer-events: none;
-  opacity: 0;
-  animation: nf-grain-in 0.4s 1.4s ease forwards;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E");
-  background-size: 128px 128px;
-  mix-blend-mode: overlay;
-}
-
-@keyframes nf-grain-in {
-  0%   { opacity: 0; }
-  100% { opacity: 0.12; }
-}
-
-/* ── Logo wrapper — THIS is what does the smooth exit ── */
-.nf-logo {
-  position: relative;
-  width: 80vw;
-  max-width: 750px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-  will-change: transform, opacity, filter;
-  animation: nf-warp-exit 1.2s 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes nf-warp-exit {
-  0%   { transform: translate3d(0,0,0) scale(1); opacity: 1; filter: blur(0px); }
-  40%  { transform: translate3d(0,0,0) scale(1.1); opacity: 1; filter: blur(0px); }
-  100% { transform: translate3d(0,0,0) scale(2.5); opacity: 0; filter: blur(20px); }
-}
-
-/* ── Container fade out ── */
-@keyframes nf-fade-out {
-  0%   { opacity: 1; }
-  100% { opacity: 0; pointer-events: none; }
-}
-
-/* ── Red ambient glow ── */
-.nf-glow {
+/* ── Red ambient glow behind text ── */
+.split-glow {
   position: absolute;
   width: 900px;
   height: 900px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: radial-gradient(circle,
-    rgba(228, 9, 19, 0.3) 0%,
-    rgba(228, 9, 19, 0.15) 15%,
-    rgba(228, 9, 19, 0.06) 35%,
-    rgba(228, 9, 19, 0.02) 55%,
-    transparent 75%
+    rgba(228, 9, 19, 0.25) 0%,
+    rgba(228, 9, 19, 0.12) 15%,
+    rgba(228, 9, 19, 0.05) 35%,
+    transparent 70%
   );
   pointer-events: none;
-  animation: nf-glow-pulse 2.2s ease-in-out infinite alternate;
+  animation: split-glow-pulse 1.5s ease-in-out infinite alternate;
   will-change: transform, opacity;
-  transform: translateZ(0);
 }
 
-/* Glow intensifies before exit */
-@keyframes nf-glow-pulse {
-  0%   { transform: translateZ(0) scale(1); opacity: 0.6; }
-  50%  { transform: translateZ(0) scale(1.1); opacity: 0.9; }
-  100% { transform: translateZ(0) scale(1.2); opacity: 1; }
+@keyframes split-glow-pulse {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+  100% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
 }
 
-/* ── Power aura ring — expands from center after text reveal ── */
-.nf-aura {
+/* ── Text centering — places text at viewport center ── */
+.split-text-center {
   position: absolute;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  border: 2px solid rgba(228, 9, 19, 0.5);
-  box-shadow:
-    0 0 15px rgba(228, 9, 19, 0.3),
-    inset 0 0 15px rgba(228, 9, 19, 0.15);
-  pointer-events: none;
-  opacity: 0;
-  animation: nf-aura-expand 1.5s 1.8s ease-out forwards;
-  will-change: transform, opacity;
-}
-
-@keyframes nf-aura-expand {
-  0%   { transform: translateZ(0) scale(0.3); opacity: 0; }
-  15%  { opacity: 1; }
-  50%  { opacity: 0.6; border-color: rgba(228, 9, 19, 0.3); }
-  100% { transform: translateZ(0) scale(6); opacity: 0; border-color: rgba(228, 9, 19, 0); }
-}
-
-/* ── Text layer ── */
-.nf-text {
-  position: relative;
-  z-index: 2;
+  left: 0;
+  right: 0;
+  /* Place text at the 50vh mark so both halves show their portion */
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  clip-path: inset(0 100% 0 0);
-  animation: nf-clip-reveal 1.8s 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  will-change: clip-path;
+  z-index: 2;
 }
 
-@keyframes nf-clip-reveal {
-  0%   { clip-path: inset(0 100% 0 0); }
-  100% { clip-path: inset(0 0% 0 0); }
+.split-row {
+  display: flex;
+  gap: 2px;
 }
 
-.nf-row { display: flex; gap: 2px; }
-.nf-row-sm { gap: 14px; }
+.split-row-sm {
+  gap: 14px;
+}
 
-/* ── Character styling + RGB split effect ── */
-.nf-char {
+/* ── Character styling ── */
+.split-char {
   display: inline-block;
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   font-size: clamp(4rem, 14vw, 9rem);
@@ -914,15 +826,17 @@ video::-webkit-media-controls { border-radius: 8px; }
     0 0 60px rgba(228, 9, 19, 0.3),
     0 0 100px rgba(228, 9, 19, 0.15);
   opacity: 0;
-  animation: nf-char-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  animation-delay: calc(0.5s + var(--i) * 0.08s);
+  animation:
+    split-char-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+    split-char-pulse 0.6s 2s ease-in-out forwards;
+  animation-delay: calc(0.3s + var(--i) * 0.09s), 2s;
   will-change: transform, opacity;
   position: relative;
 }
 
-/* Chromatic aberration (RGB split) — kicks in briefly after reveal */
-.nf-char::before,
-.nf-char::after {
+/* Chromatic aberration flash on entry */
+.split-char::before,
+.split-char::after {
   content: attr(data-char);
   position: absolute;
   top: 0;
@@ -936,193 +850,203 @@ video::-webkit-media-controls { border-radius: 8px; }
   pointer-events: none;
 }
 
-.nf-char::before {
-  color: rgba(255, 0, 50, 0.7);
-  animation: nf-rgb-left 0.5s calc(0.9s + var(--i) * 0.08s) ease-out forwards;
+.split-char::before {
+  color: rgba(255, 0, 50, 0.6);
+  animation: split-rgb-l 0.4s calc(0.7s + var(--i) * 0.09s) ease-out forwards;
 }
 
-.nf-char::after {
-  color: rgba(0, 100, 255, 0.7);
-  animation: nf-rgb-right 0.5s calc(0.9s + var(--i) * 0.08s) ease-out forwards;
+.split-char::after {
+  color: rgba(0, 100, 255, 0.6);
+  animation: split-rgb-r 0.4s calc(0.7s + var(--i) * 0.09s) ease-out forwards;
 }
 
-@keyframes nf-rgb-left {
-  0%   { opacity: 0.8; transform: translate3d(-8px, 0, 0); }
+@keyframes split-rgb-l {
+  0%   { opacity: 0.7; transform: translate3d(-6px, 0, 0); }
   100% { opacity: 0; transform: translate3d(0, 0, 0); }
 }
 
-@keyframes nf-rgb-right {
-  0%   { opacity: 0.8; transform: translate3d(8px, 0, 0); }
+@keyframes split-rgb-r {
+  0%   { opacity: 0.7; transform: translate3d(6px, 0, 0); }
   100% { opacity: 0; transform: translate3d(0, 0, 0); }
 }
 
-.nf-char-sm {
+.split-char-sm {
   font-size: clamp(2.2rem, 7vw, 4.5rem);
   letter-spacing: 0.12em;
 }
 
-@keyframes nf-char-pop {
-  0%   { opacity: 0; transform: translate3d(0, 20px, 0) scale(0.5); }
-  60%  { opacity: 1; transform: translate3d(0, -2px, 0) scale(1.04); }
-  80%  { transform: translate3d(0, 1px, 0) scale(0.99); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+@keyframes split-char-in {
+  0%   { opacity: 0; transform: translate3d(0, 30px, 0) scale(0.4) rotateX(20deg); }
+  60%  { opacity: 1; transform: translate3d(0, -3px, 0) scale(1.06) rotateX(-2deg); }
+  80%  { transform: translate3d(0, 1px, 0) scale(0.98) rotateX(1deg); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotateX(0deg); }
 }
 
-/* ── Brush sweep ── */
-.nf-brush {
-  position: absolute;
-  top: -20%;
-  left: -25%;
-  width: 25%;
-  height: 140%;
-  z-index: 3;
-  pointer-events: none;
-  animation: nf-brush-sweep 1.8s 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  will-change: transform;
-  transform: translateZ(0);
+/* Pulse right before split — intensify glow */
+@keyframes split-char-pulse {
+  0%   { text-shadow: 0 0 30px rgba(228,9,19,0.6), 0 0 60px rgba(228,9,19,0.3), 0 0 100px rgba(228,9,19,0.15); }
+  50%  { text-shadow: 0 0 40px rgba(228,9,19,0.9), 0 0 80px rgba(228,9,19,0.5), 0 0 140px rgba(228,9,19,0.3); }
+  100% { text-shadow: 0 0 30px rgba(228,9,19,0.6), 0 0 60px rgba(228,9,19,0.3), 0 0 100px rgba(228,9,19,0.15); }
 }
 
-.nf-brush-body {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 35%;
-  height: 100%;
-  background: #e40913;
-  box-shadow: 0 0 40px 15px rgba(228, 9, 19, 0.45);
-}
-
-.nf-brush-fur {
-  position: absolute;
-  right: 35%;
-  top: 0;
-  width: 65%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.nf-fur {
-  display: block;
+/* ── Glowing edges at the split line ── */
+.split-edge {
   position: absolute;
   left: 0;
-  width: 100%;
+  right: 0;
+  height: 3px;
+  z-index: 3;
+  opacity: 0;
+  animation: split-edge-glow 0.3s 2.5s ease forwards;
 }
 
-/* Fur strips — 12 for max performance */
-.nf-fur-1  { top: 0%;    height: 10%; background: linear-gradient(to left, #e40913, #e40913 20%, transparent 85%); }
-.nf-fur-2  { top: 10%;   height: 6%;  background: linear-gradient(to left, #e40913, #e40913 15%, transparent 70%); }
-.nf-fur-3  { top: 16%;   height: 10%; background: linear-gradient(to left, #e40913, #e40913 40%, transparent 100%); }
-.nf-fur-4  { top: 26%;   height: 7%;  background: linear-gradient(to left, #e40913, #e40913 28%, transparent 90%); }
-.nf-fur-5  { top: 33%;   height: 8%;  background: linear-gradient(to left, #e40913, #e40913 35%, transparent 95%); }
-.nf-fur-6  { top: 41%;   height: 11%; background: linear-gradient(to left, #e40913, #e40913 45%, transparent 100%); }
-.nf-fur-7  { top: 52%;   height: 6%;  background: linear-gradient(to left, #e40913, #e40913 30%, transparent 90%); }
-.nf-fur-8  { top: 58%;   height: 9%;  background: linear-gradient(to left, #e40913, #e40913 38%, transparent 95%); }
-.nf-fur-9  { top: 67%;   height: 8%;  background: linear-gradient(to left, #e40913, #e40913 25%, transparent 85%); }
-.nf-fur-10 { top: 75%;   height: 10%; background: linear-gradient(to left, #e40913, #e40913 42%, transparent 100%); }
-.nf-fur-11 { top: 85%;   height: 7%;  background: linear-gradient(to left, #e40913, #e40913 20%, transparent 75%); }
-.nf-fur-12 { top: 92%;   height: 8%;  background: linear-gradient(to left, #e40913, #e40913 35%, transparent 90%); }
-
-@keyframes nf-brush-sweep {
-  0%   { transform: translate3d(0, 0, 0) translateX(0); left: -25%; }
-  100% { transform: translate3d(0, 0, 0); left: 110%; }
+/* Bottom edge of top half (at the 50% mark) */
+.split-edge-bottom {
+  bottom: 0;
+  background: linear-gradient(90deg,
+    transparent 5%,
+    rgba(228, 9, 19, 0.8) 20%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(228, 9, 19, 0.8) 80%,
+    transparent 95%
+  );
+  box-shadow: 0 0 20px rgba(228, 9, 19, 0.6), 0 0 40px rgba(228, 9, 19, 0.3);
 }
 
-/* ── Lumiere light streaks — 10 lamps, no ::before pseudo-elements ── */
-.nf-lums {
+/* Top edge of bottom half (at the 50% mark) */
+.split-edge-top {
+  top: 0;
+  background: linear-gradient(90deg,
+    transparent 5%,
+    rgba(228, 9, 19, 0.8) 20%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(228, 9, 19, 0.8) 80%,
+    transparent 95%
+  );
+  box-shadow: 0 0 20px rgba(228, 9, 19, 0.6), 0 0 40px rgba(228, 9, 19, 0.3);
+}
+
+@keyframes split-edge-glow {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* ── Crack/energy line at the split point ── */
+.split-crack {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 0;
+  transform: translateY(-50%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.split-crack-core {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: white;
+  opacity: 0;
+  animation:
+    split-crack-appear 0.2s 2.2s ease-out forwards,
+    split-crack-intensify 0.5s 2.3s ease forwards;
+  box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.8);
+}
+
+.split-crack-glow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(180deg,
+    transparent,
+    rgba(228, 9, 19, 0.4) 40%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(228, 9, 19, 0.4) 60%,
+    transparent
+  );
+  opacity: 0;
+  animation:
+    split-crack-appear 0.2s 2.2s ease-out forwards,
+    split-crack-intensify 0.5s 2.3s ease forwards,
+    split-crack-fade 0.6s 2.7s ease forwards;
+  filter: blur(4px);
+}
+
+@keyframes split-crack-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes split-crack-intensify {
+  0%   { box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.8); }
+  100% { box-shadow: 0 0 30px 8px rgba(228, 9, 19, 0.9), 0 0 60px 15px rgba(255, 255, 255, 0.5); }
+}
+
+@keyframes split-crack-fade {
+  to { opacity: 0; }
+}
+
+/* ── Shard particles that burst from the crack ── */
+.split-shards {
   position: absolute;
   inset: 0;
-  z-index: 4;
-  opacity: 0;
+  z-index: 8;
   pointer-events: none;
   overflow: hidden;
-  animation: nf-show-lums 1s 1.6s ease forwards;
-  will-change: opacity;
 }
 
-.nf-lamp {
+.split-shard {
   position: absolute;
-  display: block;
-  height: 100%;
-  background: var(--color);
-  will-change: transform;
-}
-
-/* 10 lamps — no ::before, just the lamp itself */
-.nf-lamp-1  { --color: #ff0100; left: 2%;   width: 2%;   animation: nf-lum-left 4s 1.4s forwards; }
-.nf-lamp-2  { --color: #ffde01; left: 8%;   width: 2.2%; animation: nf-lum-right 4s 1.5s forwards; }
-.nf-lamp-3  { --color: #ff00cc; left: 16%;  width: 2.5%; animation: nf-lum-left 4s 0.5s forwards; }
-.nf-lamp-4  { --color: #04fd8f; left: 26%;  width: 2%;   animation: nf-lum-right 4s 0.4s forwards; }
-.nf-lamp-5  { --color: #ff9600; left: 38%;  width: 3%;   animation: nf-lum-left 4s 0.6s forwards; }
-.nf-lamp-6  { --color: #0084ff; left: 50%;  width: 2.5%; animation: nf-lum-right 4s 1s forwards; }
-.nf-lamp-7  { --color: #ffc601; left: 62%;  width: 2.8%; animation: nf-lum-left 4s 1.2s forwards; }
-.nf-lamp-8  { --color: #ff4800; left: 74%;  width: 2.2%; animation: nf-lum-right 4s 0.7s forwards; }
-.nf-lamp-9  { --color: #a201ff; left: 85%;  width: 1.8%; animation: nf-lum-left 4s 1.6s forwards; }
-.nf-lamp-10 { --color: #ff0036; left: 93%;  width: 2.5%; animation: nf-lum-right 4s 0.8s forwards; }
-
-@keyframes nf-lum-left {
-  0%   { transform: translate3d(0, 0, 0); }
-  40%  { transform: translate3d(10px, 0, 0); }
-  100% { transform: translate3d(80px, 0, 0) scaleX(2.5); }
-}
-
-@keyframes nf-lum-right {
-  0%   { transform: translate3d(0, 0, 0); }
-  40%  { transform: translate3d(-10px, 0, 0); }
-  100% { transform: translate3d(-80px, 0, 0) scaleX(2.5); }
-}
-
-@keyframes nf-show-lums {
-  0%   { opacity: 0; }
-  20%  { opacity: 0.8; }
-  60%  { opacity: 0.6; }
-  100% { opacity: 0; }
-}
-
-/* ── Red impact flash ── */
-.nf-flash {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  background: radial-gradient(circle at center, rgba(228, 9, 19, 0.7), rgba(228, 9, 19, 0.2) 50%, transparent 80%);
-  opacity: 0;
-  animation: nf-impact-flash 0.35s 1.3s ease-out forwards;
-  pointer-events: none;
-}
-
-@keyframes nf-impact-flash {
-  0%   { opacity: 0; }
-  12%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-/* ── Ember particles ── */
-.nf-embers {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.nf-ember {
-  position: absolute;
+  top: 50%;
   border-radius: 50%;
   background: #e40913;
-  box-shadow: 0 0 3px 1px rgba(228, 9, 19, 0.5);
+  box-shadow: 0 0 4px 1px rgba(228, 9, 19, 0.6), 0 0 8px rgba(255, 255, 255, 0.3);
   opacity: 0;
-  animation: nf-ember-float 1.8s ease-out forwards;
+  animation: split-shard-fly 1.2s ease-out forwards;
   will-change: transform, opacity;
 }
 
-@keyframes nf-ember-float {
+@keyframes split-shard-fly {
   0%   { opacity: 0; transform: translate3d(0, 0, 0) scale(1); }
-  8%   { opacity: 1; }
-  60%  { opacity: 0.5; }
+  5%   { opacity: 1; }
+  50%  { opacity: 0.7; }
   100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) scale(0); }
 }
 
-/* ── Skip Button ── */
-.nf-skip {
+/* ── Screen shake effect ── */
+.split-shake {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+  animation: split-screen-shake 0.4s 2.7s ease-out;
+}
+
+@keyframes split-screen-shake {
+  0%   { transform: translate3d(0, 0, 0); }
+  10%  { transform: translate3d(-3px, 2px, 0); }
+  20%  { transform: translate3d(4px, -2px, 0); }
+  30%  { transform: translate3d(-2px, 3px, 0); }
+  40%  { transform: translate3d(3px, -1px, 0); }
+  50%  { transform: translate3d(-1px, 2px, 0); }
+  60%  { transform: translate3d(2px, -2px, 0); }
+  70%  { transform: translate3d(-2px, 1px, 0); }
+  80%  { transform: translate3d(1px, -1px, 0); }
+  90%  { transform: translate3d(-1px, 1px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+/* ── Skip button ── */
+.split-skip {
   position: absolute;
   bottom: 32px;
   right: 32px;
@@ -1133,7 +1057,7 @@ video::-webkit-media-controls { border-radius: 8px; }
   padding: 8px 16px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: rgba(255, 255, 255, 0.6);
@@ -1142,20 +1066,20 @@ video::-webkit-media-controls { border-radius: 8px; }
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  animation: nf-skip-in 0.4s ease-out 0.6s both;
+  animation: split-skip-in 0.4s ease-out 0.5s both;
 }
 
-.nf-skip:hover {
-  background: rgba(228, 9, 19, 0.2);
+.split-skip:hover {
+  background: rgba(228, 9, 19, 0.25);
   border-color: rgba(228, 9, 19, 0.4);
   color: white;
 }
 
-.nf-skip:active {
+.split-skip:active {
   transform: scale(0.95);
 }
 
-@keyframes nf-skip-in {
+@keyframes split-skip-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }

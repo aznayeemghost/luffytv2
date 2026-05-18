@@ -32,9 +32,10 @@ function useMounted() {
 }
 
 // ================================================================
-// NETFLIX-STYLE INTRO — "LUFFY TV"
-// Pure CSS/HTML animation: brush sweep → text reveal → lumiere lights → zoom
-// React only mounts/unmounts, CSS handles all animation
+// LUFFY TV SPLIT INTRO — "CURTAIN REVEAL"
+// Text assembles → crack forms → splits in half → reveals website
+// Two full-screen halves, each clipped to show their portion
+// Pure CSS animation, React only mounts/unmounts
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
@@ -48,120 +49,122 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     onCompleteRef.current();
   }, []);
 
-  // Unmount after all animations complete (3.6s fade + buffer)
+  // Unmount after all animations complete (4s split + buffer)
   useEffect(() => {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 4400);
+    }, 4800);
     return () => clearTimeout(t);
   }, []);
 
-  if (gone) return null;
-
-  // Ember particles — memoized once
-  const embers = useMemo(() => [
-    { x: '14%', y: '48%', size: 4, dx: '-35px', dy: '-110px', delay: '1.4s', dur: '1.6s' },
-    { x: '28%', y: '52%', size: 3, dx: '40px', dy: '-90px', delay: '1.5s', dur: '1.8s' },
-    { x: '42%', y: '44%', size: 5, dx: '-50px', dy: '-130px', delay: '1.3s', dur: '1.5s' },
-    { x: '52%', y: '50%', size: 3, dx: '45px', dy: '-100px', delay: '1.6s', dur: '1.9s' },
-    { x: '64%', y: '46%', size: 4, dx: '-30px', dy: '-120px', delay: '1.4s', dur: '1.7s' },
-    { x: '76%', y: '54%', size: 3, dx: '50px', dy: '-85px', delay: '1.7s', dur: '2s' },
-    { x: '86%', y: '48%', size: 4, dx: '-45px', dy: '-115px', delay: '1.5s', dur: '1.6s' },
-    { x: '35%', y: '56%', size: 2, dx: '20px', dy: '-75px', delay: '1.8s', dur: '2.1s' },
-    { x: '58%', y: '42%', size: 3, dx: '-55px', dy: '-125px', delay: '1.3s', dur: '1.4s' },
-    { x: '72%', y: '55%', size: 3, dx: '35px', dy: '-95px', delay: '1.6s', dur: '1.8s' },
+  // Shard particles for the split line — memoized once
+  // MUST be before the early return to keep hooks order stable
+  const shards = useMemo(() => [
+    { x: '8%',  dx: '-60px',  dy: '-200px', size: 3, delay: '2.7s', dur: '1.2s' },
+    { x: '18%', dx: '80px',   dy: '180px',  size: 2, delay: '2.72s', dur: '1.1s' },
+    { x: '28%', dx: '-90px',  dy: '-160px', size: 4, delay: '2.68s', dur: '1.3s' },
+    { x: '38%', dx: '70px',   dy: '220px',  size: 2, delay: '2.74s', dur: '1s' },
+    { x: '48%', dx: '-100px', dy: '-240px', size: 5, delay: '2.66s', dur: '1.4s' },
+    { x: '52%', dx: '110px',  dy: '200px',  size: 3, delay: '2.7s', dur: '1.2s' },
+    { x: '62%', dx: '-75px',  dy: '-190px', size: 3, delay: '2.72s', dur: '1.1s' },
+    { x: '72%', dx: '95px',   dy: '170px',  size: 4, delay: '2.68s', dur: '1.3s' },
+    { x: '82%', dx: '-65px',  dy: '-210px', size: 2, delay: '2.74s', dur: '1s' },
+    { x: '92%', dx: '85px',   dy: '230px',  size: 3, delay: '2.7s', dur: '1.2s' },
+    { x: '15%', dx: '55px',   dy: '-180px', size: 2, delay: '2.69s', dur: '1.15s' },
+    { x: '45%', dx: '-85px',  dy: '190px',  size: 3, delay: '2.71s', dur: '1.25s' },
+    { x: '55%', dx: '100px',  dy: '-220px', size: 2, delay: '2.73s', dur: '1.05s' },
+    { x: '75%', dx: '-70px',  dy: '160px',  size: 4, delay: '2.67s', dur: '1.35s' },
   ], []);
 
+  if (gone) return null;
+
+  // Render the text rows (shared between both halves)
+  const renderText = () => (
+    <>
+      <div className="split-row">
+        {['L','U','F','F','Y'].map((c, i) => (
+          <span
+            key={i}
+            className="split-char"
+            data-char={c}
+            style={{ '--i': i } as React.CSSProperties}
+          >
+            {c}
+          </span>
+        ))}
+      </div>
+      <div className="split-row split-row-sm">
+        {['T','V'].map((c, i) => (
+          <span
+            key={i}
+            className="split-char split-char-sm"
+            data-char={c}
+            style={{ '--i': i + 5 } as React.CSSProperties}
+          >
+            {c}
+          </span>
+        ))}
+      </div>
+    </>
+  );
+
   return (
-    <div className="nf-intro">
-      {/* Scanline overlay — CRT anime aesthetic */}
-      <div className="nf-scanlines" />
-
-      {/* Film grain overlay */}
-      <div className="nf-grain" />
-
-      {/* Tunnel overlay for warp exit effect */}
-      <div className="nf-tunnel" />
-
-      <div className="nf-logo">
-        {/* Red ambient glow */}
-        <div className="nf-glow" />
-
-        {/* Power aura ring — expands from center */}
-        <div className="nf-aura" />
-
-        {/* Text layer — revealed by clip-path synced with brush */}
-        <div className="nf-text">
-          <div className="nf-row">
-            {['L','U','F','F','Y'].map((c, i) => (
-              <span
-                key={i}
-                className="nf-char"
-                data-char={c}
-                style={{ '--i': i } as React.CSSProperties}
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-          <div className="nf-row nf-row-sm">
-            {['T','V'].map((c, i) => (
-              <span
-                key={i}
-                className="nf-char nf-char-sm"
-                data-char={c}
-                style={{ '--i': i + 5 } as React.CSSProperties}
-              >
-                {c}
-              </span>
-            ))}
-          </div>
+    <div className="split-intro">
+      {/* ── Top half — slides UP to reveal ── */}
+      <div className="split-half split-top">
+        {/* Red ambient glow behind text */}
+        <div className="split-glow" />
+        {/* Text centered in viewport */}
+        <div className="split-text-center">
+          {renderText()}
         </div>
-
-        {/* Brush sweep — red paint stroke */}
-        <div className="nf-brush">
-          <div className="nf-brush-body" />
-          <div className="nf-brush-fur">
-            {Array.from({ length: 12 }, (_, i) => (
-              <span key={i} className={`nf-fur nf-fur-${i + 1}`} />
-            ))}
-          </div>
-        </div>
-
-        {/* Lumiere light streaks — 10 lamps */}
-        <div className="nf-lums">
-          {Array.from({ length: 10 }, (_, i) => (
-            <span key={i} className={`nf-lamp nf-lamp-${i + 1}`} />
-          ))}
-        </div>
-
-        {/* Red impact flash */}
-        <div className="nf-flash" />
-
-        {/* Ember particles */}
-        <div className="nf-embers">
-          {embers.map((e, i) => (
-            <span
-              key={i}
-              className="nf-ember"
-              style={{
-                left: e.x,
-                top: e.y,
-                width: e.size,
-                height: e.size,
-                '--dx': e.dx,
-                '--dy': e.dy,
-                animationDelay: e.delay,
-                animationDuration: e.dur,
-              } as React.CSSProperties}
-            />
-          ))}
-        </div>
+        {/* Glowing edge at the split line (bottom edge) */}
+        <div className="split-edge split-edge-bottom" />
       </div>
 
-      {/* Skip button */}
-      <button onClick={skip} className="nf-skip" aria-label="Skip intro">
+      {/* ── Bottom half — slides DOWN to reveal ── */}
+      <div className="split-half split-bottom">
+        {/* Red ambient glow behind text */}
+        <div className="split-glow" />
+        {/* Text centered in viewport — same position, clipped to bottom half */}
+        <div className="split-text-center">
+          {renderText()}
+        </div>
+        {/* Glowing edge at the split line (top edge) */}
+        <div className="split-edge split-edge-top" />
+      </div>
+
+      {/* ── Crack/energy line at the split point ── */}
+      <div className="split-crack">
+        <div className="split-crack-core" />
+        <div className="split-crack-glow" />
+      </div>
+
+      {/* ── Shard particles that burst from the crack ── */}
+      <div className="split-shards">
+        {shards.map((s, i) => (
+          <span
+            key={i}
+            className="split-shard"
+            style={{
+              left: s.x,
+              '--dx': s.dx,
+              '--dy': s.dy,
+              width: s.size,
+              height: s.size,
+              animationDelay: s.delay,
+              animationDuration: s.dur,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
+
+      {/* ── Screen shake wrapper ── */}
+      <div className="split-shake" />
+
+      {/* ── Skip button ── */}
+      <button onClick={skip} className="split-skip" aria-label="Skip intro">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
@@ -206,7 +209,7 @@ export default function MainPage() {
 
   const handleSplashComplete = () => {
     setSplashComplete(true);
-    setTimeout(() => setShowSplash(false), 400);
+    setTimeout(() => setShowSplash(false), 500);
   };
 
   if (!mounted) {
@@ -261,7 +264,7 @@ export default function MainPage() {
     <>
       {/* Splash Screen */}
       {showSplash && (
-        <div className={splashComplete ? "splash-scale-out" : ""}>
+        <div className={splashComplete ? "splash-fade-out" : ""}>
           <LuffyIntro onComplete={handleSplashComplete} />
         </div>
       )}
