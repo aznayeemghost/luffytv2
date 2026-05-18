@@ -15,7 +15,7 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
 
   const isTMDB = !!tmdbItem;
 
-  // Null-safe access — data from any source (AniList, Jikan, Miruro) can have missing fields
+  // Null-safe access — data from any source (AniList, MAL, Miruro) can have missing fields
   const title = isTMDB ? getTMDBTitle(tmdbItem!) : getAnimeTitle(anime!);
   const image = isTMDB ? getTMDBImage(tmdbItem!) : getAnimeImage(anime!);
 

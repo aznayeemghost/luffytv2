@@ -176,7 +176,7 @@ function ContentSection({ title, children, icon, viewAllAction }: { title: strin
 }
 
 // Safely normalize any anime item to MiruroAnimeResult format
-// Handles data from AniList, Jikan/MAL, or Miruro sources
+// Handles data from AniList, Official MAL API, or Miruro sources
 function safeNormalizeAnime(item: any): MiruroAnimeResult {
   // Safely extract title — handle object, string, or missing
   let title: { romaji?: string; english?: string; native?: string };

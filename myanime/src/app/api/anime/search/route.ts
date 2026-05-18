@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAnime } from "@/lib/anilist-api";
-import { jikanSearch } from "@/lib/jikan-api";
+import { malSearch } from "@/lib/mal-api";
 import { miruroSearch } from "@/lib/miruro-api";
 
 export const runtime = "nodejs";
@@ -45,40 +45,7 @@ export async function GET(request: NextRequest) {
     console.error("[anime/search] AniList error:", err?.message || err);
   }
 
-  // Layer 2: MAL/Jikan (backup 1)
-  try {
-    const data = await jikanSearch(q, page, 25);
-    if (data && data.results && data.results.length > 0) {
-      const results = data.results.map(m => ({
-        id: m.id,
-        title: m.title,
-        coverImage: m.coverImage,
-        bannerImage: m.bannerImage,
-        type: m.type,
-        format: m.format,
-        status: m.status,
-        episodes: m.episodes,
-        genres: m.genres,
-        averageScore: m.averageScore,
-        popularity: m.popularity,
-        season: m.season,
-        seasonYear: m.seasonYear,
-        description: m.description,
-        nextAiringEpisode: undefined,
-      }));
-
-      return NextResponse.json({
-        results,
-        hasNextPage: data.hasNextPage || false,
-        currentPage: data.currentPage || page,
-        _source: "mal",
-      });
-    }
-  } catch (err: any) {
-    console.error("[anime/search] MAL error:", err?.message || err);
-  }
-
-  // Layer 3: Miruro (backup 2)
+  // Layer 2: Miruro (backup 1)
   try {
     const data = await miruroSearch(q, page);
     if (data && data.results && data.results.length > 0) {
@@ -109,6 +76,39 @@ export async function GET(request: NextRequest) {
     }
   } catch (err: any) {
     console.error("[anime/search] Miruro error:", err?.message || err);
+  }
+
+  // Layer 3: Official MAL API (backup 2 — no more Jikan 429 errors!)
+  try {
+    const data = await malSearch(q, page, 25);
+    if (data && data.results && data.results.length > 0) {
+      const results = data.results.map(m => ({
+        id: m.id,
+        title: m.title,
+        coverImage: m.coverImage,
+        bannerImage: m.bannerImage,
+        type: m.type,
+        format: m.format,
+        status: m.status,
+        episodes: m.episodes,
+        genres: m.genres,
+        averageScore: m.averageScore,
+        popularity: m.popularity,
+        season: m.season,
+        seasonYear: m.seasonYear,
+        description: m.description,
+        nextAiringEpisode: undefined,
+      }));
+
+      return NextResponse.json({
+        results,
+        hasNextPage: data.hasNextPage || false,
+        currentPage: data.currentPage || page,
+        _source: "mal",
+      });
+    }
+  } catch (err: any) {
+    console.error("[anime/search] MAL error:", err?.message || err);
   }
 
   // All 3 failed

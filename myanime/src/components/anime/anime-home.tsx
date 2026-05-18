@@ -189,7 +189,7 @@ export default function AnimeHomePage() {
   const [genreResults, setGenreResults] = useState<MiruroAnimeResult[]>([]);
   const [seasonResults, setSeasonResults] = useState<MiruroAnimeResult[]>([]);
 
-  // Load main data with 3-LAYER FALLBACK: AniList → MAL → Miruro
+  // Load main data with 3-LAYER FALLBACK: AniList → Miruro → Official MAL API
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -241,7 +241,7 @@ export default function AnimeHomePage() {
           setTopRated(homePopular.map(normalizeAnimeItem));
         }
 
-        // ---- RECENT: From home data (Miruro primary, Jikan airing backup) ----
+        // ---- RECENT: From home data (Miruro primary, Official MAL API airing backup) ----
         const homeRecent = homeData?.miruroRecent || [];
         if (homeRecent.length > 0) {
           setRecent(homeRecent.map(normalizeAnimeItem));
@@ -285,7 +285,7 @@ export default function AnimeHomePage() {
     loadGenre();
   }, [activeGenre]);
 
-  // Load season anime — use AniList API directly with Jikan fallback
+  // Load season anime — use AniList API directly with Official MAL API fallback
   useEffect(() => {
     if (!activeSeason) { return; }
     async function loadSeason() {

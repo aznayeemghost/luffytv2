@@ -67,7 +67,7 @@ const miruroKiwi: EmbedServer = {
   color: "#22d3ee",
   category: "native",
   isNative: true,
-  generateUrl: () => "native:kiwi",
+  generateUrl: () => "native:miku",  // Kiwi server also uses miku provider (auto-switches if needed)
 };
 
 // ============================================================

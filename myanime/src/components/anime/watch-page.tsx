@@ -75,7 +75,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     if (/^\d+$/.test(cleanId)) setAnilistId(parseInt(cleanId));
   }, [animeId]);
 
-  // Load anime info — AniList PRIMARY, Jikan/MAL + TMDB as BACKUP
+  // Load anime info — AniList PRIMARY, Official MAL API + TMDB as BACKUP
   useEffect(() => {
     let cancelled = false;
     async function loadInfo() {
@@ -86,31 +86,31 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
           const data = await res.json();
           const anime = data.anime;
           const miruro = data.miruroInfo;
-          // AniList is PRIMARY — fallback chain: anilistInfo → jikanData → tmdbFallbackInfo → allanime → miruro
+          // AniList is PRIMARY — fallback chain: anilistInfo → malData → tmdbFallbackInfo → allanime → miruro
           const anilistInfo = data.anilistInfo;
           const tmdbFallback = data.tmdbFallbackInfo;
-          const jikanInfo = data._source === "jikan" ? miruro : null;
+          const malInfo = data._source === "mal" ? data.anilistInfo : null;
 
-          // Title: AniList → Jikan → TMDB fallback → AllAnime → Miruro
+          // Title: AniList → MAL → TMDB fallback → AllAnime → Miruro
           setAnimeTitle(
             anilistInfo?.title?.english || anilistInfo?.title?.romaji ||
-            jikanInfo?.title?.english || jikanInfo?.title?.romaji ||
+            malInfo?.title?.english || malInfo?.title?.romaji ||
             tmdbFallback?.title?.english || tmdbFallback?.title?.romaji ||
             anime?.englishName || anime?.name ||
             miruro?.title?.english || miruro?.title?.romaji || ""
           );
-          // Image: AniList → Jikan → TMDB fallback → AllAnime → Miruro
+          // Image: AniList → MAL → TMDB fallback → AllAnime → Miruro
           setAnimeImage(
             anilistInfo?.coverImage?.extraLarge || anilistInfo?.coverImage?.large ||
-            jikanInfo?.coverImage?.extraLarge || jikanInfo?.coverImage?.large ||
+            malInfo?.coverImage?.extraLarge || malInfo?.coverImage?.large ||
             tmdbFallback?.coverImage?.extraLarge || tmdbFallback?.coverImage?.large ||
             anime?.thumbnail ||
             miruro?.coverImage?.extraLarge || miruro?.coverImage?.large || ""
           );
-          // Description: AniList → Jikan → TMDB fallback → AllAnime → Miruro
+          // Description: AniList → MAL → TMDB fallback → AllAnime → Miruro
           setAnimeDescription(
             anilistInfo?.description?.replace(/<[^>]*>/g, "") ||
-            jikanInfo?.description?.replace(/<[^>]*>/g, "") ||
+            malInfo?.description?.replace(/<[^>]*>/g, "") ||
             tmdbFallback?.description?.replace(/<[^>]*>/g, "") ||
             anime?.description ||
             miruro?.description?.replace(/<[^>]*>/g, "") || ""
@@ -398,7 +398,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     if (server?.isNative) {
       if (server.id === "megaplay-decrypter") loadMegaplayStream();
       else if (server.id === "miruro-miku") loadMikuStream();
-      else if (server.id === "miruro-kiwi") loadMikuStream(); // kiwi also uses miku stream loader
+      else if (server.id === "miruro-kiwi") loadMikuStream(); // kiwi server uses miku provider (auto-switches)
     } else {
       if (!useDirectEmbed) {
         setUseDirectEmbed(true);

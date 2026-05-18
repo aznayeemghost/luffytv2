@@ -181,7 +181,7 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
             </div>
           )}
 
-          {/* No Jikan/MAL section — anime search uses AniList only */}
+          {/* Anime search uses AniList primary, Miruro + Official MAL API as backup */}
         </div>
       ) : query && searched && totalResults === 0 ? (
         <div className="text-center py-20 rounded-2xl bg-[#111827] border border-white/[0.04] p-8">

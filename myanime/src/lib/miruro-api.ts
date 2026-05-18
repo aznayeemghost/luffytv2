@@ -11,9 +11,10 @@ const HEADERS = {
   Referer: "https://miruro.tv/",
 };
 
-// Provider priority order — miku first (user requested), then other reliable providers
+// Provider priority order — miku FIRST (user requested), then other reliable providers
+// NO kiwi as primary — miku is the main provider, kiwi is backup only
 const PROVIDER_PRIORITY = [
-  "miku", "kiwi", "ax-mimi", "ax-wave", "ax-shiro", "ax-yuki", "ax-zen", "bee", "zoro",
+  "miku", "ax-mimi", "ax-wave", "ax-shiro", "ax-yuki", "ax-zen", "bee", "kiwi", "zoro",
 ];
 
 // Which providers support HLS vs embed

@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTrending, getPopular, getTopRated } from "@/lib/anilist-api";
 import { miruroTrending, miruroPopular, miruroRecent } from "@/lib/miruro-api";
-import { jikanTopAnime, jikanSeasonNow } from "@/lib/jikan-api";
+import { malTopAnime, malSeasonNow } from "@/lib/mal-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * Normalize any anime item to a consistent MiruroAnimeResult shape.
- * Ensures title is always { romaji?, english?, native? } object,
- * coverImage is always { extraLarge?, large?, medium?, color? } object,
- * and all fields are safely defaulted.
  */
 function normalizeItem(item: any): Record<string, any> {
   // Safely extract title — handle both object and string formats
@@ -24,7 +21,6 @@ function normalizeItem(item: any): Record<string, any> {
   } else if (typeof item.title === "string" && item.title) {
     title = { romaji: item.title, english: item.title };
   } else if (item.name) {
-    // AnimeItem format from AllAnime
     title = { romaji: item.name, english: item.englishName || item.name };
   } else {
     title = { romaji: "Unknown" };
@@ -40,7 +36,6 @@ function normalizeItem(item: any): Record<string, any> {
       color: item.coverImage.color || undefined,
     };
   } else if (item.thumbnail) {
-    // AnimeItem format from AllAnime
     coverImage = { extraLarge: item.thumbnail, large: item.thumbnail, medium: item.thumbnail };
   } else {
     coverImage = undefined;
@@ -70,14 +65,13 @@ function normalizeItem(item: any): Record<string, any> {
 
 /**
  * GET /api/anime/home
- * 3-LAYER FALLBACK: AniList (primary) → Miruro (backup 1) → Jikan/MAL (backup 2)
+ * 3-LAYER FALLBACK: AniList (primary) → Miruro (backup 1) → Official MAL API (backup 2)
  *
- * Returns home page data with proper cascading fallback for all sections.
- * All data is normalized to MiruroAnimeResult format for consistent rendering.
+ * No more Jikan 429 errors — using the official MAL API v2!
  */
 export async function GET(request: NextRequest) {
   try {
-    // ---- TRENDING: AniList → Miruro → Jikan ----
+    // ---- TRENDING: AniList → Miruro → Official MAL API ----
     let trendingData: any[] = [];
     let trendingSource = "anilist";
 
@@ -104,17 +98,17 @@ export async function GET(request: NextRequest) {
 
     if (trendingData.length === 0) {
       try {
-        const jikanData = await jikanTopAnime(1, 20, "airing");
-        if (jikanData && jikanData.length > 0) {
-          trendingData = jikanData.map(normalizeItem);
+        const malData = await malTopAnime(1, 20, "airing");
+        if (malData && malData.length > 0) {
+          trendingData = malData.map(normalizeItem);
           trendingSource = "mal";
         }
       } catch (err) {
-        console.error("[home] Jikan trending error:", err);
+        console.error("[home] MAL trending error:", err);
       }
     }
 
-    // ---- POPULAR: AniList → Miruro → Jikan ----
+    // ---- POPULAR: AniList → Miruro → Official MAL API ----
     let popularData: any[] = [];
     let popularSource = "anilist";
 
@@ -141,17 +135,17 @@ export async function GET(request: NextRequest) {
 
     if (popularData.length === 0) {
       try {
-        const jikanData = await jikanTopAnime(1, 20, "bypopularity");
-        if (jikanData && jikanData.length > 0) {
-          popularData = jikanData.map(normalizeItem);
+        const malData = await malTopAnime(1, 20, "bypopularity");
+        if (malData && malData.length > 0) {
+          popularData = malData.map(normalizeItem);
           popularSource = "mal";
         }
       } catch (err) {
-        console.error("[home] Jikan popular error:", err);
+        console.error("[home] MAL popular error:", err);
       }
     }
 
-    // ---- RECENT: Miruro primary → AniList trending → Jikan airing backup ----
+    // ---- RECENT: Miruro primary → AniList trending → Official MAL API ----
     let recentData: any[] = [];
     let recentSource = "miruro";
 
@@ -167,7 +161,6 @@ export async function GET(request: NextRequest) {
 
     if (recentData.length === 0) {
       try {
-        // Use AniList trending as a proxy for recent
         const alData = await getTrending(1, 20);
         if (alData && alData.length > 0) {
           recentData = alData.map(normalizeItem);
@@ -180,21 +173,19 @@ export async function GET(request: NextRequest) {
 
     if (recentData.length === 0) {
       try {
-        const jikanData = await jikanSeasonNow(1, 20);
-        if (jikanData && jikanData.length > 0) {
-          recentData = jikanData.map(normalizeItem);
+        const malData = await malSeasonNow(1, 20);
+        if (malData && malData.length > 0) {
+          recentData = malData.map(normalizeItem);
           recentSource = "mal";
         }
       } catch (err) {
-        console.error("[home] Jikan recent error:", err);
+        console.error("[home] MAL recent error:", err);
       }
     }
 
     return NextResponse.json({
-      // Backward-compatible fields for home-page.tsx
-      trending: [],   // Was AllAnime data, no longer available
-      recent: [],     // Was AllAnime data, no longer available
-      // Normalized Miruro-format data (3-layer fallback)
+      trending: [],
+      recent: [],
       miruroTrending: trendingData,
       miruroPopular: popularData,
       miruroRecent: recentData,

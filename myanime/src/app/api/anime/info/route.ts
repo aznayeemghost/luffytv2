@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnimeDetails } from "@/lib/anilist-api";
 import { miruroInfo } from "@/lib/miruro-api";
-import { jikanAnimeById, jikanAnimeCharacters, jikanAnimeRelations, jikanAnimeRecommendations, jikanToMiruro, jikanCharacterToAniListFormat, jikanRelationToAniListFormat, jikanRecommendationToAniListFormat } from "@/lib/jikan-api";
+import { malAnimeById, malAnimeCharacters, malAnimeRelations, malAnimeRecommendations, malToMiruro, malCharacterToAniListFormat, malRelationToAniListFormat, malRecommendationToAniListFormat } from "@/lib/mal-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -141,19 +141,19 @@ async function fetchMiruro(anilistId: number) {
   }
 }
 
-// Layer 3: MAL/Jikan (backup 2 — last resort)
+// Layer 3: Official MAL API (backup 2 — no more Jikan 429 errors!)
 async function fetchMAL(malId: number) {
   try {
-    const jikanData = await jikanAnimeById(malId);
-    if (!jikanData) return null;
+    const malData = await malAnimeById(malId);
+    if (!malData) return null;
 
-    const miruroResult = jikanToMiruro(jikanData);
+    const miruroResult = malToMiruro(malData);
 
     // Fetch extra data in parallel
     const [charsData, relsData, recsData] = await Promise.all([
-      jikanAnimeCharacters(malId),
-      jikanAnimeRelations(malId),
-      jikanAnimeRecommendations(malId),
+      malAnimeCharacters(malId),
+      malAnimeRelations(malId),
+      malAnimeRecommendations(malId),
     ]);
 
     const anilistInfo = {
@@ -174,24 +174,12 @@ async function fetchMAL(malId: number) {
       seasonYear: miruroResult.seasonYear,
       countryOfOrigin: miruroResult.countryOfOrigin,
       isAdult: miruroResult.isAdult,
-      studios: (jikanData.studios || []).map((s: any) => ({ id: s.mal_id, name: s.name, isAnimationStudio: true })),
-      characters: charsData.map(jikanCharacterToAniListFormat),
+      studios: (malData.studios || []).map((s: any) => ({ id: s.id, name: s.name, isAnimationStudio: true })),
+      characters: charsData.map(malCharacterToAniListFormat),
       staff: [],
-      recommendations: recsData.map(jikanRecommendationToAniListFormat),
-      relations: relsData.flatMap(jikanRelationToAniListFormat).map((r: any) => ({
-        relationType: r.relationType,
-        id: r.id,
-        title: r.title,
-        coverImage: r.coverImage,
-        type: r.type,
-        format: r.format,
-        episodes: r.episodes,
-      })),
-      trailer: jikanData.trailer?.youtube_id ? {
-        id: jikanData.trailer.youtube_id,
-        site: "youtube",
-        thumbnail: jikanData.trailer.images?.medium_image_url || "",
-      } : null,
+      recommendations: recsData.map(malRecommendationToAniListFormat),
+      relations: relsData.map(malRelationToAniListFormat),
+      trailer: null,
       externalLinks: [],
     };
 
@@ -219,7 +207,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid anime ID", anime: null, anilistInfo: null });
   }
 
-  // 3-layer cascade: AniList → Miruro → MAL/Jikan
+  // 3-layer cascade: AniList → Miruro → Official MAL API
   // Layer 1: Try AniList first
   const anilistResult = await fetchAniList(numericId);
   if (anilistResult) return NextResponse.json(anilistResult);
@@ -228,7 +216,7 @@ export async function GET(request: NextRequest) {
   const miruroResult = await fetchMiruro(numericId);
   if (miruroResult) return NextResponse.json(miruroResult);
 
-  // Layer 3: Try MAL/Jikan (last resort)
+  // Layer 3: Try Official MAL API (no more Jikan 429!)
   const malResult = await fetchMAL(numericId);
   if (malResult) return NextResponse.json(malResult);
 

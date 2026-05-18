@@ -155,7 +155,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           const data = await infoRes.json();
           setAnime(data.anime);
           setMiruroInfo(data.miruroInfo);
-          // AniList only — no TMDB/Jikan
+          // AniList + Official MAL API backup — no TMDB
           if (data.anilistInfo) setAnilistInfo(data.anilistInfo);
           // Use totalEpisodes from info API as a reliable fallback
           if (data.totalEpisodes != null && data.totalEpisodes > 0) {
@@ -227,7 +227,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
     );
   }
 
-  // Merge info — AniList PRIMARY, Miruro fallback (NO TMDB/Jikan)
+  // Merge info — AniList PRIMARY, Miruro fallback, Official MAL API backup
   const alTitle = anilistMedia?.title || anilistInfo?.title || null;
   const miruroTitle = miruroInfo?.title || null;
 
