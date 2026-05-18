@@ -578,19 +578,23 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           <div className="flex gap-4 overflow-x-auto scroll-container pb-2">
             {anilistCharacters.filter(c => c.role === "MAIN" || c.role === "SUPPORTING").slice(0, 16).map(c => {
               const va = c.voiceActors?.[0];
+              const cName = c.name?.full || "Unknown";
+              const cNameNative = c.name?.native;
+              const vaName = va?.name?.full || "Unknown";
+              const vaNameNative = va?.name?.native;
               return (
                 <div key={c.id} className="shrink-0 text-center w-[120px]">
                   {/* Character */}
                   <div className="flex flex-col items-center">
                     <div className="w-[80px] h-[80px] rounded-full overflow-hidden border-2 border-cyan-500/20 bg-[#1a2530] mb-1">
                       {c.image?.large || c.image?.medium ? (
-                        <img src={c.image.large || c.image.medium} alt={c.name.full} className="w-full h-full object-cover" />
+                        <img src={c.image.large || c.image.medium} alt={cName} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-semibold">{c.name.full.charAt(0)}</div>
+                        <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-semibold">{cName.charAt(0)}</div>
                       )}
                     </div>
-                    <p className="text-[10px] text-cyan-300 font-medium line-clamp-1">{c.name.full}</p>
-                    {c.name.native && <p className="text-[8px] text-zinc-500 line-clamp-1">{c.name.native}</p>}
+                    <p className="text-[10px] text-cyan-300 font-medium line-clamp-1">{cName}</p>
+                    {cNameNative && <p className="text-[8px] text-zinc-500 line-clamp-1">{cNameNative}</p>}
                     <span className={`text-[8px] font-bold mt-0.5 px-2 py-0.5 rounded-full ${
                       c.role === "MAIN" ? "bg-cyan-500/15 text-cyan-300" : "bg-white/[0.05] text-zinc-400"
                     }`}>{c.role}</span>
@@ -602,13 +606,13 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                       <div className="w-[8px] h-[8px] rounded-full bg-zinc-700 mb-1" />
                       <div className="w-[60px] h-[60px] rounded-full overflow-hidden border-2 border-violet-500/20 bg-[#1a2530] mb-1">
                         {va.image?.large || va.image?.medium ? (
-                          <img src={va.image.large || va.image.medium} alt={va.name.full} className="w-full h-full object-cover" />
+                          <img src={va.image.large || va.image.medium} alt={vaName} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs text-zinc-600 font-semibold">{va.name.full.charAt(0)}</div>
+                          <div className="w-full h-full flex items-center justify-center text-xs text-zinc-600 font-semibold">{vaName.charAt(0)}</div>
                         )}
                       </div>
-                      <p className="text-[9px] text-violet-300 font-medium line-clamp-1">{va.name.full}</p>
-                      {va.name.native && <p className="text-[7px] text-zinc-500 line-clamp-1">{va.name.native}</p>}
+                      <p className="text-[9px] text-violet-300 font-medium line-clamp-1">{vaName}</p>
+                      {vaNameNative && <p className="text-[7px] text-zinc-500 line-clamp-1">{vaNameNative}</p>}
                       <span className="text-[7px] text-zinc-600">CV</span>
                     </div>
                   )}
@@ -627,19 +631,22 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
             <span className="text-[10px] text-zinc-500 ml-2">AniList</span>
           </div>
           <div className="flex gap-4 overflow-x-auto scroll-container pb-2">
-            {anilistStaff.slice(0, 12).map(s => (
+            {anilistStaff.slice(0, 12).map(s => {
+              const sName = s.name?.full || "Unknown";
+              return (
               <div key={s.id} className="shrink-0 text-center w-[100px]">
                 <div className="w-[80px] h-[80px] rounded-full overflow-hidden mx-auto mb-2 border-2 border-white/[0.06] bg-[#1a2530]">
                   {s.image?.large || s.image?.medium ? (
-                    <img src={s.image.large || s.image.medium} alt={s.name.full} className="w-full h-full object-cover" />
+                    <img src={s.image.large || s.image.medium} alt={sName} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-semibold">{s.name.full.charAt(0)}</div>
+                    <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-semibold">{sName.charAt(0)}</div>
                   )}
                 </div>
-                <p className="text-[10px] text-zinc-300 font-medium line-clamp-1">{s.name.full}</p>
+                <p className="text-[10px] text-zinc-300 font-medium line-clamp-1">{sName}</p>
                 {s.role && <p className="text-[8px] text-zinc-500 line-clamp-1">{s.role}</p>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -693,7 +700,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           </div>
           <div className="flex gap-3 overflow-x-auto scroll-container pb-2">
             {anilistRecommendations.slice(0, 12).map(r => {
-              const rTitle = r.title.english || r.title.romaji || r.title.native || "Unknown";
+              const rTitle = r.title?.english || r.title?.romaji || r.title?.native || "Unknown";
               const rImg = r.coverImage?.extraLarge || r.coverImage?.large || r.coverImage?.medium || "";
               return (
                 <button
@@ -728,7 +735,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           </div>
           <div className="space-y-2">
             {anilistRelations.slice(0, 8).map(r => {
-              const rTitle = r.title.english || r.title.romaji || r.title.native || "Unknown";
+              const rTitle = r.title?.english || r.title?.romaji || r.title?.native || "Unknown";
               const rImg = r.coverImage?.extraLarge || r.coverImage?.large || r.coverImage?.medium || "";
               return (
                 <button

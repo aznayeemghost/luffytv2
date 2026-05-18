@@ -27,6 +27,8 @@ function createSafeDb(): any {
         // Return a no-op model proxy when DB is not initialized
         return new Proxy({}, {
           get(_t, method: string) {
+            // For create, return a safe default object
+            if (method === 'create') return async () => ({ id: '0', userLikes: [] });
             // For findMany, return empty array
             if (method === 'findMany') return async () => [];
             // For upsert, return a minimal object

@@ -303,7 +303,7 @@ export default function HomePage() {
               {(() => {
                 const anime = heroItem as MiruroAnimeResult;
                 const img = anime.bannerImage || anime.coverImage?.extraLarge || "";
-                const ttl = anime.title.english || anime.title.romaji || anime.title.native || "Unknown";
+                const ttl = anime.title?.english || anime.title?.romaji || anime.title?.native || "Unknown";
                 return (
                   <>
                     {img && <img src={img} alt={ttl} className="absolute inset-0 w-full h-full object-cover ken-burns" key={`img-${anime.id}`} />}

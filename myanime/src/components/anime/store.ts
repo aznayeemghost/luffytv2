@@ -129,35 +129,37 @@ export const useAppStore = create<AppState>((set, get) => ({
   route: { page: "home" },
   navigate: (route) => {
     set({ route });
-    if (route.page === "home") window.location.hash = "";
-    else if (route.page === "search" && route.query)
-      window.location.hash = `search/${encodeURIComponent(route.query)}`;
-    else if (route.page === "search") window.location.hash = "search";
-    else if (route.page === "anime")
-      window.location.hash = `anime/${route.id}`;
-    else if (route.page === "watch")
-      window.location.hash = `watch/${route.id}/${route.episode}`;
-    else if (route.page === "genre")
-      window.location.hash = `genre/${encodeURIComponent(route.genre)}`;
-    else if (route.page === "bookmarks") window.location.hash = "bookmarks";
-    else if (route.page === "history") window.location.hash = "history";
-    else if (route.page === "dub") window.location.hash = "dub";
-    else if (route.page === "movies") window.location.hash = "movies";
-    else if (route.page === "tv") window.location.hash = "tv";
-    else if (route.page === "manga") window.location.hash = "manga";
-    else if (route.page === "manga-detail")
-      window.location.hash = `manga/${route.id}`;
-    else if (route.page === "manga-read")
-      window.location.hash = `read-manga/${route.id}/${route.chapterId}`;
-    else if (route.page === "movie-detail")
-      window.location.hash = `movie/${route.id}`;
-    else if (route.page === "tv-detail")
-      window.location.hash = `tvshow/${route.id}`;
-    else if (route.page === "movie-watch")
-      window.location.hash = `watch-movie/${route.id}`;
-    else if (route.page === "tv-watch")
-      window.location.hash = `watch-tv/${route.id}/${route.season}/${route.episode}`;
-    window.scrollTo(0, 0);
+    if (typeof window !== "undefined") {
+      if (route.page === "home") window.location.hash = "";
+      else if (route.page === "search" && route.query)
+        window.location.hash = `search/${encodeURIComponent(route.query)}`;
+      else if (route.page === "search") window.location.hash = "search";
+      else if (route.page === "anime")
+        window.location.hash = `anime/${route.id}`;
+      else if (route.page === "watch")
+        window.location.hash = `watch/${route.id}/${route.episode}`;
+      else if (route.page === "genre")
+        window.location.hash = `genre/${encodeURIComponent(route.genre)}`;
+      else if (route.page === "bookmarks") window.location.hash = "bookmarks";
+      else if (route.page === "history") window.location.hash = "history";
+      else if (route.page === "dub") window.location.hash = "dub";
+      else if (route.page === "movies") window.location.hash = "movies";
+      else if (route.page === "tv") window.location.hash = "tv";
+      else if (route.page === "manga") window.location.hash = "manga";
+      else if (route.page === "manga-detail")
+        window.location.hash = `manga/${route.id}`;
+      else if (route.page === "manga-read")
+        window.location.hash = `read-manga/${route.id}/${route.chapterId}`;
+      else if (route.page === "movie-detail")
+        window.location.hash = `movie/${route.id}`;
+      else if (route.page === "tv-detail")
+        window.location.hash = `tvshow/${route.id}`;
+      else if (route.page === "movie-watch")
+        window.location.hash = `watch-movie/${route.id}`;
+      else if (route.page === "tv-watch")
+        window.location.hash = `watch-tv/${route.id}/${route.season}/${route.episode}`;
+      window.scrollTo(0, 0);
+    }
   },
   bookmarks: [],
   setBookmarks: (items) => set({ bookmarks: items }),
