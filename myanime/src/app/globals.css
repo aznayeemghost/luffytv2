@@ -697,7 +697,7 @@ video::-webkit-media-controls { border-radius: 8px; }
 .content-reveal { animation: contentReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 /* ================================================================
-   LUFFY TV INTRO — Minimal: text slides from left, fades out
+   LUFFY TV INTRO — LUFFY purple slides from left, TV white slides from right
    ================================================================ */
 
 .ltv-intro {
@@ -708,27 +708,41 @@ video::-webkit-media-controls { border-radius: 8px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: ltv-fade-out 0.5s 1.9s ease forwards;
+  gap: 8px;
+  animation: ltv-fade-out 0.6s 2.4s ease forwards;
 }
 
-.ltv-text {
+.ltv-luffy {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: clamp(1.4rem, 4vw, 2rem);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
   color: #a855f7;
+  display: inline-block;
   opacity: 0;
-  transform: translateX(-40px);
-  animation: ltv-slide-in 0.5s 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform: translateX(-80px);
+  animation: ltv-slide-left 0.6s 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .ltv-tv {
-  color: #c084fc;
-  font-weight: 600;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  display: inline-block;
+  opacity: 0;
+  transform: translateX(80px);
+  animation: ltv-slide-right 0.6s 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-@keyframes ltv-slide-in {
-  0%   { opacity: 0; transform: translateX(-40px); }
+@keyframes ltv-slide-left {
+  0%   { opacity: 0; transform: translateX(-80px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ltv-slide-right {
+  0%   { opacity: 0; transform: translateX(80px); }
   100% { opacity: 1; transform: translateX(0); }
 }
 
@@ -753,7 +767,7 @@ video::-webkit-media-controls { border-radius: 8px; }
   cursor: pointer;
   transition: all 0.15s ease;
   opacity: 0;
-  animation: ltv-skip-in 0.2s ease-out 0.5s both;
+  animation: ltv-skip-in 0.2s ease-out 0.6s both;
 }
 
 .ltv-skip:hover {

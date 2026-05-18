@@ -58,7 +58,7 @@ function useMounted() {
 }
 
 // ================================================================
-// LUFFY TV INTRO — Minimal: text slides in from left, fades out
+// LUFFY TV INTRO — LUFFY slides from left (purple), TV slides from right (white)
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
@@ -76,7 +76,7 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 2400);
+    }, 3000);
     return () => clearTimeout(t);
   }, []);
 
@@ -84,7 +84,8 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="ltv-intro">
-      <span className="ltv-text">LUFFY <span className="ltv-tv">TV</span></span>
+      <span className="ltv-luffy">LUFFY</span>
+      <span className="ltv-tv">TV</span>
       <button onClick={skip} className="ltv-skip" aria-label="Skip intro">Skip</button>
     </div>
   );
