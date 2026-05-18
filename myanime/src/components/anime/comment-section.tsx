@@ -12,433 +12,284 @@ interface CommentData {
   rating: number | null;
   likes: number;
   createdAt: string;
-  replies?: CommentData[];
+  likesList: { sessionId: string }[];
 }
 
-interface RatingStats {
-  ratingAvg: number;
+interface CommentStats {
+  total: number;
+  avgRating: number;
   ratingCount: number;
-  distribution: Array<{ star: number; count: number }>;
 }
 
 interface CommentSectionProps {
   animeId: string;
-  animeTitle?: string;
 }
 
-// ── Random avatar color generator ──
-function avatarColor(name: string) {
-  const colors = [
-    "from-purple-500 to-violet-600",
-    "from-blue-500 to-cyan-600",
-    "from-emerald-500 to-teal-600",
-    "from-amber-500 to-orange-600",
-    "from-rose-500 to-pink-600",
-    "from-indigo-500 to-blue-600",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
-}
-
-// ── Time ago ──
-function timeAgo(dateStr: string) {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diff = Math.floor((now - then) / 1000);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
-  return new Date(dateStr).toLocaleDateString();
-}
-
-// ── Interactive Star Rating Picker ──
-function StarPicker({ value, onChange, size = "md" }: { value: number; onChange: (v: number) => void; size?: "sm" | "md" }) {
-  const [hover, setHover] = useState(0);
-  const starClass = size === "sm" ? "w-4 h-4" : "w-6 h-6";
-
+function StarRating({ rating, onRate, size = "sm" }: { rating: number; onRate?: (r: number) => void; size?: "sm" | "md" }) {
+  const sz = size === "sm" ? "w-3.5 h-3.5" : "w-5 h-5";
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map(star => (
         <button
           key={star}
-          type="button"
-          onMouseEnter={() => setHover(star)}
-          onMouseLeave={() => setHover(0)}
-          onClick={() => onChange(star)}
-          className="transition-transform hover:scale-110"
+          onClick={() => onRate?.(star)}
+          className={`${onRate ? "cursor-pointer hover:scale-110" : "cursor-default"} transition-transform`}
+          disabled={!onRate}
         >
-          <svg
-            className={`${starClass} transition-colors ${
-              star <= (hover || value) ? "text-amber-400" : "text-zinc-600"
-            }`}
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
+          <svg className={`${sz} ${star <= rating ? "text-amber-400" : "text-zinc-600"}`} fill="currentColor" viewBox="0 0 20 20">
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
           </svg>
         </button>
       ))}
-      {value > 0 && (
-        <span className="ml-1.5 text-sm font-bold text-amber-400">{value}.0</span>
-      )}
     </div>
   );
 }
 
-// ── Static Star Display ──
-function StarDisplay({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
-  const starClass = size === "sm" ? "w-3 h-3" : "w-5 h-5";
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map(star => (
-        <svg
-          key={star}
-          className={`${starClass} ${star <= rating ? "text-amber-400" : "text-zinc-700"}`}
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-    </div>
-  );
+function formatTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
 }
 
-// ── Single Comment Card ──
-function CommentCard({
-  comment,
-  userId,
-  onLike,
-  onReply,
-  onDelete,
-}: {
-  comment: CommentData;
-  userId: string;
-  onLike: (id: string) => void;
-  onReply: (parentId: string, username: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  const isOwner = comment.username === userId;
-
-  return (
-    <div className="group">
-      <div className="flex gap-3">
-        {/* Avatar */}
-        <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(comment.username)} flex items-center justify-center shrink-0 text-white text-sm font-bold shadow-lg`}>
-          {comment.username.charAt(0).toUpperCase()}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-zinc-200">{comment.username}</span>
-            {comment.rating && (
-              <div className="flex items-center gap-0.5 sm:gap-1">
-                <StarDisplay rating={comment.rating} />
-                <span className="text-[9px] sm:text-[10px] font-bold text-amber-400">{comment.rating}.0</span>
-              </div>
-            )}
-            <span className="text-[9px] sm:text-[10px] text-zinc-600">{timeAgo(comment.createdAt)}</span>
-          </div>
-
-          {/* Content */}
-          <p className="text-sm text-zinc-300 mt-1 leading-relaxed whitespace-pre-wrap break-words">
-            {comment.content}
-          </p>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 mt-2">
-            <button
-              onClick={() => onLike(comment.id)}
-              className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-purple-400 transition-colors group/like"
-            >
-              <svg className="w-3.5 h-3.5 group-hover/like:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-              {comment.likes > 0 && <span>{comment.likes}</span>}
-            </button>
-            <button
-              onClick={() => onReply(comment.id, comment.username)}
-              className="text-[11px] text-zinc-500 hover:text-purple-400 transition-colors flex items-center gap-1"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              Reply
-            </button>
-            {isOwner && (
-              <button
-                onClick={() => onDelete(comment.id)}
-                className="text-[11px] text-zinc-600 hover:text-red-400 transition-colors flex items-center gap-1"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Delete
-              </button>
-            )}
-          </div>
-
-          {/* Replies */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-3 ml-2 pl-4 border-l border-white/[0.06] space-y-3">
-              {comment.replies.map(reply => (
-                <CommentCard
-                  key={reply.id}
-                  comment={reply}
-                  userId={userId}
-                  onLike={onLike}
-                  onReply={onReply}
-                  onDelete={onDelete}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main Component ──
-export default function CommentSection({ animeId, animeTitle }: CommentSectionProps) {
+export default function CommentSection({ animeId }: CommentSectionProps) {
   const [comments, setComments] = useState<CommentData[]>([]);
-  const [stats, setStats] = useState<RatingStats>({ ratingAvg: 0, ratingCount: 0, distribution: [] });
+  const [stats, setStats] = useState<CommentStats>({ total: 0, avgRating: 0, ratingCount: 0 });
   const [loading, setLoading] = useState(true);
-  const [sort, setSort] = useState<"newest" | "oldest" | "top">("newest");
-
-  // Form state
+  const [newComment, setNewComment] = useState("");
   const [username, setUsername] = useState("");
-  const [content, setContent] = useState("");
-  const [rating, setRating] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Reply state
-  const [replyTo, setReplyTo] = useState<{ parentId: string; username: string } | null>(null);
-
-  // Current user ID (from localStorage — simple anonymous)
-  const [userId, setUserId] = useState("");
-  useEffect(() => {
-    let id = localStorage.getItem("luffytv_userId");
-    if (!id) {
-      id = "user_" + Math.random().toString(36).slice(2, 10);
-      localStorage.setItem("luffytv_userId", id);
+  const [userRating, setUserRating] = useState(0);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "top">("newest");
+  const [sessionId] = useState(() => {
+    if (typeof window !== "undefined") {
+      let sid = localStorage.getItem("luffy_session_id");
+      if (!sid) {
+        sid = "user_" + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem("luffy_session_id", sid);
+      }
+      return sid;
     }
-    setUserId(id);
-
-    const savedName = localStorage.getItem("luffytv_username");
-    if (savedName) setUsername(savedName);
-  }, []);
+    return "anon";
+  });
 
   const fetchComments = useCallback(async () => {
     try {
-      const res = await fetch(`/api/comments?animeId=${encodeURIComponent(animeId)}&sort=${sort}`);
+      const res = await fetch(`/api/comments?animeId=${encodeURIComponent(animeId)}`);
       if (res.ok) {
         const data = await res.json();
         setComments(data.comments || []);
-        setStats(data.stats || { ratingAvg: 0, ratingCount: 0, distribution: [] });
+        setStats(data.stats || { total: 0, avgRating: 0, ratingCount: 0 });
       }
     } catch { /* ignore */ }
     setLoading(false);
-  }, [animeId, sort]);
+  }, [animeId]);
 
+  useEffect(() => { fetchComments(); }, [fetchComments]);
+
+  // Load saved username
   useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("luffy_username");
+      if (saved) setUsername(saved);
+    }
+  }, []);
 
   const handleSubmit = async () => {
-    if (!username.trim() || !content.trim()) return;
-    setSubmitting(true);
+    if (!newComment.trim() || !username.trim()) return;
+    localStorage.setItem("luffy_username", username.trim());
 
     try {
-      localStorage.setItem("luffytv_username", username.trim());
-
-      const body: Record<string, unknown> = {
-        animeId,
-        username: username.trim(),
-        content: content.trim(),
-        rating: rating > 0 ? rating : undefined,
-      };
-
-      if (replyTo) {
-        body.parentId = replyTo.parentId;
-      }
-
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          animeId,
+          username: username.trim(),
+          content: newComment.trim(),
+          parentId: replyTo,
+          rating: replyTo ? undefined : (userRating > 0 ? userRating : undefined),
+        }),
       });
-
       if (res.ok) {
-        setContent("");
-        setRating(0);
+        setNewComment("");
+        setUserRating(0);
         setReplyTo(null);
         fetchComments();
       }
     } catch { /* ignore */ }
-    setSubmitting(false);
   };
 
   const handleLike = async (commentId: string) => {
-    if (!userId) return;
     try {
-      const res = await fetch("/api/comments", {
-        method: "PATCH",
+      await fetch("/api/comments", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commentId, action: "like", userId }),
+        body: JSON.stringify({ action: "like", commentId, sessionId }),
       });
-      if (res.ok) fetchComments();
+      fetchComments();
     } catch { /* ignore */ }
   };
 
   const handleDelete = async (commentId: string) => {
-    if (!confirm("Delete this comment?")) return;
     try {
-      const res = await fetch("/api/comments", {
-        method: "PATCH",
+      await fetch("/api/comments", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commentId, action: "delete" }),
+        body: JSON.stringify({ action: "delete", commentId }),
       });
-      if (res.ok) fetchComments();
+      fetchComments();
     } catch { /* ignore */ }
   };
 
-  const handleReply = (parentId: string, parentUsername: string) => {
-    setReplyTo({ parentId, username: parentUsername });
-    // Scroll to form
-    document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
+  // Sort comments
+  const sorted = [...comments].sort((a, b) => {
+    if (sortBy === "newest") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (sortBy === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return b.likes - a.likes;
+  });
 
-  // Max count for distribution bar
-  const maxDistCount = Math.max(...stats.distribution.map(d => d.count), 1);
+  // Build tree
+  const topLevel = sorted.filter(c => !c.parentId);
+  const getReplies = (parentId: string) => sorted.filter(c => c.parentId === parentId);
 
-  return (
-    <div className="space-y-6">
-      {/* ══════ Rating Overview ══════ */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 bg-[#0d0d0d] rounded-xl border border-white/[0.06]">
-        {/* Average rating */}
-        <div className="flex flex-col items-center justify-center sm:w-[120px] shrink-0">
-          <div className="text-3xl sm:text-5xl font-black text-white">
-            {stats.ratingAvg > 0 ? stats.ratingAvg.toFixed(1) : "—"}
+  const renderComment = (comment: CommentData, depth = 0) => {
+    const isLiked = comment.likesList?.some(l => l.sessionId === sessionId);
+    const replies = getReplies(comment.id);
+
+    return (
+      <div key={comment.id} className={`${depth > 0 ? "ml-6 sm:ml-8 border-l-2 border-white/[0.04] pl-4" : ""}`}>
+        <div className="flex gap-3 p-3 rounded-xl bg-[#131c26] border border-white/[0.03] hover:border-white/[0.06] transition-all">
+          {/* Avatar */}
+          <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex items-center justify-center border border-white/[0.06]">
+            <span className="text-xs font-bold text-cyan-300">{comment.username.charAt(0).toUpperCase()}</span>
           </div>
-          <div className="mt-1">
-            <StarDisplay rating={Math.round(stats.ratingAvg)} size="md" />
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            {stats.ratingCount > 0
-              ? `${stats.ratingCount} rating${stats.ratingCount !== 1 ? "s" : ""}`
-              : "No ratings yet"}
-          </p>
-        </div>
 
-        {/* Distribution bars */}
-        <div className="flex-1 space-y-1 sm:space-y-1.5 min-w-0">
-          {[5, 4, 3, 2, 1].map(star => {
-            const dist = stats.distribution.find(d => d.star === star);
-            const count = dist?.count || 0;
-            const pct = stats.ratingCount > 0 ? (count / stats.ratingCount) * 100 : 0;
-            return (
-              <div key={star} className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-[10px] sm:text-[11px] text-zinc-400 w-3 text-right">{star}</span>
-                <svg className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <div className="flex-1 h-2.5 bg-white/[0.04] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.max(pct, stats.ratingCount > 0 ? 2 : 0)}%` }}
-                  />
+          <div className="flex-1 min-w-0">
+            {/* Header */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-cyan-300">{comment.username}</span>
+              <span className="text-[10px] text-zinc-600">{formatTimeAgo(comment.createdAt)}</span>
+              {comment.rating != null && comment.rating > 0 && (
+                <div className="flex items-center gap-0.5">
+                  <StarRating rating={comment.rating} />
+                  <span className="text-[9px] text-amber-400 font-bold">{comment.rating}</span>
                 </div>
-                <span className="text-[9px] sm:text-[10px] text-zinc-500 w-5 sm:w-6 text-right">{count}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              )}
+            </div>
 
-      {/* ══════ Comment Form ══════ */}
-      <div id="comment-form" className="p-5 bg-[#0d0d0d] rounded-xl border border-white/[0.06]">
-        <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-          <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          {replyTo ? `Reply to @${replyTo.username}` : "Leave a Review"}
-          {replyTo && (
-            <button
-              onClick={() => setReplyTo(null)}
-              className="ml-auto text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
-            >
-              Cancel Reply
-            </button>
-          )}
-        </h4>
+            {/* Content */}
+            <p className="text-xs sm:text-sm text-zinc-300 mt-1 leading-relaxed break-words">{comment.content}</p>
 
-        <div className="space-y-3">
-          {/* Username + Rating row */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              placeholder="Your name"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              maxLength={30}
-              className="flex-1 px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 transition-all"
-            />
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-zinc-500">Rate:</span>
-              <StarPicker value={rating} onChange={setRating} />
-              {rating > 0 && (
+            {/* Actions */}
+            <div className="flex items-center gap-3 mt-2">
+              <button
+                onClick={() => handleLike(comment.id)}
+                className={`flex items-center gap-1 text-[10px] font-medium transition-colors ${isLiked ? "text-rose-400" : "text-zinc-500 hover:text-rose-400"}`}
+              >
+                <svg className="w-3.5 h-3.5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                </svg>
+                {comment.likes > 0 && comment.likes}
+              </button>
+              <button
+                onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
+                className="text-[10px] font-medium text-zinc-500 hover:text-cyan-400 transition-colors"
+              >
+                Reply
+              </button>
+              {comment.username === username && (
                 <button
-                  onClick={() => setRating(0)}
-                  className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                  onClick={() => handleDelete(comment.id)}
+                  className="text-[10px] font-medium text-zinc-600 hover:text-rose-400 transition-colors"
                 >
-                  Clear
+                  Delete
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Content */}
-          <textarea
-            placeholder={replyTo ? `Write a reply to @${replyTo.username}...` : "Share your thoughts about this anime..."}
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            maxLength={1000}
-            rows={3}
-            className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 transition-all resize-none"
-          />
-
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-zinc-600">{content.length}/1000</span>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !username.trim() || !content.trim()}
-              className="px-5 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
-            >
-              {submitting ? "Posting..." : replyTo ? "Post Reply" : "Post Review"}
-            </button>
+            {/* Reply form */}
+            {replyTo === comment.id && (
+              <div className="mt-3 space-y-2 p-3 bg-[#0b1116] rounded-lg border border-white/[0.04]">
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  className="w-full h-8 px-3 text-xs bg-white/[0.06] border border-white/[0.08] rounded-lg text-white placeholder-zinc-500 outline-none focus:border-cyan-500/30"
+                />
+                <textarea
+                  placeholder={`Reply to ${comment.username}...`}
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 text-xs bg-white/[0.06] border border-white/[0.08] rounded-lg text-white placeholder-zinc-500 outline-none focus:border-cyan-500/30 resize-none"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!newComment.trim() || !username.trim()}
+                    className="px-3 py-1.5 text-[10px] font-bold bg-cyan-500/15 text-cyan-300 rounded-full border border-cyan-500/20 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    Post Reply
+                  </button>
+                  <button
+                    onClick={() => setReplyTo(null)}
+                    className="px-3 py-1.5 text-[10px] font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* ══════ Comments List ══════ */}
-      <div>
-        {/* Sort bar */}
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-bold text-white flex items-center gap-2">
-            Reviews & Comments
-            <span className="text-[10px] font-normal text-zinc-500">({comments.length})</span>
-          </h4>
-          <div className="flex items-center gap-0.5 bg-[#1a1a1a] rounded-full p-0.5 border border-white/[0.06]">
-            {(["newest", "oldest", "top"] as const).map(s => (
+        {/* Nested replies */}
+        {replies.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {replies.map(r => renderComment(r, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-8 space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="section-header flex items-center gap-2">
+          <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          <h3 className="text-sm font-bold text-white">Comments</h3>
+          <span className="text-[10px] text-zinc-500">({stats.total})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Rating summary */}
+          {stats.ratingCount > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 rounded-full border border-amber-500/15">
+              <svg className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              <span className="text-[11px] font-bold text-amber-300">{stats.avgRating}</span>
+              <span className="text-[9px] text-amber-400/60">({stats.ratingCount})</span>
+            </div>
+          )}
+          {/* Sort */}
+          <div className="flex items-center gap-0.5 bg-[#1a2530] rounded-full p-0.5 border border-white/[0.06]">
+            {(["newest", "top", "oldest"] as const).map(s => (
               <button
                 key={s}
-                onClick={() => setSort(s)}
-                className={`px-2.5 sm:px-3 py-1 text-[9px] sm:text-[10px] font-bold rounded-full transition-all ${
-                  sort === s ? "bg-purple-500/15 text-purple-300" : "text-zinc-500 hover:text-zinc-300"
+                onClick={() => setSortBy(s)}
+                className={`px-2.5 py-1 text-[10px] font-bold rounded-full transition-all ${
+                  sortBy === s ? "bg-cyan-500/15 text-cyan-300" : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
                 {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -446,47 +297,68 @@ export default function CommentSection({ animeId, animeTitle }: CommentSectionPr
             ))}
           </div>
         </div>
-
-        {/* Comments */}
-        {loading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }, (_, i) => (
-              <div key={i} className="flex gap-3 p-4 bg-[#0d0d0d] rounded-xl border border-white/[0.04]">
-                <div className="w-9 h-9 rounded-full skeleton shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 w-24 skeleton rounded" />
-                  <div className="h-3 w-full skeleton rounded" />
-                  <div className="h-3 w-2/3 skeleton rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : comments.length === 0 ? (
-          <div className="text-center py-12 px-4">
-            <div className="w-16 h-16 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto mb-3">
-              <svg className="w-8 h-8 text-zinc-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <p className="text-sm text-zinc-500 font-medium">No reviews yet</p>
-            <p className="text-xs text-zinc-600 mt-1">Be the first to share your thoughts!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {comments.map(comment => (
-              <div key={comment.id} className="p-4 bg-[#0d0d0d] rounded-xl border border-white/[0.04] hover:border-white/[0.08] transition-colors">
-                <CommentCard
-                  comment={comment}
-                  userId={username}
-                  onLike={handleLike}
-                  onReply={handleReply}
-                  onDelete={handleDelete}
-                />
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Post comment form */}
+      <div className="p-4 bg-[#131c26] rounded-xl border border-white/[0.04] space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            placeholder="Your name"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            className="w-full sm:w-36 h-9 px-3 text-xs bg-white/[0.06] border border-white/[0.08] rounded-lg text-white placeholder-zinc-500 outline-none focus:border-cyan-500/30 shrink-0"
+          />
+          <div className="flex-1 flex items-center gap-2">
+            <textarea
+              placeholder="Write a comment..."
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              rows={1}
+              className="flex-1 px-3 py-2 text-xs bg-white/[0.06] border border-white/[0.08] rounded-lg text-white placeholder-zinc-500 outline-none focus:border-cyan-500/30 resize-none"
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-500">Rate:</span>
+            <StarRating rating={userRating} onRate={setUserRating} size="md" />
+            {userRating > 0 && (
+              <button onClick={() => setUserRating(0)} className="text-[10px] text-zinc-600 hover:text-zinc-400">Clear</button>
+            )}
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={!newComment.trim() || !username.trim()}
+            className="pill-btn pill-btn-primary text-xs py-2 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+            Post
+          </button>
+        </div>
+      </div>
+
+      {/* Comments list */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-20 skeleton rounded-xl" />
+          ))}
+        </div>
+      ) : topLevel.length > 0 ? (
+        <div className="space-y-2">
+          {topLevel.map(c => renderComment(c))}
+        </div>
+      ) : (
+        <div className="text-center py-8 bg-[#151f2e] rounded-xl border border-white/[0.04]">
+          <svg className="w-10 h-10 text-zinc-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          <p className="text-zinc-500 text-xs">No comments yet. Be the first!</p>
+        </div>
+      )}
     </div>
   );
 }

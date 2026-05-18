@@ -129,8 +129,8 @@ export default function MangaDetailPage({ mangaId }: MangaDetailProps) {
         )}
 
         {/* Dark overlays for readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/80 to-[#000000]/40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-transparent to-[#000000]/60" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0b1116] via-[#0b1116]/80 to-[#0b1116]/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-transparent to-[#0b1116]/60" />
 
         {/* Content */}
         <div className="relative z-10 h-full min-h-[85vh] flex items-end pb-16 pt-[120px]">
@@ -263,35 +263,35 @@ export default function MangaDetailPage({ mangaId }: MangaDetailProps) {
       {/* ═══ INFO CARDS ═══ */}
       <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         {authorsText && authorsText !== "Unknown" && (
-          <div className="bg-[#0a0a0a] rounded-xl p-4 border border-white/[0.04]">
+          <div className="bg-[#151f2e] rounded-xl p-4 border border-white/[0.04]">
             <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Author</p>
             <p className="text-xs text-white font-medium line-clamp-2">{authorsText}</p>
           </div>
         )}
         {manga.status && (
-          <div className="bg-[#0a0a0a] rounded-xl p-4 border border-white/[0.04]">
+          <div className="bg-[#151f2e] rounded-xl p-4 border border-white/[0.04]">
             <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Status</p>
             <p className="text-xs text-white font-medium">{manga.status}</p>
           </div>
         )}
-        <div className="bg-[#0a0a0a] rounded-xl p-4 border border-white/[0.04]">
+        <div className="bg-[#151f2e] rounded-xl p-4 border border-white/[0.04]">
           <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Chapters</p>
           <p className="text-xs text-white font-medium">{manga.totalChapters || manga.chapters?.length || "—"}</p>
         </div>
         {manga.type && (
-          <div className="bg-[#0a0a0a] rounded-xl p-4 border border-white/[0.04]">
+          <div className="bg-[#151f2e] rounded-xl p-4 border border-white/[0.04]">
             <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Type</p>
             <p className="text-xs text-white font-medium">{manga.type}</p>
           </div>
         )}
         {manga.anilistId && (
-          <div className="bg-[#0a0a0a] rounded-xl p-4 border border-white/[0.04]">
+          <div className="bg-[#151f2e] rounded-xl p-4 border border-white/[0.04]">
             <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">AniList</p>
-            <p className="text-xs text-purple-400 font-medium">{manga.anilistId}</p>
+            <p className="text-xs text-cyan-400 font-medium">{manga.anilistId}</p>
           </div>
         )}
         {manga.source && (
-          <div className="bg-[#0a0a0a] rounded-xl p-4 border border-white/[0.04]">
+          <div className="bg-[#151f2e] rounded-xl p-4 border border-white/[0.04]">
             <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Source</p>
             <p className="text-xs text-white font-medium capitalize">{manga.source}</p>
           </div>
@@ -325,13 +325,13 @@ export default function MangaDetailPage({ mangaId }: MangaDetailProps) {
                 placeholder="Search chapters..."
                 value={chapterSearch}
                 onChange={e => setChapterSearch(e.target.value)}
-                className="h-8 pl-8 pr-3 bg-[#1a1a1a] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-500 outline-none focus:border-red-500/30 w-[160px] transition-colors"
+                className="h-8 pl-8 pr-3 bg-[#1a2530] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-500 outline-none focus:border-red-500/30 w-[160px] transition-colors"
               />
             </div>
             {/* Sort toggle */}
             <button
               onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-[#1a1a1a] border border-white/[0.06] rounded-lg text-zinc-400 hover:text-white hover:border-red-600/20 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-[#1a2530] border border-white/[0.06] rounded-lg text-zinc-400 hover:text-white hover:border-red-600/20 transition-all"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path d={sortOrder === "asc" ? "M3 4h13M3 8h9M3 12h5" : "M3 4h5M3 8h9M3 12h13"} />

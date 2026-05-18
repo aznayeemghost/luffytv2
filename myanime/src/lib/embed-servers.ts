@@ -18,7 +18,6 @@ export interface EmbedServer {
   color: string;
   category: "anime" | "tmdb" | "hindi" | "native";
   isNative?: boolean;     // If true, this server uses native HLS player (not iframe)
-  customName?: string;    // If set, overrides auto-numbered name (e.g. "Hindi Dub")
   generateUrl: (params: EmbedUrlParams) => string;
 }
 
@@ -53,24 +52,6 @@ const miruroKiwi: EmbedServer = {
   category: "native",
   isNative: true,
   generateUrl: () => "native:kiwi",  // Special marker - handled by watch page
-};
-
-// ============================================================
-// Native server — MegaPlay Decryptor (direct HLS m3u8 + subs + skip data)
-// ============================================================
-
-const megaplayDecryptor: EmbedServer = {
-  id: "megaplay-decryptor",
-  name: "Server 2",
-  priority: 1,  // Second highest after kiwi
-  supportsSub: true,
-  supportsDub: true,
-  supportsHindi: false,
-  idType: "native",
-  color: "#a855f7",
-  category: "native",
-  isNative: true,
-  generateUrl: () => "native:megaplay",  // Special marker - handled by watch page
 };
 
 // ============================================================
@@ -371,17 +352,8 @@ const videasyAnime: EmbedServer = {
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    // VidEasy auto-provides both sub & dub — no explicit param needed
-    // dub param is not documented but kept as optional hint
-    const params = new URLSearchParams({
-      nextEpisode: "true",
-      autoplayNextEpisode: "true",
-      episodeSelector: "true",
-      overlay: "true",
-      color: "00A8E1",
-    });
-    if (p.translation === "dub") params.set("dub", "true");
-    return `https://player.videasy.net/anime/${p.anilistId}/${p.episode}?${params}`;
+    const dub = p.translation === "dub" ? "&dub=true" : "";
+    return `https://player.videasy.net/anime/${p.anilistId}/${p.episode}?nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true&color=00A8E1${dub}`;
   },
 };
 
@@ -402,53 +374,19 @@ const megaplayEmbed: EmbedServer = {
   },
 };
 
-// ============================================================
-// VidPlus Anime — AniList ID with dub query param
-// URL: https://player.vidplus.to/embed/anime/{anilistId}/{episode}?dub=true/false
-// ============================================================
-
-const vidplusAnime: EmbedServer = {
-  id: "vidplus-anime",
-  name: "Server 7",
-  priority: 17,
-  supportsSub: true,
-  supportsDub: true,
-  supportsHindi: false,
-  idType: "anilist",
-  color: "#EC4899",
-  category: "anime",
-  generateUrl: (p) => {
-    if (!p.anilistId) return "";
-    const params = new URLSearchParams({
-      autoplay: "true",
-      autonext: "true",
-      nextbutton: "true",
-      primarycolor: "00A8E1",
-      secondarycolor: "0099CC",
-      iconcolor: "FFFFFF",
-      icons: "netflix",
-      episodelist: "true",
-      poster: "true",
-      title: "true",
-    });
-    if (p.translation === "dub") params.set("dub", "true");
-    return `https://player.vidplus.to/embed/anime/${p.anilistId}/${p.episode}?${params}`;
-  },
-};
-
 const tryembed: EmbedServer = {
   id: "tryembed",
   name: "Server 6",
   priority: 16,
   supportsSub: true,
   supportsDub: true,
-  supportsHindi: false,  // TryEmbed only supports sub/dub
+  supportsHindi: true,
   idType: "anilist",
   color: "#10B981",
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    const lang = p.translation === "dub" ? "dub" : "sub";  // Only sub/dub supported
+    const lang = p.translation === "hindi" ? "hindi" : p.translation;
     return `https://tryembed.us.cc/embed/anime/${p.anilistId}/${p.episode}/${lang}`;
   },
 };
@@ -459,20 +397,17 @@ const tryembed: EmbedServer = {
 
 const anixtvHindi: EmbedServer = {
   id: "anixtv-hindi",
-  name: "Hindi Dub",
-  priority: 18,
+  name: "Server 7",
+  priority: 17,
   supportsSub: false,
   supportsDub: false,
   supportsHindi: true,
   idType: "anilist",
   color: "#FF6B35",
   category: "hindi",
-  customName: "Hindi Dub",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    const title = p.title ? encodeURIComponent(p.title) : `Anime-${p.anilistId}`;
-    const season = p.season || 1;
-    return `https://anixtv.in/anime-watch?action=hindi_1_player&id=${p.anilistId}&season=${season}&episode=${p.episode}&title=${title}`;
+    return `https://anixtv.in/anime/${p.anilistId}/episode/${p.episode}`;
   },
 };
 
@@ -481,11 +416,10 @@ const anixtvHindi: EmbedServer = {
 // ============================================================
 
 const ALL_SERVERS: EmbedServer[] = [
-  miruroKiwi, megaplayDecryptor,
+  miruroKiwi,
   peachify, vidcore, vidnestTv, vidfast, videasyTv, vidsrcme,
   vidplus, vidplays, embedmaster, vidlink, vidzen, vidking,
   vidnestAnime, vidnestAnimepahe, videasyAnime, megaplayEmbed, tryembed,
-  vidplusAnime,
   anixtvHindi,
 ];
 
@@ -501,7 +435,7 @@ export function getAnimeServers(): EmbedServer[] {
   );
   return servers.map((s, i) => ({
     ...s,
-    name: s.customName || `Server ${i + 1}`,
+    name: `Server ${i + 1}`,
     priority: i,
   }));
 }
