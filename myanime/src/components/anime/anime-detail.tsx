@@ -185,6 +185,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           const data = await infoRes.json();
           setAnime(data.anime);
           setMiruroInfo(data.miruroInfo);
+          // Use anilistInfo from all sources (AniList PRIMARY, TMDB/Jikan shaped as anilistInfo for compatibility)
           if (data.anilistInfo) setAnilistInfo(data.anilistInfo);
           if (data.tmdbData) setTmdbData(data.tmdbData);
           if (data.tmdbId) setTmdbId(data.tmdbId);
@@ -192,6 +193,10 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           // Use totalEpisodes from info API as a reliable fallback
           if (data.totalEpisodes != null && data.totalEpisodes > 0) {
             setTotalEpisodes(data.totalEpisodes);
+          }
+          // Store TMDB ID from fallback info for passing to anilist-detail API
+          if (!tmdbId && data.tmdbFallbackInfo?.id) {
+            setTmdbId(data.tmdbFallbackInfo.id);
           }
         }
 
@@ -215,13 +220,15 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
     load();
   }, [animeId]);
 
-  // Fetch AniList characters & voice actors
+  // Fetch AniList characters & voice actors (with Jikan/TMDB fallback)
   useEffect(() => {
     if (!anilistId) return;
     async function loadAnilistDetail() {
       setAnilistDetailLoading(true);
       try {
-        const res = await fetch(`/api/anime/anilist-detail?id=${anilistId}`);
+        // Pass tmdbId for TMDB fallback when AniList is down
+        const tmdbParam = tmdbId ? `&tmdbId=${tmdbId}` : "";
+        const res = await fetch(`/api/anime/anilist-detail?id=${anilistId}${tmdbParam}`);
         if (res.ok) {
           const data = await res.json();
           setAnilistCharacters(data.characters || []);
@@ -242,7 +249,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
       setAnilistDetailLoading(false);
     }
     loadAnilistDetail();
-  }, [anilistId]);
+  }, [anilistId, tmdbId]);
 
   if (loading) {
     return (
@@ -442,7 +449,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   {anilistScore && (
                     <span className="badge-score text-[11px] font-bold inline-flex items-center gap-1">
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                      {dataSource === "jikan" ? "MAL" : "AL"} {anilistScore.toFixed(1)} ★
+                      {dataSource === "jikan" ? "MAL" : dataSource === "tmdb" ? "TMDB" : "AL"} {anilistScore.toFixed(1)} ★
                     </span>
                   )}
                   {tmdbScore && (

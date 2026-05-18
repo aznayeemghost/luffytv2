@@ -75,7 +75,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     if (/^\d+$/.test(cleanId)) setAnilistId(parseInt(cleanId));
   }, [animeId]);
 
-  // Load anime info
+  // Load anime info — AniList PRIMARY, Jikan/MAL + TMDB as BACKUP
   useEffect(() => {
     let cancelled = false;
     async function loadInfo() {
@@ -86,15 +86,43 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
           const data = await res.json();
           const anime = data.anime;
           const miruro = data.miruroInfo;
-          // Use AniList info as PRIMARY for title/image
+          // AniList is PRIMARY — fallback chain: anilistInfo → jikanData → tmdbFallbackInfo → allanime → miruro
           const anilistInfo = data.anilistInfo;
-          setAnimeTitle(anilistInfo?.title?.english || anilistInfo?.title?.romaji || anime?.englishName || anime?.name || miruro?.title?.english || miruro?.title?.romaji || "");
-          setAnimeImage(anilistInfo?.coverImage?.extraLarge || anilistInfo?.coverImage?.large || anime?.thumbnail || miruro?.coverImage?.extraLarge || miruro?.coverImage?.large || "");
-          setAnimeDescription(anilistInfo?.description?.replace(/<[^>]*>/g, "") || anime?.description || miruro?.description?.replace(/<[^>]*>/g, "") || "");
-          // Extract anilistId from info API if not already set from URL
+          const tmdbFallback = data.tmdbFallbackInfo;
+          const jikanInfo = data._source === "jikan" ? miruro : null;
+
+          // Title: AniList → Jikan → TMDB fallback → AllAnime → Miruro
+          setAnimeTitle(
+            anilistInfo?.title?.english || anilistInfo?.title?.romaji ||
+            jikanInfo?.title?.english || jikanInfo?.title?.romaji ||
+            tmdbFallback?.title?.english || tmdbFallback?.title?.romaji ||
+            anime?.englishName || anime?.name ||
+            miruro?.title?.english || miruro?.title?.romaji || ""
+          );
+          // Image: AniList → Jikan → TMDB fallback → AllAnime → Miruro
+          setAnimeImage(
+            anilistInfo?.coverImage?.extraLarge || anilistInfo?.coverImage?.large ||
+            jikanInfo?.coverImage?.extraLarge || jikanInfo?.coverImage?.large ||
+            tmdbFallback?.coverImage?.extraLarge || tmdbFallback?.coverImage?.large ||
+            anime?.thumbnail ||
+            miruro?.coverImage?.extraLarge || miruro?.coverImage?.large || ""
+          );
+          // Description: AniList → Jikan → TMDB fallback → AllAnime → Miruro
+          setAnimeDescription(
+            anilistInfo?.description?.replace(/<[^>]*>/g, "") ||
+            jikanInfo?.description?.replace(/<[^>]*>/g, "") ||
+            tmdbFallback?.description?.replace(/<[^>]*>/g, "") ||
+            anime?.description ||
+            miruro?.description?.replace(/<[^>]*>/g, "") || ""
+          );
+
+          // AniList ID: Always prefer AniList ID for streaming servers
           if (!anilistId && anilistInfo?.id) {
             setAnilistId(anilistInfo.id);
           }
+          // If AniList is down but we got a TMDB fallback, we still try to resolve
+          // the AniList ID from the info data for streaming purposes
+
           if (data.tmdbSeason) setTmdbSeason(data.tmdbSeason);
           else if (data.zenshinMappings?.season?.tmdb) setTmdbSeason(data.zenshinMappings.season.tmdb);
           if (data.tmdbData) {
@@ -102,6 +130,13 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             else if (data.tmdbData.backdrop_path) setTmdbBackdrop(`https://image.tmdb.org/t/p/w780${data.tmdbData.backdrop_path}`);
             if (data.tmdbData.vote_average) setTmdbRating(data.tmdbData.vote_average);
             if (data.tmdbData.genres) setTmdbGenres(data.tmdbData.genres.map((g: any) => g.name));
+          }
+          // Also use TMDB fallback data for rating/genres when AniList is down
+          if (!tmdbRating && tmdbFallback?.averageScore) {
+            setTmdbRating(tmdbFallback.averageScore > 10 ? tmdbFallback.averageScore / 10 : tmdbFallback.averageScore);
+          }
+          if (tmdbGenres.length === 0 && tmdbFallback?.genres?.length) {
+            setTmdbGenres(tmdbFallback.genres);
           }
         }
       } catch { /* ignore */ }

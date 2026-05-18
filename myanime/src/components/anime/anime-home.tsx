@@ -100,7 +100,7 @@ export default function AnimeHomePage() {
   const [genreResults, setGenreResults] = useState<MiruroAnimeResult[]>([]);
   const [seasonResults, setSeasonResults] = useState<MiruroAnimeResult[]>([]);
 
-  // Load main data — AniList PRIMARY, Miruro fallback for recent
+  // Load main data — AniList PRIMARY, Miruro fallback for recent, TMDB fallback for anime lists
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -145,6 +145,34 @@ export default function AnimeHomePage() {
         }
         if (!alData?.popular?.length && miruroData?.miruroPopular?.length > 0) {
           setPopular(miruroData.miruroPopular);
+        }
+
+        // TMDB TV fallback when both AniList and Miruro fail
+        if (!alData?.trending?.length && !miruroData?.miruroTrending?.length) {
+          try {
+            const tmdbRes = await fetch("/api/tmdb/tv?category=popular").catch(() => null);
+            if (tmdbRes?.ok) {
+              const tmdbData = await tmdbRes.json();
+              if (tmdbData?.results?.length > 0) {
+                const mapped = tmdbData.results.slice(0, 20).map((item: any) => ({
+                  id: item.id,
+                  title: { english: item.name || item.original_name, romaji: item.original_name },
+                  coverImage: {
+                    extraLarge: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : undefined,
+                    large: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : undefined,
+                  },
+                  bannerImage: item.backdrop_path ? `https://image.tmdb.org/t/p/w780${item.backdrop_path}` : undefined,
+                  averageScore: item.vote_average ? Math.round(item.vote_average * 10) : undefined,
+                  type: "TV",
+                  status: item.status,
+                  genres: [],
+                  description: item.overview,
+                }));
+                if (trending.length === 0) setTrending(mapped);
+                if (popular.length === 0) setPopular(mapped);
+              }
+            }
+          } catch { /* TMDB fallback failed */ }
         }
       } catch { /* ignore */ }
       setLoading(false);
