@@ -1,11 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAppStore, getAnimeTitle, getAnimeImage } from "./store";
 import type { AnimeItem } from "./store";
 import type { MiruroAnimeResult } from "@/lib/miruro-api";
 import type { AniListMedia } from "@/lib/anilist-api";
-import CommentSection from "./comment-section";
+
+// ============================================================
+// Comment types
+// ============================================================
+interface CommentData {
+  id: string;
+  animeId: string;
+  episode: number | null;
+  username: string;
+  content: string;
+  parentId: string | null;
+  rating: number | null;
+  likes: number;
+  createdAt: string;
+  updatedAt: string;
+  userLikes: Array<{ id: string; username: string }>;
+}
+
+interface CommentStats {
+  avgRating: number;
+  totalRatings: number;
+}
 
 interface AnimeDetailProps {
   animeId: string;
@@ -131,6 +152,22 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   const [anilistStudios, setAnilistStudios] = useState<AniListStudio[]>([]);
   const [anilistTrailer, setAnilistTrailer] = useState<{ id: string; site: string; thumbnail: string } | null>(null);
   const [anilistDetailLoading, setAnilistDetailLoading] = useState(false);
+
+  // Comments & Ratings
+  const [comments, setComments] = useState<CommentData[]>([]);
+  const [commentStats, setCommentStats] = useState<CommentStats>({ avgRating: 0, totalRatings: 0 });
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentSort, setCommentSort] = useState<"newest" | "oldest" | "top">("newest");
+  const [newComment, setNewComment] = useState("");
+  const [newUsername, setNewUsername] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("luffy_username") || "";
+    return "";
+  });
+  const [newRating, setNewRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -275,19 +312,118 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   // Check if we have any episode data at all — also consider numbered fallback episodes
   const hasAnyEpisodes = episodes.length > 0 || hasMiruroEps || (episodesCount != null && episodesCount > 0);
 
+  // Load comments
+  const loadComments = useCallback(async () => {
+    setCommentLoading(true);
+    try {
+      const res = await fetch(`/api/comments?animeId=${encodeURIComponent(animeId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(data.comments || []);
+        setCommentStats(data.stats || { avgRating: 0, totalRatings: 0 });
+      }
+    } catch { /* ignore */ }
+    setCommentLoading(false);
+  }, [animeId]);
+
+  useEffect(() => { loadComments(); }, [loadComments]);
+
+  // Sort comments
+  const sortedComments = [...comments].sort((a, b) => {
+    if (commentSort === "newest") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (commentSort === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return b.likes - a.likes; // top
+  });
+
+  // Submit comment
+  const submitComment = async () => {
+    if (!newUsername.trim() || !newComment.trim()) return;
+    setSubmitting(true);
+    try {
+      localStorage.setItem("luffy_username", newUsername.trim());
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          animeId,
+          username: newUsername.trim(),
+          content: newComment.trim(),
+          rating: newRating > 0 ? newRating : null,
+          parentId: null,
+        }),
+      });
+      if (res.ok) {
+        setNewComment("");
+        setNewRating(0);
+        loadComments();
+      }
+    } catch { /* ignore */ }
+    setSubmitting(false);
+  };
+
+  // Submit reply
+  const submitReply = async (parentId: string) => {
+    if (!newUsername.trim() || !replyContent.trim()) return;
+    setSubmitting(true);
+    try {
+      localStorage.setItem("luffy_username", newUsername.trim());
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          animeId,
+          username: newUsername.trim(),
+          content: replyContent.trim(),
+          parentId,
+        }),
+      });
+      if (res.ok) {
+        setReplyContent("");
+        setReplyTo(null);
+        loadComments();
+      }
+    } catch { /* ignore */ }
+    setSubmitting(false);
+  };
+
+  // Toggle like
+  const toggleLike = async (commentId: string) => {
+    const username = newUsername.trim() || localStorage.getItem("luffy_username") || "Anonymous";
+    try {
+      await fetch("/api/comments/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentId, username }),
+      });
+      loadComments();
+    } catch { /* ignore */ }
+  };
+
+  // Delete comment
+  const deleteComment = async (id: string) => {
+    try {
+      await fetch(`/api/comments?id=${id}`, { method: "DELETE" });
+      loadComments();
+    } catch { /* ignore */ }
+  };
+
+  // Build comment tree
+  const topLevelComments = sortedComments.filter(c => !c.parentId);
+  const getReplies = (parentId: string) => sortedComments.filter(c => c.parentId === parentId);
+
   return (
     <div className="fade-in">
       {/* Hero Section — 90vh */}
       {banner && (
-        <div className="relative min-h-[70vh] sm:min-h-[80vh] lg:min-h-[90vh] -mt-[75px] overflow-hidden">
+        <div className="relative min-h-[90vh] -mt-[75px] overflow-hidden">
           <img src={banner} alt="" className="absolute inset-0 w-full h-full object-cover ken-burns" key={`banner-${animeId}`} />
           <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#0b1116]/50 to-[#0b1116]/95" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/40 to-transparent" />
 
           {/* Content */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-12 pb-24 sm:pb-20 lg:pb-12">
-            <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row items-end gap-6 lg:gap-8">
-              <div className="flex-1 min-w-0 space-y-3 sm:space-y-4">
+          <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12">
+            <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row items-end gap-8">
+              <div className="flex-1 space-y-4">
                 {/* Badges */}
                 <div className="stagger-reveal stagger-1 flex items-center gap-2 flex-wrap">
                   {anilistScore && (
@@ -305,7 +441,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   {episodesCount && <span className="badge-quality text-[10px] font-bold">{episodesCount} EP</span>}
                 </div>
 
-                <h1 className="stagger-reveal stagger-2 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white line-clamp-2 overflow-hidden">{displayTitle}</h1>
+                <h1 className="stagger-reveal stagger-2 text-3xl sm:text-4xl lg:text-5xl font-bold text-white line-clamp-2">{displayTitle}</h1>
 
                 {/* Alt titles */}
                 {anilistTitleRomaji && anilistTitleRomaji !== displayTitle && (
@@ -332,11 +468,11 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
 
                 {/* Description */}
                 {description && (
-                  <p className="stagger-reveal stagger-4 text-xs sm:text-sm text-zinc-400 line-clamp-2 sm:line-clamp-3 max-w-lg leading-relaxed">{description}</p>
+                  <p className="stagger-reveal stagger-4 text-sm text-zinc-400 line-clamp-3 max-w-lg leading-relaxed">{description}</p>
                 )}
 
                 {/* Action buttons */}
-                <div className="stagger-reveal stagger-5 flex flex-wrap items-center gap-2 sm:gap-3 pt-2">
+                <div className="stagger-reveal stagger-5 flex items-center gap-3 pt-2">
                   <button onClick={() => handleWatch(1)} className="pill-btn pill-btn-primary">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                     Play EP.1
@@ -741,8 +877,230 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
         </div>
       )}
 
-      {/* Comment Section with Ratings */}
-      <CommentSection animeId={animeId} />
+      {/* ========== COMMENTS & RATINGS SECTION ========== */}
+      <div className="mt-10 space-y-6">
+        <div className="section-header flex items-center gap-2">
+          <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+          <h3 className="text-sm font-bold text-white">Comments &amp; Reviews</h3>
+          <span className="text-[10px] text-zinc-500 ml-1">({comments.length})</span>
+        </div>
+
+        {/* Rating summary */}
+        {commentStats.totalRatings > 0 && (
+          <div className="flex items-center gap-4 p-4 bg-[#131c26] rounded-xl border border-white/[0.04]">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">{commentStats.avgRating.toFixed(1)}</div>
+              <div className="flex items-center gap-0.5 mt-1">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <svg key={star} className="w-4 h-4" fill={star <= Math.round(commentStats.avgRating) ? "#F59E0B" : "#334155"} viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-0.5">{commentStats.totalRatings} rating{commentStats.totalRatings !== 1 ? "s" : ""}</p>
+            </div>
+            <div className="flex-1 space-y-1">
+              {[5, 4, 3, 2, 1].map(star => {
+                const count = comments.filter(c => c.rating === star).length;
+                const pct = commentStats.totalRatings > 0 ? (count / commentStats.totalRatings) * 100 : 0;
+                return (
+                  <div key={star} className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-500 w-3">{star}</span>
+                    <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                    <div className="flex-1 h-1.5 bg-[#1a2530] rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-400/60 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-[10px] text-zinc-600 w-6 text-right">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Post comment form */}
+        <div className="p-4 bg-[#131c26] rounded-xl border border-white/[0.04] space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              placeholder="Your name"
+              value={newUsername}
+              onChange={e => setNewUsername(e.target.value)}
+              className="w-full sm:w-40 px-3 py-2 bg-[#0b1116] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-cyan-500/30"
+            />
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-zinc-500 mr-1">Rate:</span>
+              {[1, 2, 3, 4, 5].map(star => (
+                <button
+                  key={star}
+                  onClick={() => setNewRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  className="transition-transform hover:scale-125"
+                >
+                  <svg className="w-5 h-5" fill={star <= (hoverRating || newRating) ? "#F59E0B" : "#334155"} viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                </button>
+              ))}
+              {newRating > 0 && (
+                <button onClick={() => setNewRating(0)} className="text-[10px] text-zinc-500 hover:text-rose-400 ml-1">Clear</button>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <textarea
+              placeholder="Write a comment or review..."
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              rows={3}
+              className="flex-1 px-3 py-2 bg-[#0b1116] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-cyan-500/30 resize-none"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={submitComment}
+              disabled={submitting || !newUsername.trim() || !newComment.trim()}
+              className="pill-btn pill-btn-primary text-xs py-2 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {submitting ? "Posting..." : "Post Comment"}
+            </button>
+          </div>
+        </div>
+
+        {/* Sort controls */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-500">Sort by:</span>
+          {(["newest", "oldest", "top"] as const).map(sort => (
+            <button
+              key={sort}
+              onClick={() => setCommentSort(sort)}
+              className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all ${
+                commentSort === sort
+                  ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20"
+                  : "text-zinc-500 hover:text-zinc-300 border border-transparent"
+              }`}
+            >
+              {sort === "newest" ? "Newest" : sort === "oldest" ? "Oldest" : "Top Rated"}
+            </button>
+          ))}
+        </div>
+
+        {/* Comments list */}
+        {commentLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="p-4 bg-[#131c26] rounded-xl border border-white/[0.04] space-y-2">
+                <div className="h-4 w-24 skeleton rounded" />
+                <div className="h-3 w-full skeleton rounded" />
+              </div>
+            ))}
+          </div>
+        ) : topLevelComments.length === 0 ? (
+          <div className="text-center py-8 bg-[#131c26] rounded-xl border border-white/[0.04]">
+            <svg className="w-10 h-10 text-zinc-700 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+            <p className="text-zinc-500 text-sm">No comments yet. Be the first!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {topLevelComments.map(comment => {
+              const replies = getReplies(comment.id);
+              const isOwner = comment.username === (newUsername.trim() || localStorage.getItem("luffy_username"));
+              const hasLiked = comment.userLikes?.some(l => l.username === (newUsername.trim() || localStorage.getItem("luffy_username")));
+              return (
+                <div key={comment.id} className="space-y-2">
+                  <div className="p-4 bg-[#131c26] rounded-xl border border-white/[0.04] hover:border-white/[0.06] transition-all">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/20 to-violet-500/20 flex items-center justify-center shrink-0 border border-white/[0.06]">
+                          <span className="text-xs font-bold text-cyan-300">{comment.username.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-zinc-300">{comment.username}</span>
+                            {comment.rating && (
+                              <span className="flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map(s => (
+                                  <svg key={s} className="w-3 h-3" fill={s <= comment.rating! ? "#F59E0B" : "#334155"} viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                ))}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-zinc-600">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      {isOwner && (
+                        <button onClick={() => deleteComment(comment.id)} className="text-zinc-600 hover:text-rose-400 transition-colors p-1" title="Delete">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-2 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                    <div className="flex items-center gap-3 mt-3">
+                      <button onClick={() => toggleLike(comment.id)} className={`flex items-center gap-1 text-[10px] font-medium transition-colors ${hasLiked ? "text-rose-400" : "text-zinc-500 hover:text-rose-400"}`}>
+                        <svg className="w-3.5 h-3.5" fill={hasLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                        {comment.likes > 0 && comment.likes}
+                      </button>
+                      <button onClick={() => { setReplyTo(replyTo === comment.id ? null : comment.id); setReplyContent(""); }} className="text-[10px] text-zinc-500 hover:text-cyan-400 font-medium transition-colors">
+                        Reply
+                      </button>
+                    </div>
+
+                    {/* Reply form */}
+                    {replyTo === comment.id && (
+                      <div className="mt-3 p-3 bg-[#0b1116] rounded-lg space-y-2 border border-white/[0.03]">
+                        <textarea
+                          placeholder="Write a reply..."
+                          value={replyContent}
+                          onChange={e => setReplyContent(e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 bg-[#151f2e] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-cyan-500/30 resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => { setReplyTo(null); setReplyContent(""); }} className="text-[10px] text-zinc-500 hover:text-white px-3 py-1">Cancel</button>
+                          <button onClick={() => submitReply(comment.id)} disabled={submitting || !replyContent.trim()} className="pill-btn pill-btn-primary text-[10px] py-1 px-3 disabled:opacity-40">Reply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Replies */}
+                  {replies.length > 0 && (
+                    <div className="ml-6 space-y-2 border-l-2 border-white/[0.04] pl-4">
+                      {replies.map(reply => {
+                        const isReplyOwner = reply.username === (newUsername.trim() || localStorage.getItem("luffy_username"));
+                        return (
+                          <div key={reply.id} className="p-3 bg-[#0b1116] rounded-lg border border-white/[0.03]">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500/20 to-rose-500/20 flex items-center justify-center shrink-0 border border-white/[0.06]">
+                                <span className="text-[9px] font-bold text-violet-300">{reply.username.charAt(0).toUpperCase()}</span>
+                              </div>
+                              <span className="text-[10px] font-bold text-zinc-400">{reply.username}</span>
+                              <span className="text-[8px] text-zinc-600">{new Date(reply.createdAt).toLocaleDateString()}</span>
+                              {isReplyOwner && (
+                                <button onClick={() => deleteComment(reply.id)} className="text-zinc-600 hover:text-rose-400 ml-auto p-1" title="Delete">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">{reply.content}</p>
+                            <button onClick={() => toggleLike(reply.id)} className="flex items-center gap-1 text-[9px] text-zinc-600 hover:text-rose-400 mt-1 transition-colors">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                              {reply.likes > 0 && reply.likes}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

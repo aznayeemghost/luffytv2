@@ -188,9 +188,9 @@ export default function Navbar() {
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && searchQuery.trim()) { navigate({ page: "search", query: searchQuery.trim() }); setSearchQuery(""); } }}
-                    className="w-[160px] sm:w-[220px] focus:w-[240px] sm:focus:w-[320px] h-9 pl-9 pr-3 bg-white/[0.06] border border-white/[0.08] rounded-full text-sm text-white placeholder-zinc-500 outline-none transition-all duration-300 focus:border-cyan-500/30 focus:bg-white/[0.08] focus:shadow-[0_0_12px_rgba(0,168,225,0.1)]"
+                    className="w-[220px] focus:w-[320px] h-9 pl-9 pr-3 bg-white/[0.06] border border-white/[0.08] rounded-full text-sm text-white placeholder-zinc-500 outline-none transition-all duration-300 focus:border-cyan-500/30 focus:bg-white/[0.08] focus:shadow-[0_0_12px_rgba(0,168,225,0.1)]"
                   />
-                  <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-600 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06] hidden sm:inline">⌘K</kbd>
+                  <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-600 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06]">⌘K</kbd>
                 </div>
               </div>
 

@@ -269,7 +269,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       {tmdbBackdrop && <div className="immersive-bg" style={{ backgroundImage: `url(${tmdbBackdrop})` }} />}
 
       {/* Grid: video + sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px] gap-4 -mx-4 lg:-mx-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 -mx-4 lg:-mx-8">
         {/* Video Section */}
         <div className="space-y-0">
           {/* Video Player */}
@@ -333,7 +333,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
           </div>
 
           {/* Player controls bar */}
-          <div className="bg-[#131c26] rounded-none lg:rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-[#131c26] rounded-none lg:rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Now Playing</span>
@@ -347,8 +347,8 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
               <p className="text-xs text-zinc-500">Episode {episodeNum}</p>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap shrink-0 w-full sm:w-auto">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mr-1 hidden sm:inline">Switch Server</span>
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mr-1">Switch Server</span>
               {servers.slice(0, 5).map((s, idx) => (
                 <button key={s.id}
                   onClick={() => { setActiveServerId(s.id); setLoading(true); setError(null); }}
@@ -377,7 +377,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
         </div>
 
         {/* Episode Sidebar */}
-        <div className="bg-[#131c26] rounded-xl lg:rounded-xl overflow-hidden border border-white/[0.04]">
+        <div className="bg-[#131c26] rounded-none lg:rounded-xl overflow-hidden border border-white/[0.04]">
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h3 className="text-sm font-bold text-white">Episodes</h3>
             <span className="text-[10px] text-zinc-500">{episodeList.length || "?"} episodes</span>
@@ -400,7 +400,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
           </div>
 
           {/* Episode list */}
-          <div className="max-h-[50vh] lg:max-h-[620px] overflow-y-auto">
+          <div className="max-h-[620px] overflow-y-auto">
             {episodeList.length > 0 ? episodeList.map(ep => (
               <button
                 key={ep.number}

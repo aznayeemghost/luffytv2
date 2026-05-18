@@ -43,21 +43,21 @@ model Comment {
   username  String
   content   String
   parentId  String?
-  rating    Float?
+  rating    Int?
   likes     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  likesList CommentLike[]
+  userLikes CommentLike[]
 }
 
 model CommentLike {
   id        String   @id @default(cuid())
   commentId String
-  sessionId String
+  username  String
   createdAt DateTime @default(now())
 
   comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
-  @@unique([commentId, sessionId])
+  @@unique([commentId, username])
 }

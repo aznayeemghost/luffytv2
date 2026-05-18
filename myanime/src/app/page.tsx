@@ -208,9 +208,9 @@ export default function MainPage() {
           {renderPage()}
         </main>
         {!isWatchPage && !isMangaReader && (
-          <footer className="border-t border-white/[0.04] mt-16 bg-[#0b1116] pb-20 md:pb-0">
-            <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-8 sm:py-12">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+          <footer className="border-t border-white/[0.04] mt-16 bg-[#0b1116]">
+            <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-12">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                 <div className="col-span-2 md:col-span-1">
                   <div className="flex items-center gap-2.5 mb-4">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
@@ -218,7 +218,7 @@ export default function MainPage() {
                     </div>
                     <span className="text-base font-bold gradient-text">Luffy TV</span>
                   </div>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed mb-4 line-clamp-3">All-in-one streaming platform for anime, movies, TV shows and manga. Content sourced from third-party providers.</p>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">All-in-one streaming platform for anime, movies, TV shows and manga. Content sourced from third-party providers.</p>
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/[0.03] rounded-lg border border-white/[0.05]">
                       <svg className="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">

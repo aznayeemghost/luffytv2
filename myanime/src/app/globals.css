@@ -117,12 +117,6 @@
 ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
 html { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) var(--bg-color); scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
-/* ===== TEXT OVERFLOW PREVENTION ===== */
-body, p, h1, h2, h3, h4, h5, h6, span, a, li, td, th, div {
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
 /* ===== GLASS MORPHISM ===== */
 .glass {
   background: rgba(11, 17, 22, 0.85);
@@ -725,7 +719,7 @@ video::-webkit-media-controls { border-radius: 8px; }
 /* ── Logo wrapper ── */
 .nf-logo {
   position: relative;
-  width: 85vw;
+  width: 80vw;
   max-width: 750px;
   display: flex;
   align-items: center;
@@ -736,8 +730,8 @@ video::-webkit-media-controls { border-radius: 8px; }
 /* ── Red ambient glow ── */
 .nf-glow {
   position: absolute;
-  width: min(600px, 80vw);
-  height: min(600px, 80vw);
+  width: 600px;
+  height: 600px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(228, 9, 19, 0.18) 0%, rgba(228, 9, 19, 0.05) 45%, transparent 70%);
   filter: blur(80px);
@@ -1009,8 +1003,8 @@ video::-webkit-media-controls { border-radius: 8px; }
 /* ── Skip Button ── */
 .nf-skip {
   position: absolute;
-  bottom: max(32px, env(safe-area-inset-bottom, 16px));
-  right: 16px;
+  bottom: 32px;
+  right: 32px;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -1043,25 +1037,6 @@ video::-webkit-media-controls { border-radius: 8px; }
 @keyframes nf-skip-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ===== MOBILE RESPONSIVE ADJUSTMENTS ===== */
-@media (max-width: 640px) {
-  .pill-btn {
-    padding: 6px 14px;
-    font-size: 12px;
-  }
-  .server-pill {
-    padding: 6px 12px;
-    font-size: 11px;
-  }
-  .nf-intro {
-    /* Prevent intro from being cut off on small screens */
-    align-items: center;
-  }
-  .nf-brush-body {
-    box-shadow: 0 0 30px 15px rgba(228, 9, 19, 0.5);
-  }
 }
 
 /* ===== PARTICLE BACKGROUND ===== */

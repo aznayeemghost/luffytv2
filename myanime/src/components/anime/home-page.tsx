@@ -28,7 +28,7 @@ function HeroSlide({ item, isActive }: { item: TMDBContentItem; isActive: boolea
   if (!isActive) return null;
 
   return (
-    <div className="relative w-full min-h-[70vh] sm:min-h-[80vh] lg:min-h-[90vh] overflow-hidden hero-slide">
+    <div className="relative w-full min-h-[90vh] sm:min-h-[85vh] lg:min-h-[90vh] overflow-hidden hero-slide">
       {/* Background image with Ken Burns effect */}
       {image && (
         <img
@@ -44,8 +44,8 @@ function HeroSlide({ item, isActive }: { item: TMDBContentItem; isActive: boolea
       <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/50 to-transparent" />
 
       {/* Content — staggered animations */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-12 pb-24 sm:pb-20 lg:pb-24">
-        <div className="max-w-2xl space-y-3 sm:space-y-4">
+      <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12 pb-20 lg:pb-24">
+        <div className="max-w-2xl space-y-4">
           {/* Trending badge */}
           <div className="stagger-reveal stagger-1">
             <span className="badge-trending text-[10px] font-bold inline-flex items-center gap-1.5">
@@ -77,7 +77,7 @@ function HeroSlide({ item, isActive }: { item: TMDBContentItem; isActive: boolea
           </div>
 
           {/* Title */}
-          <h2 className="stagger-reveal stagger-3 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white line-clamp-2 leading-tight">
+          <h2 className="stagger-reveal stagger-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-white line-clamp-2 leading-tight">
             {title}
           </h2>
 
@@ -89,7 +89,7 @@ function HeroSlide({ item, isActive }: { item: TMDBContentItem; isActive: boolea
           )}
 
           {/* Action buttons */}
-          <div className="stagger-reveal stagger-5 flex flex-wrap items-center gap-2 sm:gap-3 pt-2">
+          <div className="stagger-reveal stagger-5 flex items-center gap-3 pt-2">
             <button
               onClick={() => isMovie
                 ? navigate({ page: "movie-watch", id: item.id })
@@ -247,7 +247,7 @@ export default function HomePage() {
   const heroTotal = Math.min(heroItems.length, 10);
 
   return (
-    <div className="space-y-8 sm:space-y-10 fade-in" style={{ marginTop: -70 }}>
+    <div className="space-y-10 fade-in" style={{ marginTop: -70 }}>
       {/* Hero Carousel — 90vh, overlaps navbar */}
       {heroItem && (
         <div className="relative">
@@ -255,7 +255,7 @@ export default function HomePage() {
             <HeroSlide item={heroItem as TMDBContentItem} isActive={true} />
           ) : (
             // Fallback to anime hero (Miruro style)
-            <div className="relative w-full min-h-[70vh] sm:min-h-[80vh] lg:min-h-[90vh] overflow-hidden group" key={`miruro-hero-${heroIdx}`}>
+            <div className="relative w-full min-h-[90vh] sm:min-h-[85vh] overflow-hidden group" key={`miruro-hero-${heroIdx}`}>
               {(() => {
                 const anime = heroItem as MiruroAnimeResult;
                 const img = anime.bannerImage || anime.coverImage?.extraLarge || "";
@@ -265,12 +265,12 @@ export default function HomePage() {
                     {img && <img src={img} alt={ttl} className="absolute inset-0 w-full h-full object-cover ken-burns" key={`img-${anime.id}`} />}
                     <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#0b1116]/40 to-[#0b1116]/95" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/50 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-12 pb-24 sm:pb-20 lg:pb-24">
+                    <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12 pb-20 lg:pb-24">
                       <div className="max-w-2xl space-y-4">
                         <div className="stagger-reveal stagger-1">
                           <span className="badge-anime text-[10px] font-bold">ANIME</span>
                         </div>
-                        <h2 className="stagger-reveal stagger-3 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white line-clamp-2 leading-tight">{ttl}</h2>
+                        <h2 className="stagger-reveal stagger-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-white line-clamp-2 leading-tight">{ttl}</h2>
                         <div className="stagger-reveal stagger-5 flex items-center gap-3 pt-2">
                           <button
                             onClick={() => useAppStore.getState().navigate({ page: "anime", id: String(anime.id) })}
@@ -486,7 +486,7 @@ export default function HomePage() {
             <svg className="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
             <h2 className="text-base sm:text-lg font-bold text-white">Top Anime</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
             {animeData!.miruroTrending.slice(0, 14).map((anime, i) => (
               <AnimeCard key={anime.id} anime={anime} index={i} />
             ))}
