@@ -31,9 +31,9 @@ function useMounted() {
 }
 
 // ================================================================
-// LUFFY TV INTRO — "LUFFY" (purple/left) | "TV" (white/right)
-// Clean split screen, letters reveal line-by-line one by one
-// Thin purple divider line, smooth glow, minimal & cinematic
+// LUFFY TV INTRO — Ultra-smooth letter-by-letter reveal
+// "LUFFY" purple left | "TV" white right | thin purple divider
+// Each letter opens one by one — smooth, cinematic, satisfying
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
@@ -51,7 +51,7 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 5500);
+    }, 5000);
     return () => clearTimeout(t);
   }, []);
 
@@ -59,45 +59,32 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="ltv-intro">
-      {/* Left half — deep purple/dark, LUFFY text */}
+      {/* Left half — LUFFY */}
       <div className="ltv-left">
-        <div className="ltv-glow ltv-glow-purple" />
-        <div className="ltv-text ltv-text-left">
+        <div className="ltv-ambience ltv-amb-purple" />
+        <div className="ltv-letters ltv-letters-left">
           {['L','U','F','F','Y'].map((c, i) => (
-            <span key={i} className="ltv-char ltv-char-purple" style={{ '--i': i } as React.CSSProperties}>{c}</span>
+            <span key={i} className="ltv-ltr ltv-ltr-purple" style={{ '--d': i } as React.CSSProperties}>{c}</span>
           ))}
         </div>
       </div>
 
-      {/* Right half — dark/black, TV text */}
+      {/* Right half — TV */}
       <div className="ltv-right">
-        <div className="ltv-glow ltv-glow-white" />
-        <div className="ltv-text ltv-text-right">
+        <div className="ltv-ambience ltv-amb-white" />
+        <div className="ltv-letters ltv-letters-right">
           {['T','V'].map((c, i) => (
-            <span key={i} className="ltv-char ltv-char-white" style={{ '--i': i + 5 } as React.CSSProperties}>{c}</span>
+            <span key={i} className="ltv-ltr ltv-ltr-white" style={{ '--d': i + 5 } as React.CSSProperties}>{c}</span>
           ))}
         </div>
       </div>
 
-      {/* Center divider — thin purple line */}
-      <div className="ltv-divider">
-        <div className="ltv-divider-core" />
-        <div className="ltv-divider-glow" />
-      </div>
+      {/* Center divider line */}
+      <div className="ltv-line" />
 
-      {/* Subtle ambient particles */}
-      <div className="ltv-particles">
-        {Array.from({ length: 12 }, (_, i) => (
-          <span key={i} className={`ltv-dot ltv-dot-${i + 1}`} />
-        ))}
-      </div>
-
-      {/* Flash overlay for exit */}
-      <div className="ltv-flash" />
-
-      {/* Skip button */}
+      {/* Skip */}
       <button onClick={skip} className="ltv-skip" aria-label="Skip intro">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
         </svg>
