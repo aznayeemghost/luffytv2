@@ -186,7 +186,7 @@ const vidplusAnime: EmbedServer = {
 
 const anixtvHindi: EmbedServer = {
   id: "anixtv-hindi",
-  name: "Hindi Dub",
+  name: "Hindi Server",
   priority: 0,  // Top priority for Hindi
   supportsSub: false,
   supportsDub: false,
@@ -551,7 +551,7 @@ export function getHindiServers(): EmbedServer[] {
   const servers = ALL_SERVERS.filter(s => s.category === "hindi");
   return servers.map((s, i) => ({
     ...s,
-    name: i === 0 ? "Hindi Dub" : `Hindi Dub ${i + 1}`,
+    name: i === 0 ? "Hindi Server" : `Hindi Server ${i + 1}`,
     priority: i,
   }));
 }

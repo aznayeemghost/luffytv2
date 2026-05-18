@@ -191,9 +191,9 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
   useEffect(() => {
     const server = servers.find(s => s.id === activeServerId);
     if (!server) return;
-    setUseDirectEmbed(true);
 
     if (server.isNative) {
+      setUseDirectEmbed(true);
       setUseNativePlayer(true);
       if (server.id === "miruro-kiwi") {
         loadKiwiStream();
@@ -202,6 +202,9 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       }
     } else {
       setUseNativePlayer(false);
+      // For noSandbox servers (like AnixTV Hindi), default to proxy mode
+      // since they block direct framing with X-Frame-Options
+      setUseDirectEmbed(!server.noSandbox);
       setEmbedUrl(server.url);
       setLoading(true);
       setError(null);
@@ -398,8 +401,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
               </div>
             )}
 
-            {!useNativePlayer && embedUrl && translation !== "hindi" || (translation === "hindi" && servers.length > 0) ? (
-              !useNativePlayer && embedUrl && (
+            {!useNativePlayer && embedUrl && (
                 <iframe
                   ref={iframeRef}
                   key={`${embedUrl}-${useDirectEmbed}`}
@@ -422,8 +424,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                   }}
                   title={`${animeTitle} - Episode ${episodeNum}`}
                 />
-              )
-            ) : null}
+            )}
             {useNativePlayer && (
               <video ref={videoRef} className="w-full h-full" controls playsInline autoPlay
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />
