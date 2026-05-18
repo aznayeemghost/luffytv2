@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchAnime } from "@/lib/anime-api";
-import { miruroSearch } from "@/lib/miruro-api";
-import { searchAnime as anilistSearch } from "@/lib/anilist-api";
-import { jikanSearch } from "@/lib/jikan-api";
+import { searchAnime } from "@/lib/anilist-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,30 +7,41 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q") || "";
   const page = parseInt(request.nextUrl.searchParams.get("page") || "1");
-  const type = request.nextUrl.searchParams.get("type") || ""; // "sub" or "dub"
 
-  if (!q) return NextResponse.json({ results: [], miruroResults: [], anilistResults: [], jikanResults: [] });
+  if (!q) return NextResponse.json({ results: [], hasNextPage: false });
 
   try {
-    const [allanimeData, miruroData, anilistData, jikanData] = await Promise.allSettled([
-      searchAnime(q, page, 26, type || undefined),
-      miruroSearch(q, page),
-      anilistSearch(q, page, 25),
-      jikanSearch(q, page, 25),
-    ]);
+    const data = await searchAnime(q, page, 25);
+    if (!data) {
+      return NextResponse.json({ results: [], hasNextPage: false });
+    }
 
-    const miruroResults = miruroData.status === "fulfilled" ? miruroData.value.results : [];
-    const anilistResults = anilistData.status === "fulfilled" ? (anilistData.value?.media || []) : [];
-    const jikanResults = jikanData.status === "fulfilled" ? jikanData.value.results : [];
+    // Map AniList results to a clean format
+    const results = data.media.map(m => ({
+      id: m.id,
+      title: m.title,
+      coverImage: m.coverImage,
+      bannerImage: m.bannerImage,
+      type: m.type,
+      format: m.format,
+      status: m.status,
+      episodes: m.episodes,
+      genres: m.genres,
+      averageScore: m.averageScore,
+      popularity: m.popularity,
+      season: m.season,
+      seasonYear: m.seasonYear,
+      description: m.description,
+      nextAiringEpisode: m.nextAiringEpisode,
+    }));
 
     return NextResponse.json({
-      results: allanimeData.status === "fulfilled" ? allanimeData.value.results : [],
-      hasNextPage: allanimeData.status === "fulfilled" ? allanimeData.value.pageInfo.hasNextPage : false,
-      miruroResults,
-      anilistResults,
-      jikanResults,
+      results,
+      hasNextPage: data.pageInfo?.hasNextPage || false,
+      currentPage: data.pageInfo?.currentPage || page,
     });
-  } catch {
-    return NextResponse.json({ results: [], miruroResults: [], anilistResults: [], jikanResults: [] });
+  } catch (err: any) {
+    console.error("[anime/search] Error:", err?.message || err);
+    return NextResponse.json({ results: [], hasNextPage: false });
   }
 }
