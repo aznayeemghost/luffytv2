@@ -15,22 +15,23 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
 
   const isTMDB = !!tmdbItem;
 
+  // Null-safe access — Jikan/Miruro data can have missing fields
   const title = isTMDB ? getTMDBTitle(tmdbItem!) : getAnimeTitle(anime!);
   const image = isTMDB ? getTMDBImage(tmdbItem!) : getAnimeImage(anime!);
   const score = isTMDB
     ? tmdbItem!.vote_average
-    : ("title" in (anime as any) && !("name" in (anime as any)))
+    : anime ? ("title" in anime && !("name" in anime)
       ? (anime as MiruroAnimeItem).averageScore
-      : (anime as AnimeItem).score;
+      : (anime as AnimeItem).score) : undefined;
   const year = isTMDB ? getTMDBYear(tmdbItem!) : undefined;
   const mediaType = isTMDB ? getTMDBMediaType(tmdbItem!) : undefined;
 
-  const isMiruro = !isTMDB && "title" in (anime as any) && !("name" in (anime as any));
-  const type = isTMDB ? (mediaType === "movie" ? "Movie" : "TV") : isMiruro ? (anime as MiruroAnimeItem).type : (anime as AnimeItem).type;
+  const isMiruro = !isTMDB && anime && "title" in anime && !("name" in anime);
+  const type = isTMDB ? (mediaType === "movie" ? "Movie" : "TV") : isMiruro ? (anime as MiruroAnimeItem).type : anime ? (anime as AnimeItem).type : undefined;
 
-  const episodes = isTMDB ? undefined : isMiruro
+  const episodes = isTMDB ? undefined : isMiruro && anime
     ? (anime as MiruroAnimeItem).episodes
-    : (anime as AnimeItem).availableEpisodes
+    : anime && (anime as AnimeItem).availableEpisodes
       ? Math.max(
           ...(anime as AnimeItem).availableEpisodes?.sub ? [(anime as AnimeItem).availableEpisodes!.sub || 0] : [],
           ...(anime as AnimeItem).availableEpisodes?.dub ? [(anime as AnimeItem).availableEpisodes!.dub || 0] : [],
@@ -45,7 +46,7 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
       } else {
         navigate({ page: "tv-detail", id: tmdbItem!.id });
       }
-    } else {
+    } else if (anime) {
       const id = isMiruro ? String((anime as MiruroAnimeItem).id) : (anime as AnimeItem)._id;
       navigate({ page: "anime", id });
     }
@@ -58,7 +59,7 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
       } else {
         navigate({ page: "tv-watch", id: tmdbItem!.id, season: 1, episode: 1 });
       }
-    } else {
+    } else if (anime) {
       const id = isMiruro ? String((anime as MiruroAnimeItem).id) : (anime as AnimeItem)._id;
       navigate({ page: "watch", id, episode: 1 });
     }

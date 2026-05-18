@@ -197,13 +197,19 @@ export function parseHash(hash: string): Route {
 // ============================================================
 
 export function getAnimeTitle(anime: AnimeItem | MiruroAnimeItem): string {
-  if ("name" in anime) return anime.englishName || anime.name;
-  return anime.title.english || anime.title.romaji || anime.title.native || "Unknown";
+  if (!anime) return "Unknown";
+  if ("name" in anime) return anime.englishName || anime.name || "Unknown";
+  const title = anime.title;
+  if (!title) return "Unknown";
+  return title.english || title.romaji || title.native || "Unknown";
 }
 
 export function getAnimeImage(anime: AnimeItem | MiruroAnimeItem): string {
+  if (!anime) return "";
   if ("thumbnail" in anime) return anime.thumbnail || "";
-  return anime.coverImage?.extraLarge || anime.coverImage?.large || anime.coverImage?.medium || "";
+  const cover = anime.coverImage;
+  if (!cover) return "";
+  return cover.extraLarge || cover.large || cover.medium || "";
 }
 
 export function getTMDBTitle(item: TMDBContentItem): string {

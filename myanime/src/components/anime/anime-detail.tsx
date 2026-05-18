@@ -280,7 +280,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   const displayTitle = anilistTitle || tmdbTitle || allanimeTitle || "Unknown";
   const alImage = anilistMedia?.coverImage?.extraLarge || anilistMedia?.coverImage?.large || anilistInfo?.coverImage?.extraLarge || anilistInfo?.coverImage?.large || "";
   const image = alImage || miruroInfo?.coverImage?.extraLarge || miruroInfo?.coverImage?.large || tmdbData?.posterUrl || anime?.thumbnail || "";
-  const banner = anilistMedia?.bannerImage || miruroInfo?.bannerImage || tmdbData?.backdropUrl || image;
+  const banner = anilistMedia?.bannerImage || miruroInfo?.bannerImage || tmdbData?.backdropUrl || (tmdbData?.backdrop_path ? `https://image.tmdb.org/t/p/w780${tmdbData.backdrop_path}` : "") || image;
 
   const alDesc = anilistMedia?.description?.replace(/<[^>]*>/g, "") || anilistInfo?.description?.replace(/<[^>]*>/g, "") || "";
   const miruroDesc = miruroInfo?.description?.replace(/<[^>]*>/g, "") || "";

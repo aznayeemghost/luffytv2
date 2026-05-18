@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useSyncExternalStore, useMemo, useRef, useCallback, Component, ReactNode } from "react";
 import { useAppStore, parseHash } from "@/components/anime/store";
 import Navbar from "@/components/anime/navbar";
 import HomePage from "@/components/anime/home-page";
@@ -20,6 +20,33 @@ import TVWatchPage from "@/components/anime/tv-watch";
 import MangaPage from "@/components/anime/manga-page";
 import MangaDetailPage from "@/components/anime/manga-detail";
 import MangaReader from "@/components/anime/manga-reader";
+
+// Error Boundary — catches client-side crashes gracefully
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
+  state = { hasError: false, error: "" };
+  static getDerivedStateFromError(err: any) {
+    return { hasError: true, error: err?.message || String(err) };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[80vh] flex items-center justify-center bg-[#0b1116]">
+          <div className="text-center space-y-4 max-w-md px-6">
+            <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto">
+              <svg className="w-8 h-8 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white">Something went wrong</h2>
+            <p className="text-sm text-zinc-400">{this.state.error}</p>
+            <button onClick={() => { this.setState({ hasError: false, error: "" }); window.location.reload(); }} className="pill-btn pill-btn-primary">Reload Page</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const emptySubscribe = () => () => {};
 function useMounted() {
@@ -188,6 +215,7 @@ export default function MainPage() {
       )}
 
       {/* Main Content */}
+      <ErrorBoundary>
       <div className={`min-h-screen bg-[#0b1116] flex flex-col ${!showSplash ? "content-reveal" : "opacity-0"}`}>
         {!isMangaReader && <Navbar />}
         <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isMangaReader ? '' : 'pt-[75px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
@@ -255,6 +283,7 @@ export default function MainPage() {
           </footer>
         )}
       </div>
+      </ErrorBoundary>
     </>
   );
 }

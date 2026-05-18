@@ -301,9 +301,6 @@ async function jikanFetch<T>(
         Accept: "application/json",
       },
       signal: controller.signal,
-      // Next.js fetch extension for ISR revalidation — only available server-side
-      // @ts-expect-error Next.js fetch extensions
-      next: { revalidate: Math.floor(cacheTtl / 1000) },
     });
 
     clearTimeout(timeout);
@@ -371,17 +368,22 @@ const STATUS_MAP: Record<string, string> = {
  */
 export function jikanToMiruro(jikan: JikanAnimeResult): MiruroAnimeResult {
   // Build coverImage — prefer webp large as extraLarge, jpg large as large
+  // Jikan sometimes returns null images — handle gracefully
+  const images = jikan.images || {};
+  const jpg = images.jpg || {};
+  const webp = images.webp || {};
+
   const coverImage: MiruroAnimeResult["coverImage"] = {
-    extraLarge: jikan.images?.webp?.large_image_url || jikan.images?.webp?.image_url || undefined,
-    large: jikan.images?.jpg?.large_image_url || jikan.images?.jpg?.image_url || undefined,
-    medium: jikan.images?.webp?.image_url || jikan.images?.jpg?.small_image_url || undefined,
+    extraLarge: webp.large_image_url || webp.image_url || undefined,
+    large: jpg.large_image_url || jpg.image_url || undefined,
+    medium: webp.image_url || jpg.small_image_url || undefined,
     color: undefined,
   };
 
   // Build banner image — use the largest available image
   const bannerImage =
-    jikan.images?.webp?.large_image_url ||
-    jikan.images?.jpg?.large_image_url ||
+    webp.large_image_url ||
+    jpg.large_image_url ||
     undefined;
 
   // Map genres (combine genres + themes + demographics)
