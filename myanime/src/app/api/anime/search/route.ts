@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     console.error("[anime/search] Miruro error:", err?.message || err);
   }
 
-  // Layer 3: Official MAL API (backup 2 — no more Jikan 429 errors!)
+  // Layer 3: Official MAL API v2 (backup 2)
   try {
     const data = await malSearch(q, page, 25);
     if (data && data.results && data.results.length > 0) {

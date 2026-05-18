@@ -1,6 +1,6 @@
 // Official MAL API v2 Client — MyAnimeList REST API
 // Uses X-MAL-CLIENT-ID header — no OAuth needed for public read endpoints
-// No rate limit issues like Jikan (429 errors)
+// No rate limit issues like the old Jikan API (which caused 429 errors)
 // API docs: https://myanimelist.net/apiconfig/references/api/v2
 
 // ============================================================
@@ -126,8 +126,8 @@ export interface MiruroSearchResult {
 // ============================================================
 
 // MAL API v2 — Public client ID for read-only access
-// This is the official API, NOT Jikan — no 429 rate limit issues
-const MAL_CLIENT_ID = "6114d00ca681b7d1c752567b49c5ec57";
+// This is the official API — no 429 rate limit issues
+const MAL_CLIENT_ID = "6114d00ca681b7701d1e15fe11a4987e";
 const MAL_BASE = "https://api.myanimelist.net/v2";
 
 // Simple in-memory cache with TTL
@@ -152,7 +152,7 @@ function setCache<T>(key: string, data: T, ttlMs: number): void {
   cache.set(key, { data, expiresAt: Date.now() + ttlMs });
 }
 
-// Default cache TTLs (in milliseconds) — longer than Jikan since MAL is reliable
+// Default cache TTLs (in milliseconds) — generous since MAL is reliable
 const CACHE_TTL = {
   SEARCH: 3 * 60 * 1000,     // 3 minutes
   TOP: 10 * 60 * 1000,       // 10 minutes
@@ -193,7 +193,7 @@ async function malFetch<T>(
 
     clearTimeout(timeout);
 
-    // MAL API returns 429 very rarely (unlike Jikan)
+    // MAL API rarely returns 429 (unlike third-party APIs)
     // But if it does, just wait a bit and retry once
     if (res.status === 429) {
       console.warn("[MAL] Rate limited (429) — rare, waiting 2s before retry...");

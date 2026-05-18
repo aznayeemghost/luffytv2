@@ -56,8 +56,8 @@ const miruroMiku: EmbedServer = {
   generateUrl: () => "native:miku",
 };
 
-const miruroKiwi: EmbedServer = {
-  id: "miruro-kiwi",
+const miruroMiku2: EmbedServer = {
+  id: "miruro-miku-2",
   name: "Server 2",
   priority: 1,
   supportsSub: true,
@@ -67,7 +67,7 @@ const miruroKiwi: EmbedServer = {
   color: "#22d3ee",
   category: "native",
   isNative: true,
-  generateUrl: () => "native:miku",  // Kiwi server also uses miku provider (auto-switches if needed)
+  generateUrl: () => "native:miku",  // Uses miku provider with auto-fallback to other providers
 };
 
 // ============================================================
@@ -533,7 +533,7 @@ const vidking: EmbedServer = {
 // ============================================================
 
 const ALL_SERVERS: EmbedServer[] = [
-  miruroMiku, miruroKiwi,
+  miruroMiku, miruroMiku2,
   megaplayDecrypter,
   vidnestAnime, vidnestAnimepahe, videasyAnime, megaplayEmbed, tryembed, vidplusAnime,
   anixtvHindi, megaplayHindi, vidnestHindi, vidnestPaheHindi, tryembedHindi,

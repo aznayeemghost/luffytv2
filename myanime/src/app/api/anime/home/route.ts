@@ -67,7 +67,7 @@ function normalizeItem(item: any): Record<string, any> {
  * GET /api/anime/home
  * 3-LAYER FALLBACK: AniList (primary) → Miruro (backup 1) → Official MAL API (backup 2)
  *
- * No more Jikan 429 errors — using the official MAL API v2!
+ * Official MAL API v2 as backup 2
  */
 export async function GET(request: NextRequest) {
   try {

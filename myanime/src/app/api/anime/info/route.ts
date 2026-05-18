@@ -141,7 +141,7 @@ async function fetchMiruro(anilistId: number) {
   }
 }
 
-// Layer 3: Official MAL API (backup 2 — no more Jikan 429 errors!)
+// Layer 3: Official MAL API v2 (backup 2)
 async function fetchMAL(malId: number) {
   try {
     const malData = await malAnimeById(malId);
@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
   const miruroResult = await fetchMiruro(numericId);
   if (miruroResult) return NextResponse.json(miruroResult);
 
-  // Layer 3: Try Official MAL API (no more Jikan 429!)
+  // Layer 3: Try Official MAL API v2
   const malResult = await fetchMAL(numericId);
   if (malResult) return NextResponse.json(malResult);
 

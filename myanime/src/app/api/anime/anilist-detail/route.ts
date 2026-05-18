@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  * Returns full AniList detail including characters, voice actors, staff,
  * studios, recommendations, relations, trailer, nextAiringEpisode, etc.
  *
- * ONLY uses AniList API — no Jikan/TMDB fallback.
+ * ONLY uses AniList API — no external fallback.
  */
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id");

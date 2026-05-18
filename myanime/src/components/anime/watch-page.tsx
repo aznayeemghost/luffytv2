@@ -236,7 +236,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     if (server.isNative) {
       setUseDirectEmbed(true);
       setUseNativePlayer(true);
-      if (server.id === "miruro-miku" || server.id === "miruro-kiwi") {
+      if (server.id === "miruro-miku" || server.id === "miruro-miku-2") {
         loadMikuStream();
       } else if (server.id === "megaplay-decrypter") {
         loadMegaplayStream();
@@ -397,8 +397,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     const server = servers.find(s => s.id === activeServerId);
     if (server?.isNative) {
       if (server.id === "megaplay-decrypter") loadMegaplayStream();
-      else if (server.id === "miruro-miku") loadMikuStream();
-      else if (server.id === "miruro-kiwi") loadMikuStream(); // kiwi server uses miku provider (auto-switches)
+      else loadMikuStream(); // miruro-miku and miruro-miku-2 both use miku provider
     } else {
       if (!useDirectEmbed) {
         setUseDirectEmbed(true);

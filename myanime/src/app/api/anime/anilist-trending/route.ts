@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Layer 3: Official MAL API (no more Jikan 429 errors!)
+      // Layer 3: Official MAL API v2
       if (trendingData.length === 0) {
         try {
           trendingData = await malTopAnime(1, 25, "airing");

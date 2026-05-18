@@ -200,8 +200,8 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           if (data.details) {
             setAnilistMedia(data.details);
             // Also update totalEpisodes if we didn't have it
-            if (!totalEpisodes && data.details.episodes) {
-              setTotalEpisodes(data.details.episodes);
+            if (data.details.episodes) {
+              setTotalEpisodes(prev => prev ?? data.details.episodes);
             }
           }
         }
