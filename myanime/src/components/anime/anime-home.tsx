@@ -100,42 +100,51 @@ export default function AnimeHomePage() {
   const [genreResults, setGenreResults] = useState<MiruroAnimeResult[]>([]);
   const [seasonResults, setSeasonResults] = useState<MiruroAnimeResult[]>([]);
 
-  // Load main data — Miruro first, then AniList fallback
+  // Load main data — AniList PRIMARY, Miruro fallback for recent
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        // Fetch Miruro data
-        const res = await fetch("/api/anime/home");
-        if (res.ok) {
-          const data = await res.json();
-          const miruroTrending = data.miruroTrending || [];
-          const miruroPopular = data.miruroPopular || [];
-          const miruroRecent = data.miruroRecent || [];
+        // Fetch AniList as PRIMARY source + Miruro for recent data
+        const [alRes, miruroRes] = await Promise.all([
+          fetch("/api/anime/anilist-trending").catch(() => null),
+          fetch("/api/anime/home").catch(() => null),
+        ]);
 
-          // Set Miruro data if available
-          if (miruroTrending.length > 0) setTrending(miruroTrending);
-          if (miruroPopular.length > 0) setPopular(miruroPopular);
-          if (miruroRecent.length > 0) setRecent(miruroRecent);
+        // Parse AniList data first
+        let alData: any = null;
+        if (alRes?.ok) {
+          alData = await alRes.json();
+        }
 
-          // If Miruro data is empty or sparse, fetch AniList as fallback
-          if (miruroTrending.length === 0 || miruroPopular.length === 0) {
-            try {
-              const alRes = await fetch("/api/anime/anilist-trending");
-              if (alRes.ok) {
-                const alData = await alRes.json();
-                if (miruroTrending.length === 0 && alData.trending?.length > 0) {
-                  setTrending(mapAniListToMiruro(alData.trending));
-                }
-                if (miruroPopular.length === 0 && alData.popular?.length > 0) {
-                  setPopular(mapAniListToMiruro(alData.popular));
-                }
-                if (alData.topRated?.length > 0) {
-                  setTopRated(mapAniListToMiruro(alData.topRated));
-                }
-              }
-            } catch { /* AniList fallback failed */ }
-          }
+        // Parse Miruro data (for recent + fallback)
+        let miruroData: any = null;
+        if (miruroRes?.ok) {
+          miruroData = await miruroRes.json();
+        }
+
+        // Set AniList as PRIMARY
+        if (alData?.trending?.length > 0) {
+          setTrending(mapAniListToMiruro(alData.trending));
+        }
+        if (alData?.popular?.length > 0) {
+          setPopular(mapAniListToMiruro(alData.popular));
+        }
+        if (alData?.topRated?.length > 0) {
+          setTopRated(mapAniListToMiruro(alData.topRated));
+        }
+
+        // Miruro for recently updated (AniList doesn't have this)
+        if (miruroData?.miruroRecent?.length > 0) {
+          setRecent(miruroData.miruroRecent);
+        }
+
+        // If AniList failed, fall back to Miruro data from home API
+        if (!alData?.trending?.length && miruroData?.miruroTrending?.length > 0) {
+          setTrending(miruroData.miruroTrending);
+        }
+        if (!alData?.popular?.length && miruroData?.miruroPopular?.length > 0) {
+          setPopular(miruroData.miruroPopular);
         }
       } catch { /* ignore */ }
       setLoading(false);

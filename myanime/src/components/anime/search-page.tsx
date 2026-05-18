@@ -14,6 +14,7 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
   const [activeTab, setActiveTab] = useState<"all" | "anime" | "movies" | "tv">("all");
   const [animeResults, setAnimeResults] = useState<AnimeItem[]>([]);
   const [miruroResults, setMiruroResults] = useState<MiruroAnimeResult[]>([]);
+  const [anilistResults, setAnilistResults] = useState<MiruroAnimeResult[]>([]);
   const [jikanResults, setJikanResults] = useState<MiruroAnimeResult[]>([]);
   const [tmdbResults, setTmdbResults] = useState<TMDBContentItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,6 +43,22 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
             if (data) {
               setAnimeResults(data.results || []);
               setMiruroResults(data.miruroResults || []);
+              setAnilistResults((data.anilistResults || []).map((item: any) => ({
+                id: item.id,
+                title: { romaji: item.title?.romaji, english: item.title?.english, native: item.title?.native },
+                coverImage: { extraLarge: item.coverImage?.extraLarge, large: item.coverImage?.large, medium: item.coverImage?.medium },
+                bannerImage: item.bannerImage,
+                type: item.type,
+                format: item.format,
+                status: item.status,
+                episodes: item.episodes,
+                genres: item.genres,
+                averageScore: item.averageScore,
+                popularity: item.popularity,
+                season: item.season,
+                seasonYear: item.seasonYear,
+                description: item.description,
+              })));
               setJikanResults(data.jikanResults || []);
             }
           })
@@ -79,13 +96,14 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
       // Clear results and re-search
       setAnimeResults([]);
       setMiruroResults([]);
+      setAnilistResults([]);
       setJikanResults([]);
       setTmdbResults([]);
       performSearch(query);
     }
   };
 
-  const totalResults = miruroResults.length + animeResults.length + tmdbResults.length + jikanResults.length;
+  const totalResults = anilistResults.length + miruroResults.length + animeResults.length + tmdbResults.length + jikanResults.length;
 
   return (
     <div className="space-y-6 fade-in">
@@ -147,16 +165,19 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
             </div>
           )}
 
-          {/* Anime Results */}
-          {(miruroResults.length > 0 || animeResults.length > 0) && (activeTab === "all" || activeTab === "anime") && (
+          {/* Anime Results — AniList PRIMARY */}
+          {(anilistResults.length > 0 || miruroResults.length > 0 || animeResults.length > 0) && (activeTab === "all" || activeTab === "anime") && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-zinc-300">Anime</h3>
+              <h3 className="text-sm font-semibold text-zinc-300">Anime <span className="text-[10px] text-cyan-500 ml-1">via AniList</span></h3>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
-                {miruroResults.map((item, i) => (
-                  <AnimeCard key={`miruro-${item.id}`} anime={item} index={i} />
+                {anilistResults.map((item, i) => (
+                  <AnimeCard key={`al-${item.id}`} anime={item} index={i} />
+                ))}
+                {miruroResults.filter(mr => !anilistResults.some(ar => ar.id === mr.id)).map((item, i) => (
+                  <AnimeCard key={`miruro-${item.id}`} anime={item} index={anilistResults.length + i} />
                 ))}
                 {animeResults.map((item, i) => (
-                  <AnimeCard key={`allanime-${item._id}`} anime={item} index={miruroResults.length + i} />
+                  <AnimeCard key={`allanime-${item._id}`} anime={item} index={anilistResults.length + miruroResults.length + i} />
                 ))}
               </div>
             </div>

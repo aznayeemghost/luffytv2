@@ -6,6 +6,7 @@ import AnimeCard from "./anime-card";
 import type { AnimeItem } from "./store";
 import type { MiruroAnimeResult } from "@/lib/miruro-api";
 import type { TMDBContentItem } from "./store";
+import type { AniListMedia } from "@/lib/anilist-api";
 
 interface HomeData {
   trending: AnimeItem[];
@@ -173,8 +174,44 @@ function ContentSection({ title, children, icon, viewAllAction }: { title: strin
   );
 }
 
+// Map AniList media to MiruroAnimeResult format for compatibility with AnimeCard
+function mapAniListToMiruro(items: any[]): MiruroAnimeResult[] {
+  return items.map(item => ({
+    id: item.id,
+    title: {
+      romaji: item.title?.romaji,
+      english: item.title?.english,
+      native: item.title?.native,
+    },
+    coverImage: {
+      extraLarge: item.coverImage?.extraLarge,
+      large: item.coverImage?.large,
+      medium: item.coverImage?.medium,
+      color: item.coverImage?.color,
+    },
+    bannerImage: item.bannerImage,
+    type: item.type,
+    format: item.format,
+    status: item.status,
+    description: item.description,
+    season: item.season,
+    seasonYear: item.seasonYear,
+    episodes: item.episodes,
+    duration: item.duration,
+    genres: item.genres,
+    averageScore: item.averageScore,
+    popularity: item.popularity,
+    trending: item.trending,
+    countryOfOrigin: item.countryOfOrigin,
+    isAdult: item.isAdult,
+  }));
+}
+
 export default function HomePage() {
   const [animeData, setAnimeData] = useState<HomeData | null>(null);
+  const [anilistTrending, setAnilistTrending] = useState<MiruroAnimeResult[]>([]);
+  const [anilistPopular, setAnilistPopular] = useState<MiruroAnimeResult[]>([]);
+  const [anilistTopRated, setAnilistTopRated] = useState<MiruroAnimeResult[]>([]);
   const [trendingAll, setTrendingAll] = useState<TMDBContentItem[]>([]);
   const [trendingMovies, setTrendingMovies] = useState<TMDBContentItem[]>([]);
   const [popularMovies, setPopularMovies] = useState<TMDBContentItem[]>([]);
@@ -188,6 +225,7 @@ export default function HomePage() {
     async function load() {
       const promises = [
         fetch("/api/anime/home").then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/anime/anilist-trending").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/tmdb/trending?type=all&time=week").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/tmdb/trending?type=movie&time=week").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/tmdb/movies?category=popular").then(r => r.ok ? r.json() : null).catch(() => null),
@@ -196,9 +234,15 @@ export default function HomePage() {
         fetch("/api/tmdb/tv?category=top_rated").then(r => r.ok ? r.json() : null).catch(() => null),
       ];
 
-      const [anime, trending, tMovies, pMovies, pTV, trMovies, trTV] = await Promise.all(promises);
+      const [anime, anilist, trending, tMovies, pMovies, pTV, trMovies, trTV] = await Promise.all(promises);
 
       if (anime) setAnimeData(anime);
+      // AniList PRIMARY for anime sections
+      if (anilist) {
+        if (anilist.trending?.length > 0) setAnilistTrending(mapAniListToMiruro(anilist.trending));
+        if (anilist.popular?.length > 0) setAnilistPopular(mapAniListToMiruro(anilist.popular));
+        if (anilist.topRated?.length > 0) setAnilistTopRated(mapAniListToMiruro(anilist.topRated));
+      }
       if (trending?.results) setTrendingAll(trending.results);
       if (tMovies?.results) setTrendingMovies(tMovies.results);
       if (pMovies?.results) setPopularMovies(pMovies.results);
@@ -212,7 +256,7 @@ export default function HomePage() {
   }, []);
 
   // Hero carousel auto-advance
-  const heroItems = trendingAll.length > 0 ? trendingAll : (animeData?.miruroTrending || []);
+  const heroItems = trendingAll.length > 0 ? trendingAll : (anilistTrending.length > 0 ? anilistTrending : (animeData?.miruroTrending || []));
   const heroTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -395,8 +439,19 @@ export default function HomePage() {
         </ContentSection>
       )}
 
-      {/* Anime Trending */}
-      {animeData?.miruroTrending && animeData.miruroTrending.length > 0 && (
+      {/* Anime Trending — AniList PRIMARY */}
+      {anilistTrending.length > 0 ? (
+        <ContentSection
+          title="Trending Anime"
+          icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>}
+        >
+          {anilistTrending.slice(0, 20).map((anime, i) => (
+            <div key={anime.id} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
+              <AnimeCard anime={anime} index={i} />
+            </div>
+          ))}
+        </ContentSection>
+      ) : animeData?.miruroTrending && animeData.miruroTrending.length > 0 && (
         <ContentSection
           title="Trending Anime"
           icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>}
@@ -437,8 +492,19 @@ export default function HomePage() {
         </ContentSection>
       )}
 
-      {/* Anime Popular */}
-      {animeData?.miruroPopular && animeData.miruroPopular.length > 0 && (
+      {/* Anime Popular — AniList PRIMARY */}
+      {anilistPopular.length > 0 ? (
+        <ContentSection
+          title="Popular Anime"
+          icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
+        >
+          {anilistPopular.slice(0, 20).map((anime, i) => (
+            <div key={anime.id} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
+              <AnimeCard anime={anime} index={i} />
+            </div>
+          ))}
+        </ContentSection>
+      ) : animeData?.miruroPopular && animeData.miruroPopular.length > 0 && (
         <ContentSection
           title="Popular Anime"
           icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
@@ -479,8 +545,21 @@ export default function HomePage() {
         </ContentSection>
       )}
 
-      {/* Grid: Top Anime */}
-      {animeData?.miruroTrending && animeData.miruroTrending.length > 0 && (
+      {/* Grid: Top Anime — AniList PRIMARY */}
+      {anilistTopRated.length > 0 ? (
+        <section className="space-y-3">
+          <div className="section-header flex items-center gap-2">
+            <svg className="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+            <h2 className="text-base sm:text-lg font-bold text-white">Top Anime</h2>
+            <span className="text-[10px] text-zinc-500 ml-1">AniList</span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+            {anilistTopRated.slice(0, 14).map((anime, i) => (
+              <AnimeCard key={`top-${anime.id}`} anime={anime} index={i} />
+            ))}
+          </div>
+        </section>
+      ) : animeData?.miruroTrending && animeData.miruroTrending.length > 0 && (
         <section className="space-y-3">
           <div className="section-header flex items-center gap-2">
             <svg className="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>

@@ -1,23 +1,22 @@
 ---
 Task ID: 1
-Agent: Main Agent
-Task: Extract uploaded zip, examine project state, add all features (comments, ratings, servers, intro)
+Agent: Main
+Task: Make AniList API the PRIMARY source for anime information across all components
 
 Work Log:
-- Extracted luffytv-new (10).zip to /home/z/my-project/myanime/
-- Read all key files: anime-detail.tsx, home-page.tsx, watch-page.tsx, embed-servers.ts, navbar.tsx, store.ts, globals.css, page.tsx, prisma schema, comments API
-- Confirmed all existing sections are intact: movies, TV shows, anime, hero carousel, trending, popular, etc.
-- Added Comment & Rating section to anime-detail.tsx WITHOUT removing any existing content
-- Updated Prisma schema with rating field on Comment model and new CommentLike model
-- Updated /api/comments route with GET (with stats), POST (with rating), DELETE methods
-- Created /api/comments/like route for like/unlike toggle
-- Ran prisma db push and prisma generate successfully
-- Build succeeds with all routes intact
+- Examined all project files to understand current AniList API integration
+- Found AniList API was already implemented (anilist-api.ts) but components used Miruro as PRIMARY
+- Updated anime-detail.tsx to use AniList data (anilistMedia, anilistInfo) as PRIMARY for titles, images, descriptions, scores, genres, status, season, format, episode counts
+- Updated anime-home.tsx to fetch AniList trending/popular/topRated FIRST, with Miruro only as fallback for recent data
+- Updated home-page.tsx to add AniList data fetching via /api/anime/anilist-trending, showing AniList data as PRIMARY for Trending Anime, Popular Anime, and Top Anime sections
+- Added mapAniListToMiruro() function to home-page.tsx for AniList-to-Miruro format conversion
+- Added AniList search (anilistSearch) to /api/anime/search route
+- Updated search-page.tsx to display AniList results as PRIMARY anime results, with Miruro/AllAnime as supplementary
+- Added anilistInfo capture from info API response in anime-detail.tsx
+- Build succeeded with no errors
 
 Stage Summary:
-- All existing sections (Hero, TMDB Cast, Voice Cast, Staff, Studios, Trailer, Recommendations, Related, Episodes) are PRESERVED
-- NEW: Comment/Rating section added to anime-detail.tsx with: star ratings (1-5), rating summary with bar chart, comment form, reply system, like/unlike toggle, delete own comments, sort by newest/oldest/top rated
-- Embed servers with SUB/DUB/HINDI already working in watch-page.tsx
-- Netflix-style intro animation (LUFFY/TV) already working in page.tsx
-- Home page has: Trending Now, Popular Movies, Popular TV Shows, Trending Anime, Top Rated Movies, Top Rated TV Shows, Popular Anime, Recently Updated Anime, Trending Movies, Top Anime grid
-- Build successful - all 36 routes generated
+- AniList API is now PRIMARY for all anime information display
+- Miruro/TMDB/Jikan serve as fallbacks when AniList data is unavailable
+- Movie/series sections preserved in all components
+- Search now includes AniList results as the primary anime source
