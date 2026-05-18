@@ -31,9 +31,9 @@ function useMounted() {
 }
 
 // ================================================================
-// NETFLIX-STYLE INTRO — "LUFFY TV"
-// Pure CSS/HTML animation: brush sweep → text reveal → lumiere lights → zoom
-// React only mounts/unmounts, CSS handles all animation
+// LUFFY TV SPLIT INTRO — "LUFFY" (purple/left) | "TV" (white/right)
+// Dramatic split-screen reveal with particle burst → merge → flash exit
+// Pure CSS animation, React only mounts/unmounts
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
@@ -47,57 +47,56 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     onCompleteRef.current();
   }, []);
 
-  // CSS handles all animation timing, we just unmount after
   useEffect(() => {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 5500);
+    }, 5000);
     return () => clearTimeout(t);
   }, []);
 
   if (gone) return null;
 
   return (
-    <div className="nf-intro">
-      <div className="nf-logo">
-        {/* Red ambient glow */}
-        <div className="nf-glow" />
+    <div className="split-intro">
+      {/* Background particles */}
+      <div className="split-particles">
+        {Array.from({ length: 20 }, (_, i) => (
+          <span key={i} className={`split-particle split-particle-${i + 1}`} />
+        ))}
+      </div>
 
-        {/* Text layer — revealed by clip-path synced with brush */}
-        <div className="nf-text">
-          <div className="nf-row">
-            {['L','U','F','F','Y'].map((c, i) => (
-              <span key={i} className="nf-char" style={{ '--i': i } as React.CSSProperties}>{c}</span>
-            ))}
-          </div>
-          <div className="nf-row nf-row-sm">
-            {['T','V'].map((c, i) => (
-              <span key={i} className="nf-char nf-char-sm" style={{ '--i': i + 5 } as React.CSSProperties}>{c}</span>
-            ))}
-          </div>
-        </div>
-
-        {/* Brush sweep — red paint stroke across screen */}
-        <div className="nf-brush">
-          <div className="nf-brush-body" />
-          <div className="nf-brush-fur">
-            {Array.from({ length: 31 }, (_, i) => (
-              <span key={i} className={`nf-fur nf-fur-${i + 1}`} />
-            ))}
-          </div>
-        </div>
-
-        {/* Lumiere light streaks */}
-        <div className="nf-lums">
-          {Array.from({ length: 28 }, (_, i) => (
-            <span key={i} className={`nf-lamp nf-lamp-${i + 1}`} />
+      {/* Left half — LUFFY in purple */}
+      <div className="split-half split-half-left">
+        <div className="split-glow split-glow-purple" />
+        <div className="split-text-left">
+          {['L','U','F','F','Y'].map((c, i) => (
+            <span key={i} className="split-char split-char-purple" style={{ '--i': i } as React.CSSProperties}>{c}</span>
           ))}
         </div>
       </div>
 
+      {/* Right half — TV in white */}
+      <div className="split-half split-half-right">
+        <div className="split-glow split-glow-white" />
+        <div className="split-text-right">
+          {['T','V'].map((c, i) => (
+            <span key={i} className="split-char split-char-white" style={{ '--i': i + 5 } as React.CSSProperties}>{c}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Center divider line */}
+      <div className="split-divider">
+        <div className="split-divider-line" />
+        <div className="split-divider-glow" />
+      </div>
+
+      {/* Flash overlay on exit */}
+      <div className="split-flash" />
+
       {/* Skip button */}
-      <button onClick={skip} className="nf-skip" aria-label="Skip intro">
+      <button onClick={skip} className="split-skip" aria-label="Skip intro">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
