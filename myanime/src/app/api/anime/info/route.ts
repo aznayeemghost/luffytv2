@@ -5,14 +5,16 @@ import { getAnimeDetails, getAnimeBasicInfo } from "@/lib/anilist-api";
 import { zenshinByAnilistId } from "@/lib/zenshin-api";
 import { tmdbTVDetails, tmdbImageUrl, tmdbFindByExternalId, tmdbFindAnimeTMDBId } from "@/lib/tmdb-api";
 import { imdbFindAnimeId } from "@/lib/imdb-api";
+import { jikanAnimeByIdAsMiruro } from "@/lib/jikan-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function parseAnimeId(rawId: string): { anilistId: number | null; allanimeId: string | null; source: string } {
-  const cleanId = rawId.replace(/^miruro_/, "");
+  const cleanId = rawId.replace(/^miruro_/, "").replace(/^mal_/, "");
   if (/^\d+$/.test(cleanId)) {
-    return { anilistId: parseInt(cleanId), allanimeId: null, source: rawId.startsWith("miruro_") ? "miruro" : "auto" };
+    const source = rawId.startsWith("miruro_") ? "miruro" : rawId.startsWith("mal_") ? "jikan" : "auto";
+    return { anilistId: parseInt(cleanId), allanimeId: null, source };
   }
   return { anilistId: null, allanimeId: cleanId, source: "allanime" };
 }
@@ -75,6 +77,26 @@ export async function GET(request: NextRequest) {
           totalEpisodes = miruroData.episodes;
         }
       } catch {}
+    }
+
+    // Step 2.5: If both AniList and Miruro failed, try Jikan
+    let jikanData: any = null;
+    let isJikanSource = false;
+
+    if (!anilistData && !miruroData) {
+      // Check if the ID is a MAL ID (prefixed with mal_ or just a number that didn't match AniList)
+      const cleanId = id.replace(/^mal_/, "");
+      if (/^\d+$/.test(cleanId)) {
+        try {
+          jikanData = await jikanAnimeByIdAsMiruro(parseInt(cleanId));
+          if (jikanData) {
+            isJikanSource = true;
+            if (!totalEpisodes && jikanData.episodes) {
+              totalEpisodes = jikanData.episodes;
+            }
+          }
+        } catch { /* Jikan fallback failed */ }
+      }
     }
 
     // Step 3: Zenshin — resolve AniList → TMDB/IMDb IDs
@@ -141,29 +163,30 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 6: TMDB title search fallback
-    if (!tmdbId && miruroData) {
+    const miruroOrJikanData = isJikanSource ? jikanData : miruroData;
+    if (!tmdbId && miruroOrJikanData) {
       try {
         const r = await tmdbFindAnimeTMDBId({
-          english: miruroData?.title?.english || undefined,
-          romaji: miruroData?.title?.romaji || undefined,
+          english: miruroOrJikanData?.title?.english || undefined,
+          romaji: miruroOrJikanData?.title?.romaji || undefined,
         });
         if (r) tmdbId = r.tmdbId;
       } catch {}
     }
 
     // Step 7: IMDb search fallback
-    if (!imdbId && miruroData) {
+    if (!imdbId && miruroOrJikanData) {
       try {
         const found = await imdbFindAnimeId({
-          english: miruroData?.title?.english || undefined,
-          romaji: miruroData?.title?.romaji || undefined,
+          english: miruroOrJikanData?.title?.english || undefined,
+          romaji: miruroOrJikanData?.title?.romaji || undefined,
         });
         if (found) imdbId = found;
       } catch {}
     }
 
     // Step 8: Cross-reference to AllAnime
-    const searchTitle = miruroData?.title?.english || miruroData?.title?.romaji ||
+    const searchTitle = miruroOrJikanData?.title?.english || miruroOrJikanData?.title?.romaji ||
       anilistData?.title?.english || anilistData?.title?.romaji;
     if (searchTitle) {
       try {
@@ -185,7 +208,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       anime: allanimeData,
-      miruroInfo: miruroData,
+      miruroInfo: isJikanSource ? jikanData : miruroData,
       anilistInfo: anilistData ? {
         id: anilistData.id,
         title: anilistData.title,
@@ -208,12 +231,14 @@ export async function GET(request: NextRequest) {
       // Episode count from the most reliable source
       totalEpisodes,
       nextAiringEpisode,
+      // Source indicator for frontend awareness
+      _source: isJikanSource ? "jikan" : "default",
     });
   } catch {
     return NextResponse.json({
       anime: null, miruroInfo: null, anilistInfo: null, allAnimeId: null,
       tmdbId: null, tmdbSeason: null, tmdbData: null, imdbId: null, zenshinMappings: null,
-      totalEpisodes: null, nextAiringEpisode: null,
+      totalEpisodes: null, nextAiringEpisode: null, _source: "failed",
     });
   }
 }

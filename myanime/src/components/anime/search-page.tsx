@@ -14,6 +14,7 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
   const [activeTab, setActiveTab] = useState<"all" | "anime" | "movies" | "tv">("all");
   const [animeResults, setAnimeResults] = useState<AnimeItem[]>([]);
   const [miruroResults, setMiruroResults] = useState<MiruroAnimeResult[]>([]);
+  const [jikanResults, setJikanResults] = useState<MiruroAnimeResult[]>([]);
   const [tmdbResults, setTmdbResults] = useState<TMDBContentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -41,6 +42,7 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
             if (data) {
               setAnimeResults(data.results || []);
               setMiruroResults(data.miruroResults || []);
+              setJikanResults(data.jikanResults || []);
             }
           })
           .catch(() => {})
@@ -77,12 +79,13 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
       // Clear results and re-search
       setAnimeResults([]);
       setMiruroResults([]);
+      setJikanResults([]);
       setTmdbResults([]);
       performSearch(query);
     }
   };
 
-  const totalResults = miruroResults.length + animeResults.length + tmdbResults.length;
+  const totalResults = miruroResults.length + animeResults.length + tmdbResults.length + jikanResults.length;
 
   return (
     <div className="space-y-6 fade-in">
@@ -158,8 +161,20 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
               </div>
             </div>
           )}
+
+          {/* Jikan / MAL Results */}
+          {jikanResults.length > 0 && (activeTab === "all" || activeTab === "anime") && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-zinc-300">Anime <span className="text-[10px] text-zinc-600 ml-1">via MAL</span></h3>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                {jikanResults.map((item, i) => (
+                  <AnimeCard key={`jikan-${item.id}`} anime={item} index={miruroResults.length + animeResults.length + i} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      ) : query && searched ? (
+      ) : query && searched && totalResults === 0 ? (
         <div className="text-center py-20 rounded-2xl bg-[#111827] border border-white/[0.04] p-8">
           <p className="text-zinc-400 text-sm">No results found for &quot;{query}&quot;</p>
           <p className="text-zinc-600 text-xs mt-2">Try a different search term</p>

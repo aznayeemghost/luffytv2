@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnimeDetails, getAnimeCharactersAndStaff } from "@/lib/anilist-api";
+import { jikanAnimeCharacters, jikanAnimeRecommendations, jikanAnimeRelations, jikanCharacterToAniListFormat, jikanRecommendationToAniListFormat, jikanRelationToAniListFormat } from "@/lib/jikan-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
  * GET /api/anime/anilist-detail?id=12345
  * Returns full AniList detail including characters, voice actors, staff,
  * studios, recommendations, relations, trailer, nextAiringEpisode, etc.
+ * Falls back to Jikan/MAL API when AniList is unavailable.
  */
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id");
@@ -24,7 +26,30 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (!details) {
-      return NextResponse.json({ error: "Anime not found on AniList" }, { status: 404 });
+      // AniList returned null — API may be down (403). Try Jikan as fallback.
+      try {
+        const [characters, recommendations, relations] = await Promise.allSettled([
+          jikanAnimeCharacters(anilistId),
+          jikanAnimeRecommendations(anilistId),
+          jikanAnimeRelations(anilistId),
+        ]);
+
+        return NextResponse.json({
+          characters: characters.status === "fulfilled"
+            ? characters.value.map(jikanCharacterToAniListFormat) : [],
+          staff: [], // Jikan doesn't have a dedicated staff endpoint
+          recommendations: recommendations.status === "fulfilled"
+            ? recommendations.value.map(jikanRecommendationToAniListFormat) : [],
+          relations: relations.status === "fulfilled"
+            ? relations.value.flatMap(r => jikanRelationToAniListFormat(r).entries) : [],
+          studios: [], // Studios come from the main anime info endpoint
+          trailer: null,
+          details: null,
+          _source: "jikan",
+        });
+      } catch {
+        return NextResponse.json({ characters: [], staff: [], _source: "failed" });
+      }
     }
 
     // Extract recommendations from details
@@ -71,9 +96,34 @@ export async function GET(request: NextRequest) {
       relations,
       studios,
       trailer,
+      _source: "anilist",
     });
   } catch (err) {
-    console.error("[anilist-detail] Error:", err);
-    return NextResponse.json({ error: "Failed to fetch AniList data" }, { status: 500 });
+    console.error("[anilist-detail] AniList error, trying Jikan fallback:", err);
+
+    // AniList completely failed — try Jikan as fallback
+    try {
+      const [characters, recommendations, relations] = await Promise.allSettled([
+        jikanAnimeCharacters(anilistId),
+        jikanAnimeRecommendations(anilistId),
+        jikanAnimeRelations(anilistId),
+      ]);
+
+      return NextResponse.json({
+        characters: characters.status === "fulfilled"
+          ? characters.value.map(jikanCharacterToAniListFormat) : [],
+        staff: [], // Jikan doesn't have a dedicated staff endpoint
+        recommendations: recommendations.status === "fulfilled"
+          ? recommendations.value.map(jikanRecommendationToAniListFormat) : [],
+        relations: relations.status === "fulfilled"
+          ? relations.value.flatMap(r => jikanRelationToAniListFormat(r).entries) : [],
+        studios: [], // Studios come from the main anime info endpoint
+        trailer: null,
+        details: null,
+        _source: "jikan",
+      });
+    } catch {
+      return NextResponse.json({ error: "Failed to fetch anime detail data from both AniList and Jikan" }, { status: 500 });
+    }
   }
 }

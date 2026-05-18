@@ -71,7 +71,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
 
   // Parse anime ID
   useEffect(() => {
-    const cleanId = animeId.replace(/^miruro_/, "");
+    const cleanId = animeId.replace(/^miruro_/, "").replace(/^mal_/, "");
     if (/^\d+$/.test(cleanId)) setAnilistId(parseInt(cleanId));
   }, [animeId]);
 

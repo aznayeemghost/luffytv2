@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAnimeBasicInfo, getAnimeDetails, getStreamingEpisodes } from "@/lib/anilist-api";
 import { miruroInfo, miruroEpisodes } from "@/lib/miruro-api";
 import { getEpisodes, searchAnime } from "@/lib/anime-api";
+import { jikanAnimeById } from "@/lib/jikan-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Extract the actual ID and detect its source
 function parseAnimeId(rawId: string): { anilistId: number | null; allanimeId: string | null } {
-  const cleanId = rawId.replace(/^miruro_/, "");
+  const cleanId = rawId.replace(/^miruro_/, "").replace(/^mal_/, "");
   if (/^\d+$/.test(cleanId)) {
     return { anilistId: parseInt(cleanId), allanimeId: null };
   }
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
           }
 
           // Get streaming episode info (has titles + thumbnails)
-          if (anilistData.streamingEpisodes?.length > 0) {
+          if (anilistData.streamingEpisodes && anilistData.streamingEpisodes.length > 0) {
             anilistEps = anilistData.streamingEpisodes.map((ep: any, i: number) => ({
               episodeIdNum: i + 1,
               title: ep.title || null,
@@ -102,6 +103,22 @@ export async function GET(request: NextRequest) {
             }
           }
         } catch { /* all AniList attempts failed */ }
+      }
+
+      // Step 1.5: If AniList failed to provide title or episode count, try Jikan as fallback
+      if (!animeTitle || !totalEpsFromAniList) {
+        try {
+          const cleanId = id.replace(/^mal_/, "");
+          if (/^\d+$/.test(cleanId)) {
+            const jikanInfo = await jikanAnimeById(parseInt(cleanId));
+            if (jikanInfo) {
+              if (!animeTitle) animeTitle = jikanInfo.title_english || jikanInfo.title;
+              if (!totalEpsFromAniList && jikanInfo.episodes) {
+                totalEpsFromAniList = jikanInfo.episodes;
+              }
+            }
+          }
+        } catch { /* Jikan fallback failed */ }
       }
 
       // Step 2: Try Miruro episodes endpoint using the helper (has retry logic)
