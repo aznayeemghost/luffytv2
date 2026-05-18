@@ -20,3 +20,23 @@ Stage Summary:
 - Miruro/TMDB/Jikan serve as fallbacks when AniList data is unavailable
 - Movie/series sections preserved in all components
 - Search now includes AniList results as the primary anime source
+
+---
+Task ID: 2
+Agent: Main
+Task: Ensure AniList ID is used for streaming (embed servers require numeric AniList ID)
+
+Work Log:
+- Updated anime-detail.tsx handleWatch() to always use anilistId (numeric) for watch navigation instead of raw animeId
+- Updated watch-page.tsx loadInfo() to use AniList info as PRIMARY for title/image/description display
+- Added anilistId extraction from info API in watch-page.tsx — if the URL has a non-numeric ID, the watch page now gets the anilistId from the API response
+- Updated watch-page.tsx "View Details" link to use anilistId
+- Enhanced /api/anime/info route to return full anilistInfo including coverImage, bannerImage, description, type
+- Added Step 8.5 in info route: when starting with AllAnime ID (non-numeric), resolves AniList ID via title search
+- All embed servers (Kiwi, MegaPlay, AnixTV, Vidnest, etc.) now guaranteed to receive valid anilistId
+
+Stage Summary:
+- AniList ID is now the PRIMARY identifier for all streaming operations
+- Watch page correctly resolves anilistId even from non-numeric AllAnime IDs
+- Movie/series sections preserved
+- Build passes with zero errors

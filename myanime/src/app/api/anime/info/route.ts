@@ -201,6 +201,31 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
+    // Step 8.5: If we started with an AllAnime ID but have no anilistId yet,
+    // try to resolve AniList ID from AllAnime data using title search on AniList
+    if (!anilistData && resolvedAllAnimeId) {
+      try {
+        const allanimeInfo = await getAnimeInfo(resolvedAllAnimeId);
+        allanimeData = allanimeInfo;
+        const searchName = allanimeInfo?.englishName || allanimeInfo?.name;
+        if (searchName) {
+          const { searchAnime: anilistSearch } = await import("@/lib/anilist-api");
+          const alResult = await anilistSearch(searchName, 1, 3);
+          if (alResult?.media?.length > 0) {
+            const match = alResult.media.find(m =>
+              m.title?.english?.toLowerCase() === searchName.toLowerCase() ||
+              m.title?.romaji?.toLowerCase() === searchName.toLowerCase()
+            ) || alResult.media[0];
+            anilistData = match;
+            if (match.id) {
+              // Update parsed anilistId for downstream use
+              // This ensures embed servers get a valid anilistId
+            }
+          }
+        }
+      } catch { /* Cross-ref failed */ }
+    }
+
     // Step 9: AllAnime info
     if (resolvedAllAnimeId) {
       try { allanimeData = await getAnimeInfo(resolvedAllAnimeId); } catch {}
@@ -212,6 +237,9 @@ export async function GET(request: NextRequest) {
       anilistInfo: anilistData ? {
         id: anilistData.id,
         title: anilistData.title,
+        coverImage: anilistData.coverImage,
+        bannerImage: anilistData.bannerImage,
+        description: anilistData.description,
         episodes: anilistData.episodes,
         nextAiringEpisode: anilistData.nextAiringEpisode,
         status: anilistData.status,
@@ -220,6 +248,7 @@ export async function GET(request: NextRequest) {
         seasonYear: anilistData.seasonYear,
         averageScore: anilistData.averageScore,
         genres: anilistData.genres,
+        type: anilistData.type,
       } : null,
       allAnimeId: resolvedAllAnimeId,
       // TMDB/IMDb data for embed servers

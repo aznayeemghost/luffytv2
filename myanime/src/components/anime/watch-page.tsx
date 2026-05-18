@@ -86,9 +86,15 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
           const data = await res.json();
           const anime = data.anime;
           const miruro = data.miruroInfo;
-          setAnimeTitle(anime?.englishName || anime?.name || miruro?.title?.english || miruro?.title?.romaji || "");
-          setAnimeImage(anime?.thumbnail || miruro?.coverImage?.extraLarge || miruro?.coverImage?.large || "");
-          setAnimeDescription(anime?.description || miruro?.description?.replace(/<[^>]*>/g, "") || "");
+          // Use AniList info as PRIMARY for title/image
+          const anilistInfo = data.anilistInfo;
+          setAnimeTitle(anilistInfo?.title?.english || anilistInfo?.title?.romaji || anime?.englishName || anime?.name || miruro?.title?.english || miruro?.title?.romaji || "");
+          setAnimeImage(anilistInfo?.coverImage?.extraLarge || anilistInfo?.coverImage?.large || anime?.thumbnail || miruro?.coverImage?.extraLarge || miruro?.coverImage?.large || "");
+          setAnimeDescription(anilistInfo?.description?.replace(/<[^>]*>/g, "") || anime?.description || miruro?.description?.replace(/<[^>]*>/g, "") || "");
+          // Extract anilistId from info API if not already set from URL
+          if (!anilistId && anilistInfo?.id) {
+            setAnilistId(anilistInfo.id);
+          }
           if (data.tmdbSeason) setTmdbSeason(data.tmdbSeason);
           else if (data.zenshinMappings?.season?.tmdb) setTmdbSeason(data.zenshinMappings.season.tmdb);
           if (data.tmdbData) {
@@ -610,7 +616,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                   {animeDescription.slice(0, 200)}{animeDescription.length > 200 ? "..." : ""}
                 </p>
               )}
-              <button onClick={() => navigate({ page: "anime", id: animeId })}
+              <button onClick={() => navigate({ page: "anime", id: anilistId ? String(anilistId) : animeId })}
                 className="text-[11px] text-cyan-400/70 hover:text-cyan-400 mt-2 transition-colors font-medium">View Details →</button>
             </div>
           </div>

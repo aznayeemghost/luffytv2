@@ -307,7 +307,9 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
     : episodes;
 
   const handleWatch = (episodeNum: number) => {
-    navigate({ page: "watch", id: animeId, episode: episodeNum, title: displayTitle, image });
+    // Always use AniList ID for streaming — embed servers require it
+    const watchId = anilistId ? String(anilistId) : animeId;
+    navigate({ page: "watch", id: watchId, episode: episodeNum, title: displayTitle, image });
   };
 
   const bookmarked = bookmarks.some(b => b.animeId === animeId);
