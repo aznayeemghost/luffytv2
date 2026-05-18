@@ -6,6 +6,7 @@ import type { AnimeItem } from "./store";
 import type { MiruroAnimeResult } from "@/lib/miruro-api";
 import type { MegaPlayInfoResult, MegaPlayEpisodeItem } from "@/lib/megaplay-api";
 import type { AniListMedia } from "@/lib/anilist-api";
+import CommentSection from "./comment-section";
 
 interface AnimeDetailProps {
   animeId: string;
@@ -919,6 +920,17 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                 </div>
               </div>
             )}
+
+            {/* ── Comments & Reviews Section ── */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Reviews & Comments
+              </h3>
+              <CommentSection animeId={animeId} animeTitle={displayTitle} />
+            </div>
           </div>
 
           {/* ── RIGHT COLUMN: Cast & Credits sidebar ── */}
