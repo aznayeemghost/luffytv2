@@ -22,6 +22,7 @@ import MangaDetailPage from "@/components/anime/manga-detail";
 import MangaReader from "@/components/anime/manga-reader";
 import EmbedSandbox from "@/components/anime/embed-sandbox";
 import SchedulePage from "@/components/anime/schedule-page";
+import Image from "next/image";
 
 const emptySubscribe = () => () => {};
 function useMounted() {
@@ -212,7 +213,7 @@ export default function MainPage() {
       {/* Main Content */}
       <div className={`min-h-screen bg-black flex flex-col ${!showSplash ? "content-reveal" : "opacity-0"}`}>
         {!isMangaReader && <Navbar />}
-        <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isMangaReader ? '' : 'pt-[75px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
+        <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isMangaReader ? '' : 'pt-[72px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
           {renderPage()}
         </main>
         {!isWatchPage && !isMangaReader && (
@@ -221,10 +222,10 @@ export default function MainPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                 <div className="col-span-2 md:col-span-1">
                   <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                      <svg className="w-4.5 h-4.5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                    <div className="w-9 h-9 rounded-xl overflow-hidden border border-purple-500/30 shadow-lg shadow-purple-500/20">
+                      <Image src="/luffy-mascot.png" alt="Luffy" width={36} height={36} className="w-full h-full object-cover" />
                     </div>
-                    <span className="text-base font-bold gradient-text">Luffy TV</span>
+                    <span className="text-base font-bold"><span className="gradient-text">Luffy</span><span className="text-white"> TV</span></span>
                   </div>
                   <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">All-in-one streaming platform for anime, movies, TV shows and manga. Content sourced from third-party providers.</p>
                   <div className="flex items-center gap-3">

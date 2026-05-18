@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAppStore } from "./store";
+import Image from "next/image";
 
 // SVG icons for nav items
 function HomeIcon({ className }: { className?: string }) {
@@ -86,6 +87,46 @@ function HistoryIcon({ className }: { className?: string }) {
   );
 }
 
+// ── Floating Luffy Mascot ──
+function LuffyMascot() {
+  const [hovered, setHovered] = useState(false);
+  const [peeking, setPeeking] = useState(false);
+
+  // Random peek animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPeeking(true);
+      setTimeout(() => setPeeking(false), 3000);
+    }, 15000 + Math.random() * 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div
+      className="luffy-mascot-wrapper"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className={`luffy-mascot ${hovered ? "luffy-mascot-hover" : ""} ${peeking ? "luffy-mascot-peek" : ""}`}>
+        <Image
+          src="/luffy-mascot.png"
+          alt="Luffy"
+          width={80}
+          height={80}
+          className="luffy-mascot-img"
+          priority
+        />
+        {/* Speech bubble on hover */}
+        {hovered && (
+          <div className="luffy-speech-bubble">
+            <span>Yo! Need help? 👋</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Navbar() {
   const { route, navigate } = useAppStore();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -94,7 +135,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 30);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -142,27 +183,35 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Floating Pill Navbar — lunar style */}
+      {/* ═══════════════════════════════════════════
+          TRANSPARENT FLOATING NAVBAR — LunarAnime style
+          Fully transparent at top, gains subtle blur on scroll
+          Mascot sits on the left with the logo
+          ═══════════════════════════════════════════ */}
       <nav
-        className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
-          scrolled
-            ? "bg-black/70 border border-white/10 shadow-lg shadow-black/30"
-            : "bg-black/50 border border-white/[0.06]"
-        } backdrop-blur-md rounded-full`}
+        className={`lunar-nav ${scrolled ? "lunar-nav-scrolled" : ""}`}
       >
-        <div className="flex items-center gap-1 px-3 py-2">
-          {/* Logo */}
-          <button onClick={() => navigate({ page: "home" })} className="flex items-center gap-2 group shrink-0 mr-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:shadow-purple-500/50 transition-all group-hover:scale-105">
-              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
+        <div className="lunar-nav-inner">
+          {/* Logo + Mascot */}
+          <button onClick={() => navigate({ page: "home" })} className="lunar-logo group">
+            <div className="lunar-logo-mascot">
+              <Image
+                src="/luffy-mascot.png"
+                alt="Luffy"
+                width={36}
+                height={36}
+                className="lunar-mascot-nav"
+                priority
+              />
             </div>
-            <span className="hidden sm:block text-sm font-bold gradient-text tracking-tight">Luffy TV</span>
+            <div className="lunar-logo-text">
+              <span className="lunar-logo-luffy">Luffy</span>
+              <span className="lunar-logo-tv">TV</span>
+            </div>
           </button>
 
-          {/* Desktop Nav Items */}
-          <div className="hidden md:flex items-center gap-0.5">
+          {/* Center Nav Items — Desktop */}
+          <div className="lunar-nav-links">
             {navItems.map(item => {
               const IconComp = item.icon;
               const active = isActive(item.id);
@@ -170,43 +219,32 @@ export default function Navbar() {
                 <button
                   key={item.id}
                   onClick={() => handleNav(item.id)}
-                  className={`relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
-                    active
-                      ? "text-purple-300 bg-purple-500/15"
-                      : "text-zinc-400 hover:text-white hover:bg-white/[0.06]"
-                  }`}
+                  className={`lunar-nav-link ${active ? "lunar-nav-active" : ""}`}
                 >
-                  <IconComp className="w-3.5 h-3.5" />
+                  <IconComp className="lunar-nav-icon" />
                   <span>{item.label}</span>
+                  {active && <div className="lunar-nav-dot" />}
                 </button>
               );
             })}
           </div>
 
           {/* Right side: Search + History */}
-          <div className="flex items-center gap-2 ml-2">
+          <div className="lunar-nav-right">
             {/* Search button */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-400 bg-white/[0.05] border border-white/[0.08] rounded-full hover:bg-white/[0.08] hover:text-white transition-all"
-            >
-              <SearchIcon className="w-3.5 h-3.5" />
-              <span>Search</span>
-              <kbd className="text-[9px] text-zinc-600 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06] ml-1">⌘K</kbd>
-            </button>
-
-            {/* Mobile search button */}
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="sm:hidden p-1.5 text-zinc-400 hover:text-purple-300 hover:bg-white/[0.06] rounded-full transition-all"
+              className="lunar-search-btn"
             >
               <SearchIcon className="w-4 h-4" />
+              <span className="hidden sm:inline text-sm">Search</span>
+              <kbd className="lunar-search-kbd">⌘K</kbd>
             </button>
 
-            {/* History icon */}
+            {/* History */}
             <button
               onClick={() => navigate({ page: "history" })}
-              className="p-1.5 text-zinc-400 hover:text-purple-300 hover:bg-white/[0.06] rounded-full transition-all"
+              className="lunar-icon-btn"
               title="Watch History"
             >
               <HistoryIcon className="w-4 h-4" />
@@ -215,9 +253,9 @@ export default function Navbar() {
             {/* Mobile hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-1.5 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-full transition-all"
+              className="lunar-hamburger md:hidden"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 {mobileMenuOpen ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
               </svg>
             </button>
@@ -225,61 +263,79 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay */}
+      {/* Floating Mascot — bottom right corner */}
+      <LuffyMascot />
+
+      {/* Mobile Menu Overlay — LunarAnime style full screen */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[60] bg-black/98 backdrop-blur-2xl pt-24 px-6 fade-in">
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="absolute top-5 right-5 p-2 text-zinc-400 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <div className="space-y-2">
-            {navItems.map(item => {
-              const IconComp = item.icon;
-              const active = isActive(item.id);
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNav(item.id)}
-                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-base font-medium transition-all ${
-                    active
-                      ? "text-purple-300 bg-purple-500/10 border border-purple-500/15"
-                      : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
-                  }`}
-                >
-                  <IconComp className="w-5 h-5" />
-                  {item.label}
-                </button>
-              );
-            })}
+        <div className="lunar-mobile-menu fade-in">
+          <div className="lunar-mobile-menu-inner">
+            {/* Mascot at top */}
+            <div className="lunar-mobile-mascot">
+              <Image
+                src="/luffy-mascot.png"
+                alt="Luffy"
+                width={60}
+                height={60}
+                className="rounded-2xl"
+                priority
+              />
+              <span className="text-lg font-bold ml-3">
+                <span className="text-purple-400">Luffy</span>
+                <span className="text-white">TV</span>
+              </span>
+            </div>
+
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="lunar-mobile-close"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="lunar-mobile-links">
+              {navItems.map(item => {
+                const IconComp = item.icon;
+                const active = isActive(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNav(item.id)}
+                    className={`lunar-mobile-link ${active ? "lunar-mobile-active" : ""}`}
+                  >
+                    <IconComp className="w-5 h-5" />
+                    {item.label}
+                    {active && <div className="lunar-mobile-active-bar" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Search Modal */}
+      {/* Search Modal — LunarAnime style centered command palette */}
       {searchOpen && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]" onClick={() => setSearchOpen(false)}>
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-          <div className="relative w-full max-w-xl mx-4 bg-[#111] rounded-2xl overflow-hidden shadow-2xl shadow-black/60 border border-white/[0.08]" onClick={e => e.stopPropagation()}>
-            <form onSubmit={handleSearch} className="flex items-center gap-3 p-4">
+        <div className="lunar-search-overlay" onClick={() => setSearchOpen(false)}>
+          <div className="lunar-search-modal" onClick={e => e.stopPropagation()}>
+            <form onSubmit={handleSearch} className="lunar-search-form">
               <SearchIcon className="w-5 h-5 text-purple-400 shrink-0" />
               <input
                 autoFocus
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search movies, TV shows, anime, manga..."
-                className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm outline-none"
+                placeholder="Search anime, movies, TV shows, manga..."
+                className="lunar-search-input"
               />
-              <button type="button" onClick={() => setSearchOpen(false)} className="text-xs text-zinc-500 bg-white/[0.06] px-2 py-1 rounded-md border border-white/[0.06]">ESC</button>
+              <button type="button" onClick={() => setSearchOpen(false)} className="lunar-search-esc">ESC</button>
             </form>
             {searchQuery && (
-              <div className="p-3 border-t border-white/[0.04]">
+              <div className="lunar-search-results">
                 <button
                   onClick={handleSearch}
-                  className="w-full flex items-center gap-3 p-2.5 hover:bg-white/[0.04] rounded-lg transition-colors text-left"
+                  className="lunar-search-result-item"
                 >
                   <SearchIcon className="w-4 h-4 text-zinc-500" />
                   <span className="text-sm text-zinc-400">Search for &quot;{searchQuery}&quot;</span>
@@ -290,9 +346,9 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-nav border-t border-white/[0.06]">
-        <div className="flex items-center justify-around py-2 px-2" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      {/* Mobile Bottom Nav — LunarAnime style with mascot */}
+      <div className="lunar-bottom-nav md:hidden">
+        <div className="lunar-bottom-nav-inner">
           {navItems.slice(0, 4).map(item => {
             const IconComp = item.icon;
             const active = isActive(item.id);
@@ -300,20 +356,20 @@ export default function Navbar() {
               <button
                 key={item.id}
                 onClick={() => handleNav(item.id)}
-                className="mobile-nav-item flex flex-col items-center gap-0.5 py-1 px-3"
+                className={`lunar-bottom-item ${active ? "lunar-bottom-active" : ""}`}
               >
-                <IconComp className={`w-5 h-5 ${active ? "text-purple-400" : "text-zinc-500"}`} />
-                <span className={`text-[10px] font-medium ${active ? "text-purple-400" : "text-zinc-500"}`}>{item.label}</span>
-                {active && <div className="nav-indicator" />}
+                <IconComp className="w-5 h-5" />
+                <span>{item.label}</span>
+                {active && <div className="lunar-bottom-indicator" />}
               </button>
             );
           })}
           <button
             onClick={() => setSearchOpen(true)}
-            className="mobile-nav-item flex flex-col items-center gap-0.5 py-1 px-3"
+            className="lunar-bottom-item"
           >
             <SearchIcon className="w-5 h-5 text-zinc-500" />
-            <span className="text-[10px] font-medium text-zinc-500">Search</span>
+            <span className="text-zinc-500">Search</span>
           </button>
         </div>
       </div>
