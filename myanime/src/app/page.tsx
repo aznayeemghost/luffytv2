@@ -58,8 +58,7 @@ function useMounted() {
 }
 
 // ================================================================
-// LUFFY TV INTRO — Clean, modern, simple
-// Play icon scales in → Text fades up → Glow pulse → Fade out
+// LUFFY TV INTRO — Minimal: text slides in from left, fades out
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
@@ -77,7 +76,7 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 3200);
+    }, 2400);
     return () => clearTimeout(t);
   }, []);
 
@@ -85,40 +84,8 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="ltv-intro">
-      {/* Glow ring behind icon */}
-      <div className="ltv-glow-ring" />
-
-      {/* Play icon */}
-      <div className="ltv-icon">
-        <svg viewBox="0 0 48 48" fill="none">
-          <rect x="2" y="2" width="44" height="44" rx="12" stroke="url(#iconGrad)" strokeWidth="2" />
-          <path d="M20 16L34 24L20 32V16Z" fill="url(#iconGrad)" />
-          <defs>
-            <linearGradient id="iconGrad" x1="0" y1="0" x2="48" y2="48">
-              <stop offset="0%" stopColor="#a855f7" />
-              <stop offset="100%" stopColor="#06b6d4" />
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
-
-      {/* Brand text */}
-      <div className="ltv-brand">
-        <span className="ltv-brand-luffy">LUFFY</span>
-        <span className="ltv-brand-tv">TV</span>
-      </div>
-
-      {/* Thin line accent */}
-      <div className="ltv-accent-line" />
-
-      {/* Skip */}
-      <button onClick={skip} className="ltv-skip" aria-label="Skip intro">
-        Skip
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M5 4l10 8-10 8V4z" />
-          <rect x="17" y="5" width="2" height="14" />
-        </svg>
-      </button>
+      <span className="ltv-text">LUFFY <span className="ltv-tv">TV</span></span>
+      <button onClick={skip} className="ltv-skip" aria-label="Skip intro">Skip</button>
     </div>
   );
 }
