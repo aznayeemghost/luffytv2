@@ -9,11 +9,12 @@ import type { TMDBContentItem } from "./store";
 import type { AniListMedia } from "@/lib/anilist-api";
 
 interface HomeData {
-  trending: AnimeItem[];
-  recent: AnimeItem[];
-  miruroTrending: MiruroAnimeResult[];
-  miruroPopular: MiruroAnimeResult[];
-  miruroRecent: MiruroAnimeResult[];
+  trending?: AnimeItem[];
+  recent?: AnimeItem[];
+  miruroTrending?: MiruroAnimeResult[];
+  miruroPopular?: MiruroAnimeResult[];
+  miruroRecent?: MiruroAnimeResult[];
+  _sources?: Record<string, string>;
 }
 
 // Hero slide for TMDB trending items — 90vh, Ken Burns, staggered animations
@@ -174,37 +175,63 @@ function ContentSection({ title, children, icon, viewAllAction }: { title: strin
   );
 }
 
-// Map AniList media to MiruroAnimeResult format for compatibility with AnimeCard
+// Safely normalize any anime item to MiruroAnimeResult format
+// Handles data from AniList, Jikan/MAL, or Miruro sources
+function safeNormalizeAnime(item: any): MiruroAnimeResult {
+  // Safely extract title — handle object, string, or missing
+  let title: { romaji?: string; english?: string; native?: string };
+  if (item.title && typeof item.title === "object") {
+    title = {
+      romaji: item.title.romaji || undefined,
+      english: item.title.english || undefined,
+      native: item.title.native || undefined,
+    };
+  } else if (typeof item.title === "string" && item.title) {
+    title = { romaji: item.title, english: item.title };
+  } else if (item.name) {
+    title = { romaji: item.name, english: item.englishName || item.name };
+  } else {
+    title = { romaji: "Unknown" };
+  }
+
+  // Safely extract coverImage
+  let coverImage: MiruroAnimeResult["coverImage"];
+  if (item.coverImage && typeof item.coverImage === "object") {
+    coverImage = {
+      extraLarge: item.coverImage.extraLarge || undefined,
+      large: item.coverImage.large || undefined,
+      medium: item.coverImage.medium || undefined,
+      color: item.coverImage.color || undefined,
+    };
+  } else if (item.thumbnail) {
+    coverImage = { extraLarge: item.thumbnail, large: item.thumbnail, medium: item.thumbnail };
+  }
+
+  return {
+    id: item.id || 0,
+    title,
+    coverImage,
+    bannerImage: item.bannerImage || undefined,
+    type: item.type || undefined,
+    format: item.format || undefined,
+    status: item.status || undefined,
+    description: item.description || undefined,
+    season: item.season || undefined,
+    seasonYear: item.seasonYear || item.year || undefined,
+    episodes: item.episodes ?? undefined,
+    duration: item.duration ?? undefined,
+    genres: Array.isArray(item.genres) ? item.genres : undefined,
+    averageScore: item.averageScore ?? (item.score ? Math.round(item.score * 10) : undefined),
+    popularity: item.popularity ?? undefined,
+    trending: item.trending ?? undefined,
+    countryOfOrigin: item.countryOfOrigin || undefined,
+    isAdult: item.isAdult || undefined,
+  };
+}
+
+// Map anime items to MiruroAnimeResult format — works with any API source
 function mapAniListToMiruro(items: any[]): MiruroAnimeResult[] {
-  return items.map(item => ({
-    id: item.id,
-    title: {
-      romaji: item.title?.romaji,
-      english: item.title?.english,
-      native: item.title?.native,
-    },
-    coverImage: {
-      extraLarge: item.coverImage?.extraLarge,
-      large: item.coverImage?.large,
-      medium: item.coverImage?.medium,
-      color: item.coverImage?.color,
-    },
-    bannerImage: item.bannerImage,
-    type: item.type,
-    format: item.format,
-    status: item.status,
-    description: item.description,
-    season: item.season,
-    seasonYear: item.seasonYear,
-    episodes: item.episodes,
-    duration: item.duration,
-    genres: item.genres,
-    averageScore: item.averageScore,
-    popularity: item.popularity,
-    trending: item.trending,
-    countryOfOrigin: item.countryOfOrigin,
-    isAdult: item.isAdult,
-  }));
+  return items.map(safeNormalizeAnime);
 }
 
 export default function HomePage() {

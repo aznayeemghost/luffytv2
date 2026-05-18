@@ -15,14 +15,25 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
 
   const isTMDB = !!tmdbItem;
 
-  // Null-safe access — Jikan/Miruro data can have missing fields
+  // Null-safe access — data from any source (AniList, Jikan, Miruro) can have missing fields
   const title = isTMDB ? getTMDBTitle(tmdbItem!) : getAnimeTitle(anime!);
   const image = isTMDB ? getTMDBImage(tmdbItem!) : getAnimeImage(anime!);
-  const score = isTMDB
-    ? tmdbItem!.vote_average
-    : anime ? ("title" in anime && !("name" in anime)
-      ? (anime as MiruroAnimeItem).averageScore
-      : (anime as AnimeItem).score) : undefined;
+
+  // Safely extract score — ensure it's always a number or undefined (never an object)
+  let score: number | undefined;
+  if (isTMDB) {
+    score = typeof tmdbItem!.vote_average === 'number' ? tmdbItem!.vote_average : undefined;
+  } else if (anime) {
+    const isMiruroCheck = "title" in anime && !("name" in anime);
+    if (isMiruroCheck) {
+      const raw = (anime as MiruroAnimeItem).averageScore;
+      score = typeof raw === 'number' ? raw : undefined;
+    } else {
+      const raw = (anime as AnimeItem).score;
+      score = typeof raw === 'number' ? raw : undefined;
+    }
+  }
+
   const year = isTMDB ? getTMDBYear(tmdbItem!) : undefined;
   const mediaType = isTMDB ? getTMDBMediaType(tmdbItem!) : undefined;
 

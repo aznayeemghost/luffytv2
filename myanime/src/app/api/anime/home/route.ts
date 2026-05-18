@@ -7,139 +7,184 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
+ * Normalize any anime item to a consistent MiruroAnimeResult shape.
+ * Ensures title is always { romaji?, english?, native? } object,
+ * coverImage is always { extraLarge?, large?, medium?, color? } object,
+ * and all fields are safely defaulted.
+ */
+function normalizeItem(item: any): Record<string, any> {
+  // Safely extract title — handle both object and string formats
+  let title: { romaji?: string; english?: string; native?: string };
+  if (item.title && typeof item.title === "object") {
+    title = {
+      romaji: item.title.romaji || undefined,
+      english: item.title.english || undefined,
+      native: item.title.native || undefined,
+    };
+  } else if (typeof item.title === "string" && item.title) {
+    title = { romaji: item.title, english: item.title };
+  } else if (item.name) {
+    // AnimeItem format from AllAnime
+    title = { romaji: item.name, english: item.englishName || item.name };
+  } else {
+    title = { romaji: "Unknown" };
+  }
+
+  // Safely extract coverImage
+  let coverImage: { extraLarge?: string; large?: string; medium?: string; color?: string } | undefined;
+  if (item.coverImage && typeof item.coverImage === "object") {
+    coverImage = {
+      extraLarge: item.coverImage.extraLarge || undefined,
+      large: item.coverImage.large || undefined,
+      medium: item.coverImage.medium || undefined,
+      color: item.coverImage.color || undefined,
+    };
+  } else if (item.thumbnail) {
+    // AnimeItem format from AllAnime
+    coverImage = { extraLarge: item.thumbnail, large: item.thumbnail, medium: item.thumbnail };
+  } else {
+    coverImage = undefined;
+  }
+
+  return {
+    id: item.id || item._id || 0,
+    title,
+    coverImage,
+    bannerImage: item.bannerImage || undefined,
+    type: item.type || undefined,
+    format: item.format || undefined,
+    status: item.status || undefined,
+    description: item.description || undefined,
+    season: item.season || undefined,
+    seasonYear: item.seasonYear || item.year || undefined,
+    episodes: item.episodes ?? undefined,
+    duration: item.duration ?? undefined,
+    genres: Array.isArray(item.genres) ? item.genres : undefined,
+    averageScore: item.averageScore ?? (item.score ? Math.round(item.score * 10) : undefined),
+    popularity: item.popularity ?? undefined,
+    trending: item.trending ?? undefined,
+    countryOfOrigin: item.countryOfOrigin || undefined,
+    isAdult: item.isAdult || undefined,
+  };
+}
+
+/**
  * GET /api/anime/home
  * 3-LAYER FALLBACK: AniList (primary) → Jikan/MAL (backup 1) → Miruro (backup 2)
  *
  * Returns home page data with proper cascading fallback for all sections.
- * The "recent" section uses Miruro as primary (AniList/MAL don't have recent episodes).
+ * All data is normalized to MiruroAnimeResult format for consistent rendering.
  */
 export async function GET(request: NextRequest) {
   try {
     // ---- TRENDING: AniList → Jikan → Miruro ----
-    let miruroTrendingData: any[] = [];
+    let trendingData: any[] = [];
     let trendingSource = "anilist";
 
     try {
       const alTrending = await getTrending(1, 20);
       if (alTrending && alTrending.length > 0) {
-        miruroTrendingData = alTrending.map(item => ({
-          id: item.id,
-          title: item.title,
-          coverImage: item.coverImage,
-          bannerImage: item.bannerImage,
-          type: item.type,
-          format: item.format,
-          status: item.status,
-          description: item.description,
-          season: item.season,
-          seasonYear: item.seasonYear,
-          episodes: item.episodes,
-          duration: item.duration,
-          genres: item.genres,
-          averageScore: item.averageScore,
-          popularity: item.popularity,
-          trending: item.trending,
-          countryOfOrigin: item.countryOfOrigin,
-          isAdult: item.isAdult,
-        }));
+        trendingData = alTrending.map(normalizeItem);
       }
     } catch (err) {
       console.error("[home] AniList trending error:", err);
     }
 
-    if (miruroTrendingData.length === 0) {
+    if (trendingData.length === 0) {
       try {
-        miruroTrendingData = await jikanTopAnime(1, 20, "airing");
-        if (miruroTrendingData.length > 0) trendingSource = "mal";
+        const jikanData = await jikanTopAnime(1, 20, "airing");
+        if (jikanData && jikanData.length > 0) {
+          trendingData = jikanData.map(normalizeItem);
+          trendingSource = "mal";
+        }
       } catch (err) {
         console.error("[home] Jikan trending error:", err);
       }
     }
 
-    if (miruroTrendingData.length === 0) {
+    if (trendingData.length === 0) {
       try {
-        miruroTrendingData = await miruroTrending(1, 20);
-        if (miruroTrendingData.length > 0) trendingSource = "miruro";
+        const miruroData = await miruroTrending(1, 20);
+        if (miruroData && miruroData.length > 0) {
+          trendingData = miruroData.map(normalizeItem);
+          trendingSource = "miruro";
+        }
       } catch (err) {
         console.error("[home] Miruro trending error:", err);
       }
     }
 
     // ---- POPULAR: AniList → Jikan → Miruro ----
-    let miruroPopularData: any[] = [];
+    let popularData: any[] = [];
     let popularSource = "anilist";
 
     try {
       const alPopular = await getPopular(1, 20);
       if (alPopular && alPopular.length > 0) {
-        miruroPopularData = alPopular.map(item => ({
-          id: item.id,
-          title: item.title,
-          coverImage: item.coverImage,
-          bannerImage: item.bannerImage,
-          type: item.type,
-          format: item.format,
-          status: item.status,
-          description: item.description,
-          season: item.season,
-          seasonYear: item.seasonYear,
-          episodes: item.episodes,
-          duration: item.duration,
-          genres: item.genres,
-          averageScore: item.averageScore,
-          popularity: item.popularity,
-          trending: item.trending,
-          countryOfOrigin: item.countryOfOrigin,
-          isAdult: item.isAdult,
-        }));
+        popularData = alPopular.map(normalizeItem);
       }
     } catch (err) {
       console.error("[home] AniList popular error:", err);
     }
 
-    if (miruroPopularData.length === 0) {
+    if (popularData.length === 0) {
       try {
-        miruroPopularData = await jikanTopAnime(1, 20, "bypopularity");
-        if (miruroPopularData.length > 0) popularSource = "mal";
+        const jikanData = await jikanTopAnime(1, 20, "bypopularity");
+        if (jikanData && jikanData.length > 0) {
+          popularData = jikanData.map(normalizeItem);
+          popularSource = "mal";
+        }
       } catch (err) {
         console.error("[home] Jikan popular error:", err);
       }
     }
 
-    if (miruroPopularData.length === 0) {
+    if (popularData.length === 0) {
       try {
-        miruroPopularData = await miruroPopular(1, 20);
-        if (miruroPopularData.length > 0) popularSource = "miruro";
+        const miruroData = await miruroPopular(1, 20);
+        if (miruroData && miruroData.length > 0) {
+          popularData = miruroData.map(normalizeItem);
+          popularSource = "miruro";
+        }
       } catch (err) {
         console.error("[home] Miruro popular error:", err);
       }
     }
 
     // ---- RECENT: Miruro primary → Jikan airing backup ----
-    // AniList doesn't have a "recently updated episodes" endpoint
-    let miruroRecentData: any[] = [];
+    let recentData: any[] = [];
     let recentSource = "miruro";
 
     try {
-      miruroRecentData = await miruroRecent(1, 20);
-      if (miruroRecentData.length > 0) recentSource = "miruro";
+      const miruroData = await miruroRecent(1, 20);
+      if (miruroData && miruroData.length > 0) {
+        recentData = miruroData.map(normalizeItem);
+        recentSource = "miruro";
+      }
     } catch (err) {
       console.error("[home] Miruro recent error:", err);
     }
 
-    if (miruroRecentData.length === 0) {
+    if (recentData.length === 0) {
       try {
-        miruroRecentData = await jikanSeasonNow(1, 20);
-        if (miruroRecentData.length > 0) recentSource = "mal";
+        const jikanData = await jikanSeasonNow(1, 20);
+        if (jikanData && jikanData.length > 0) {
+          recentData = jikanData.map(normalizeItem);
+          recentSource = "mal";
+        }
       } catch (err) {
         console.error("[home] Jikan recent error:", err);
       }
     }
 
     return NextResponse.json({
-      miruroTrending: miruroTrendingData,
-      miruroPopular: miruroPopularData,
-      miruroRecent: miruroRecentData,
+      // Backward-compatible fields for home-page.tsx
+      trending: [],   // Was AllAnime data, no longer available
+      recent: [],     // Was AllAnime data, no longer available
+      // Normalized Miruro-format data (3-layer fallback)
+      miruroTrending: trendingData,
+      miruroPopular: popularData,
+      miruroRecent: recentData,
       _sources: {
         trending: trendingSource,
         popular: popularSource,
@@ -148,6 +193,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[home] Error:", error);
-    return NextResponse.json({ error: "Failed to fetch home data" }, { status: 500 });
+    return NextResponse.json({
+      trending: [],
+      recent: [],
+      miruroTrending: [],
+      miruroPopular: [],
+      miruroRecent: [],
+      error: "Failed to fetch home data",
+    }, { status: 500 });
   }
 }
