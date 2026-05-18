@@ -67,6 +67,16 @@ function SearchIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function ScheduleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
 function HistoryIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -100,9 +110,10 @@ export default function Navbar() {
 
   const navItems = [
     { id: "home", label: "Home", icon: HomeIcon },
+    { id: "dub", label: "Anime", icon: AnimeIcon },
+    { id: "schedule", label: "Schedule", icon: ScheduleIcon },
     { id: "movies", label: "Movies", icon: MovieIcon },
     { id: "tv", label: "TV Shows", icon: TVIcon },
-    { id: "dub", label: "Anime", icon: AnimeIcon },
     { id: "manga", label: "Manga", icon: MangaIcon },
     { id: "bookmarks", label: "My List", icon: ListIcon },
   ];
@@ -112,6 +123,7 @@ export default function Navbar() {
     if (id === "movies" && route.page === "movies") return true;
     if (id === "tv" && route.page === "tv") return true;
     if (id === "dub" && (route.page === "dub" || route.page === "anime" || route.page === "watch")) return true;
+    if (id === "schedule" && route.page === "schedule") return true;
     if (id === "manga" && (route.page === "manga" || route.page === "manga-detail" || route.page === "manga-read")) return true;
     if (id === "bookmarks" && route.page === "bookmarks") return true;
     return false;
@@ -121,6 +133,7 @@ export default function Navbar() {
     if (id === "home") navigate({ page: "home" });
     else if (id === "movies") navigate({ page: "movies" });
     else if (id === "tv") navigate({ page: "tv" });
+    else if (id === "schedule") navigate({ page: "schedule" });
     else if (id === "dub") navigate({ page: "dub" });
     else if (id === "manga") navigate({ page: "manga" });
     else if (id === "bookmarks") navigate({ page: "bookmarks" });

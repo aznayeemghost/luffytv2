@@ -21,6 +21,7 @@ import MangaPage from "@/components/anime/manga-page";
 import MangaDetailPage from "@/components/anime/manga-detail";
 import MangaReader from "@/components/anime/manga-reader";
 import EmbedSandbox from "@/components/anime/embed-sandbox";
+import SchedulePage from "@/components/anime/schedule-page";
 
 const emptySubscribe = () => () => {};
 function useMounted() {
@@ -255,6 +256,7 @@ export default function MainPage() {
       case "tv-detail": return <TVDetailPage tvId={route.id} />;
       case "movie-watch": return <MovieWatchPage movieId={route.id} />;
       case "tv-watch": return <TVWatchPage tvId={route.id} season={route.season} episode={route.episode} />;
+      case "schedule": return <SchedulePage />;
       case "sandbox": return <EmbedSandbox />;
       default: return <HomePage />;
     }
@@ -310,6 +312,7 @@ export default function MainPage() {
                     <button onClick={() => navigate({ page: "movies" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Movies</button>
                     <button onClick={() => navigate({ page: "tv" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">TV Shows</button>
                     <button onClick={() => navigate({ page: "dub" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Anime</button>
+                    <button onClick={() => navigate({ page: "schedule" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Schedule</button>
                     <button onClick={() => navigate({ page: "manga" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Manga</button>
                   </div>
                 </div>

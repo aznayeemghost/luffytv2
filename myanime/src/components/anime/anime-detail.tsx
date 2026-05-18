@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAppStore, getAnimeTitle, getAnimeImage } from "./store";
 import type { AnimeItem } from "./store";
 import type { MiruroAnimeResult } from "@/lib/miruro-api";
+import type { MegaPlayInfoResult, MegaPlayEpisodeItem } from "@/lib/megaplay-api";
 import type { AniListMedia } from "@/lib/anilist-api";
 
 interface AnimeDetailProps {
@@ -155,14 +156,33 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   const [anilistTrailer, setAnilistTrailer] = useState<{ id: string; site: string; thumbnail: string } | null>(null);
   const [anilistDetailLoading, setAnilistDetailLoading] = useState(false);
 
+  // MegaPlay info
+  const [megaplayInfo, setMegaplayInfo] = useState<MegaPlayInfoResult | null>(null);
+
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
+        const cleanId = animeId.replace(/^miruro_/, "");
+        const isNumeric = /^\d+$/.test(cleanId);
+        if (isNumeric) setAnilistId(parseInt(cleanId));
+
         const [infoRes, epRes] = await Promise.all([
           fetch(`/api/anime/info?id=${encodeURIComponent(animeId)}`),
           fetch(`/api/anime/episodes?id=${encodeURIComponent(animeId)}`),
         ]);
+
+        // Also fetch MegaPlay info if we have a numeric AniList ID
+        if (isNumeric) {
+          fetch(`/api/megaplay/info?id=${cleanId}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              if (data?.success && data.results) {
+                setMegaplayInfo(data.results);
+              }
+            })
+            .catch(() => {});
+        }
 
         if (infoRes.ok) {
           const data = await infoRes.json();
@@ -186,8 +206,6 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           if (!tmdbId && epData.zenshinMappings?.themoviedb_id) setTmdbId(epData.zenshinMappings.themoviedb_id);
         }
 
-        const cleanId = animeId.replace(/^miruro_/, "");
-        if (/^\d+$/.test(cleanId)) setAnilistId(parseInt(cleanId));
       } catch { /* ignore */ }
       setLoading(false);
     }
@@ -292,9 +310,18 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   const tmdbTrailers = tmdbData?.videos?.results?.filter(v => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Opening")) || [];
 
   const hasMiruroEps = miruroEps.sub.length > 0 || miruroEps.dub.length > 0;
+  const hasMegaplayEps = megaplayInfo?.episodes?.list?.length > 0;
   const currentEps = hasMiruroEps
     ? (activeTab === "dub" && miruroEps.dub.length > 0 ? miruroEps.dub : miruroEps.sub)
     : episodes;
+
+  // MegaPlay episode info map (episode_no → { hasSub, hasDub })
+  const megaplayEpMap = new Map<number, { hasSub: boolean; hasDub: boolean }>();
+  if (hasMegaplayEps) {
+    for (const ep of megaplayInfo!.episodes.list) {
+      megaplayEpMap.set(ep.episode_no, { hasSub: ep.hasSub, hasDub: ep.hasDub });
+    }
+  }
 
   const handleWatch = (episodeNum: number) => {
     navigate({ page: "watch", id: animeId, episode: episodeNum, title: displayTitle, image });
@@ -309,7 +336,20 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
     }
   };
 
-  const hasAnyEpisodes = episodes.length > 0 || hasMiruroEps || (episodesCount != null && episodesCount > 0);
+  const hasAnyEpisodes = episodes.length > 0 || hasMiruroEps || hasMegaplayEps || (episodesCount != null && episodesCount > 0);
+
+  // Next airing episode countdown from MegaPlay
+  const nextAiring = megaplayInfo?.nextAiringEpisode;
+  const nextAiringCountdown = nextAiring ? (() => {
+    const now = Math.floor(Date.now() / 1000);
+    const diff = nextAiring.airingAt - now;
+    if (diff <= 0) return "Airing now";
+    const days = Math.floor(diff / 86400);
+    const hours = Math.floor((diff % 86400) / 3600);
+    if (days > 0) return `${days}d ${hours}h until EP ${nextAiring.episode}`;
+    const mins = Math.floor((diff % 3600) / 60);
+    return `${hours}h ${mins}m until EP ${nextAiring.episode}`;
+  })() : null;
 
   // Combine TMDB cast + AniList characters for the sidebar
   const allCast = [
@@ -400,6 +440,13 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                 Play EP.1
               </button>
+              {/* Next airing countdown */}
+              {nextAiringCountdown && (
+                <div className="pill-btn text-sm bg-amber-500/15 text-amber-300 border border-amber-500/25 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                  {nextAiringCountdown}
+                </div>
+              )}
               <button
                 onClick={toggleBookmark}
                 className={`pill-btn text-sm ${bookmarked ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/25" : "pill-btn-ghost"}`}
@@ -509,6 +556,10 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
                   <svg className="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                   <span className="text-[10px] font-bold text-zinc-300">Sub & Dub</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
+                  <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polygon points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
+                  <span className="text-[10px] font-bold text-zinc-300">MegaPlay</span>
                 </div>
               </div>
             </div>
@@ -694,6 +745,17 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                                 EP {ep.number}
                               </p>
                               {epTitle && <p className="text-[10px] text-zinc-500 line-clamp-1">{epTitle}</p>}
+                              {/* Sub/Dub indicators from MegaPlay */}
+                              {megaplayEpMap.has(ep.number) && (
+                                <div className="flex gap-1 mt-1">
+                                  {megaplayEpMap.get(ep.number)!.hasSub && (
+                                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400">SUB</span>
+                                  )}
+                                  {megaplayEpMap.get(ep.number)!.hasDub && (
+                                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400">DUB</span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </button>
                         );
