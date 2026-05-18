@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAnimeBasicInfo, getAnimeDetails, getStreamingEpisodes } from "@/lib/anilist-api";
 import { miruroInfo, miruroEpisodes } from "@/lib/miruro-api";
 import { getEpisodes, searchAnime } from "@/lib/anime-api";
-import { jikanAnimeById } from "@/lib/jikan-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +28,6 @@ export async function GET(request: NextRequest) {
     let animeTitle: string | null = null;
     let anilistEps: any[] = []; // From AniList streamingEpisodes
     let totalEpsFromAniList: number | null = null;
-    let miruroInfoData: any = null;
 
     // Step 1: Try AniList GraphQL directly (most reliable for episode count + info)
     if (anilistId) {
@@ -105,22 +103,6 @@ export async function GET(request: NextRequest) {
         } catch { /* all AniList attempts failed */ }
       }
 
-      // Step 1.5: If AniList failed to provide title or episode count, try Jikan as fallback
-      if (!animeTitle || !totalEpsFromAniList) {
-        try {
-          const cleanId = id.replace(/^mal_/, "");
-          if (/^\d+$/.test(cleanId)) {
-            const jikanInfo = await jikanAnimeById(parseInt(cleanId));
-            if (jikanInfo) {
-              if (!animeTitle) animeTitle = jikanInfo.title_english || jikanInfo.title;
-              if (!totalEpsFromAniList && jikanInfo.episodes) {
-                totalEpsFromAniList = jikanInfo.episodes;
-              }
-            }
-          }
-        } catch { /* Jikan fallback failed */ }
-      }
-
       // Step 2: Try Miruro episodes endpoint using the helper (has retry logic)
       try {
         miruroEpsResult = await miruroEpisodes(anilistId);
@@ -131,7 +113,7 @@ export async function GET(request: NextRequest) {
       // Get Miruro info for title and additional episode count
       if (!animeTitle || !totalEpsFromAniList) {
         try {
-          miruroInfoData = await miruroInfo(anilistId);
+          const miruroInfoData = await miruroInfo(anilistId);
           if (!animeTitle) animeTitle = miruroInfoData?.title?.english || miruroInfoData?.title?.romaji || null;
           if (!totalEpsFromAniList && miruroInfoData?.episodes) {
             totalEpsFromAniList = miruroInfoData.episodes;
@@ -171,7 +153,6 @@ export async function GET(request: NextRequest) {
     let finalEpisodes: any[];
 
     if (hasMiruroEps) {
-      // Miruro has the best episode data (sub/dub slugs, titles, thumbnails)
       const maxEps = Math.max(
         miruroEpsResult.sub?.length || 0,
         miruroEpsResult.dub?.length || 0,
@@ -194,7 +175,6 @@ export async function GET(request: NextRequest) {
         });
       }
     } else if (hasAnilistEps && anilistEps.length > 0) {
-      // Use AniList streaming episodes as base, extend with total count
       finalEpisodes = [];
       const maxEps = Math.max(anilistEps.length, totalEpsFromAniList || anilistEps.length, allAnimeEpisodes.length);
       for (let i = 1; i <= maxEps; i++) {
@@ -212,8 +192,6 @@ export async function GET(request: NextRequest) {
         ...ep,
       }));
     } else if (totalEpsFromAniList && totalEpsFromAniList > 0) {
-      // We know the anime has episodes but couldn't get detailed info
-      // Generate numbered episode list
       console.log(`[episodes] Generating ${totalEpsFromAniList} numbered episodes (no source data)`);
       finalEpisodes = Array.from({ length: totalEpsFromAniList }, (_, i) => ({
         episodeIdNum: i + 1,
@@ -222,9 +200,8 @@ export async function GET(request: NextRequest) {
         source: "numbered",
       }));
     } else {
-      // Last resort: If we have an AniList ID but no episode data, generate at least 12 episodes
-      // This handles ongoing anime where AniList returns episodes: null
-      if (anilistId && !totalEpsFromAniList) {
+      // Last resort: generate at least 12 episodes
+      if (anilistId) {
         console.log(`[episodes] No episode data found. Generating 12 numbered episodes as fallback for anilistId=${anilistId}`);
         finalEpisodes = Array.from({ length: 12 }, (_, i) => ({
           episodeIdNum: i + 1,
@@ -234,12 +211,11 @@ export async function GET(request: NextRequest) {
         }));
         totalEpsFromAniList = 12;
       } else {
-        console.log(`[episodes] No episodes found. anilistId=${anilistId}, title=${animeTitle}, totalEpsFromAniList=${totalEpsFromAniList}`);
         finalEpisodes = [];
       }
     }
 
-    // Final safety net: if we have an anime ID but absolutely no episodes, ALWAYS generate at least 12
+    // Final safety net
     if (finalEpisodes.length === 0 && (anilistId || allAnimeId)) {
       console.log(`[episodes] Final safety net: generating 12 numbered episodes for id=${id}`);
       finalEpisodes = Array.from({ length: 12 }, (_, i) => ({

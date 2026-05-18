@@ -49,33 +49,7 @@ interface MiruroEpData {
   dub: Array<{ number: number; slug: string; title?: string; thumbnail?: string }>;
 }
 
-interface TMDBData {
-  id: number;
-  name?: string;
-  overview?: string;
-  poster_path?: string;
-  backdrop_path?: string;
-  vote_average?: number;
-  vote_count?: number;
-  genres?: Array<{ id: number; name: string }>;
-  number_of_seasons?: number;
-  number_of_episodes?: number;
-  seasons?: Array<{
-    id: number; name: string; season_number: number;
-    episode_count: number; poster_path?: string; air_date?: string;
-  }>;
-  networks?: Array<{ id: number; name: string; logo_path?: string }>;
-  credits?: {
-    cast: Array<{ id: number; name: string; character?: string; profile_path?: string }>;
-  };
-  videos?: {
-    results: Array<{ id: string; key: string; name: string; site: string; type: string }>;
-  };
-  similar?: { results: Array<any> };
-  recommendations?: { results: Array<any> };
-  posterUrl?: string;
-  backdropUrl?: string;
-}
+// TMDB types removed — anime section uses AniList API only
 
 interface AniListCharacter {
   id: number;
@@ -140,11 +114,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   const [activeTab, setActiveTab] = useState<"sub" | "dub">("sub");
   const [totalEpisodes, setTotalEpisodes] = useState<number | null>(null);
 
-  // TMDB data
-  const [tmdbData, setTmdbData] = useState<TMDBData | null>(null);
-  const [tmdbId, setTmdbId] = useState<number | null>(null);
   const [anilistId, setAnilistId] = useState<number | null>(null);
-  const [dataSource, setDataSource] = useState<string>("default");
 
   // AniList voice cast / characters
   const [anilistCharacters, setAnilistCharacters] = useState<AniListCharacter[]>([]);
@@ -185,18 +155,11 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           const data = await infoRes.json();
           setAnime(data.anime);
           setMiruroInfo(data.miruroInfo);
-          // Use anilistInfo from all sources (AniList PRIMARY, TMDB/Jikan shaped as anilistInfo for compatibility)
+          // AniList only — no TMDB/Jikan
           if (data.anilistInfo) setAnilistInfo(data.anilistInfo);
-          if (data.tmdbData) setTmdbData(data.tmdbData);
-          if (data.tmdbId) setTmdbId(data.tmdbId);
-          if (data._source) setDataSource(data._source);
           // Use totalEpisodes from info API as a reliable fallback
           if (data.totalEpisodes != null && data.totalEpisodes > 0) {
             setTotalEpisodes(data.totalEpisodes);
-          }
-          // Store TMDB ID from fallback info for passing to anilist-detail API
-          if (!tmdbId && data.tmdbFallbackInfo?.id) {
-            setTmdbId(data.tmdbFallbackInfo.id);
           }
         }
 
@@ -209,7 +172,6 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           if (epTotal != null && epTotal > 0) {
             setTotalEpisodes(epTotal);
           }
-          if (!tmdbId && epData.zenshinMappings?.themoviedb_id) setTmdbId(epData.zenshinMappings.themoviedb_id);
         }
 
         const cleanId = animeId.replace(/^miruro_/, "").replace(/^mal_/, "");
@@ -220,15 +182,13 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
     load();
   }, [animeId]);
 
-  // Fetch AniList characters & voice actors (with Jikan/TMDB fallback)
+  // Fetch AniList characters & voice actors (AniList only)
   useEffect(() => {
     if (!anilistId) return;
     async function loadAnilistDetail() {
       setAnilistDetailLoading(true);
       try {
-        // Pass tmdbId for TMDB fallback when AniList is down
-        const tmdbParam = tmdbId ? `&tmdbId=${tmdbId}` : "";
-        const res = await fetch(`/api/anime/anilist-detail?id=${anilistId}${tmdbParam}`);
+        const res = await fetch(`/api/anime/anilist-detail?id=${anilistId}`);
         if (res.ok) {
           const data = await res.json();
           setAnilistCharacters(data.characters || []);
@@ -249,7 +209,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
       setAnilistDetailLoading(false);
     }
     loadAnilistDetail();
-  }, [anilistId, tmdbId]);
+  }, [anilistId]);
 
   if (loading) {
     return (
@@ -267,46 +227,38 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
     );
   }
 
-  // Merge info from all sources — AniList PRIMARY, Miruro/TMDB fallback
+  // Merge info — AniList PRIMARY, Miruro fallback (NO TMDB/Jikan)
   const alTitle = anilistMedia?.title || anilistInfo?.title || null;
   const miruroTitle = miruroInfo?.title || null;
 
   const anilistTitle = alTitle?.english || alTitle?.romaji || miruroTitle?.english || miruroTitle?.romaji || "";
   const anilistTitleRomaji = alTitle?.romaji || miruroTitle?.romaji || "";
   const anilistTitleNative = alTitle?.native || miruroTitle?.native || "";
-  const tmdbTitle = tmdbData?.name || "";
   const allanimeTitle = anime ? (anime.englishName || anime.name) : "";
 
-  const displayTitle = anilistTitle || tmdbTitle || allanimeTitle || "Unknown";
+  const displayTitle = anilistTitle || allanimeTitle || "Unknown";
   const alImage = anilistMedia?.coverImage?.extraLarge || anilistMedia?.coverImage?.large || anilistInfo?.coverImage?.extraLarge || anilistInfo?.coverImage?.large || "";
-  const image = alImage || miruroInfo?.coverImage?.extraLarge || miruroInfo?.coverImage?.large || tmdbData?.posterUrl || anime?.thumbnail || "";
-  const banner = anilistMedia?.bannerImage || miruroInfo?.bannerImage || tmdbData?.backdropUrl || (tmdbData?.backdrop_path ? `https://image.tmdb.org/t/p/w780${tmdbData.backdrop_path}` : "") || image;
+  const image = alImage || miruroInfo?.coverImage?.extraLarge || miruroInfo?.coverImage?.large || anime?.thumbnail || "";
+  const banner = anilistMedia?.bannerImage || miruroInfo?.bannerImage || image;
 
   const alDesc = anilistMedia?.description?.replace(/<[^>]*>/g, "") || anilistInfo?.description?.replace(/<[^>]*>/g, "") || "";
   const miruroDesc = miruroInfo?.description?.replace(/<[^>]*>/g, "") || "";
-  const tmdbDesc = tmdbData?.overview || "";
   const allanimeDesc = anime?.description || "";
-  const description = alDesc || miruroDesc || tmdbDesc || allanimeDesc;
+  const description = alDesc || miruroDesc || allanimeDesc;
 
   // AniList score is 0-100 scale, convert to 0-10
   const alScoreRaw = anilistMedia?.averageScore ?? anilistInfo?.averageScore ?? miruroInfo?.averageScore ?? null;
   const anilistScore = alScoreRaw ? (alScoreRaw > 10 ? alScoreRaw / 10 : alScoreRaw) : null;
-  // TMDB vote_average is on 0-10 scale
-  const tmdbScore = tmdbData?.vote_average ?? null;
-  const allanimeScore = anime?.score || null;
 
   const anilistGenres: string[] = anilistMedia?.genres || anilistInfo?.genres || miruroInfo?.genres || anime?.genres || [];
-  const tmdbGenres: string[] = tmdbData?.genres?.map(g => g.name) || [];
-  const allGenres = [...new Set([...anilistGenres, ...tmdbGenres])];
+  const allGenres = anilistGenres;
 
   const status = anilistMedia?.status || anilistInfo?.status || miruroInfo?.status || anime?.status || "";
   const type = anilistMedia?.format || anilistInfo?.format || miruroInfo?.format || miruroInfo?.type || anime?.type || "";
   const alSeason = (anilistMedia?.season || anilistInfo?.season) && (anilistMedia?.seasonYear || anilistInfo?.seasonYear)
     ? `${anilistMedia?.season || anilistInfo?.season} ${anilistMedia?.seasonYear || anilistInfo?.seasonYear}` : "";
   const season = alSeason || (miruroInfo?.season && miruroInfo?.seasonYear ? `${miruroInfo.season} ${miruroInfo.seasonYear}` : "") || anime?.season || "";
-  const episodesCount = totalEpisodes || anilistMedia?.episodes || anilistInfo?.episodes || miruroInfo?.episodes || (anime as any)?.episodeCount || tmdbData?.number_of_episodes || null;
-  const tmdbCast = tmdbData?.credits?.cast?.slice(0, 12) || [];
-  const tmdbTrailers = tmdbData?.videos?.results?.filter(v => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Opening")) || [];
+  const episodesCount = totalEpisodes || anilistMedia?.episodes || anilistInfo?.episodes || miruroInfo?.episodes || (anime as any)?.episodeCount || null;
 
   const hasMiruroEps = miruroEps.sub.length > 0 || miruroEps.dub.length > 0;
   const currentEps = hasMiruroEps
@@ -324,7 +276,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
     if (bookmarked) {
       setBookmarks(bookmarks.filter(b => b.animeId !== animeId));
     } else {
-      setBookmarks([...bookmarks, { id: animeId, animeId, animeName: displayTitle, thumbnail: image, score: anilistScore || tmdbScore || 0, type: type || "TV", status: "", createdAt: new Date().toISOString() }]);
+      setBookmarks([...bookmarks, { id: animeId, animeId, animeName: displayTitle, thumbnail: image, score: anilistScore || 0, type: type || "TV", status: "", createdAt: new Date().toISOString() }]);
     }
   };
 
@@ -449,11 +401,8 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   {anilistScore && (
                     <span className="badge-score text-[11px] font-bold inline-flex items-center gap-1">
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                      {dataSource === "jikan" ? "MAL" : dataSource === "tmdb" ? "TMDB" : "AL"} {anilistScore.toFixed(1)} ★
+                      AL {anilistScore.toFixed(1)} ★
                     </span>
-                  )}
-                  {tmdbScore && (
-                    <span className="badge-type text-[11px] font-bold">TMDB {(tmdbScore > 10 ? tmdbScore / 10 : tmdbScore).toFixed(1)}</span>
                   )}
                   {type && <span className="badge-anime text-[10px] font-bold">{type}</span>}
                   {status && <span className="badge-airing text-[10px] font-bold">{status}</span>}
@@ -506,17 +455,6 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                     </svg>
                     {bookmarked ? "Saved" : "Add to List"}
                   </button>
-                  {tmdbTrailers.length > 0 && (
-                    <a
-                      href={`https://www.youtube.com/watch?v=${tmdbTrailers[0].key}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="pill-btn pill-btn-ghost"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      Trailer
-                    </a>
-                  )}
                 </div>
               </div>
 
@@ -540,30 +478,6 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
           <div className="flex-1 space-y-3">
             <h1 className="text-2xl sm:text-3xl font-bold text-white">{displayTitle}</h1>
             {description && <p className="text-sm text-zinc-400 leading-relaxed line-clamp-5">{description}</p>}
-          </div>
-        </div>
-      )}
-
-      {/* TMDB Cast */}
-      {tmdbCast.length > 0 && (
-        <div className="mt-8 space-y-3">
-          <div className="section-header">
-            <h3 className="text-sm font-bold text-white">Top Cast</h3>
-          </div>
-          <div className="flex gap-4 overflow-x-auto scroll-container pb-2">
-            {tmdbCast.map(c => (
-              <div key={c.id} className="shrink-0 text-center w-[100px]">
-                <div className="w-[100px] h-[100px] rounded-full overflow-hidden mx-auto mb-2 border-2 border-white/[0.06] bg-[#1a2530]">
-                  {c.profile_path ? (
-                    <img src={`https://image.tmdb.org/t/p/w185${c.profile_path}`} alt={c.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-lg text-zinc-600 font-semibold">{c.name.charAt(0)}</div>
-                  )}
-                </div>
-                <p className="text-[10px] text-zinc-300 font-medium line-clamp-1">{c.name}</p>
-                {c.character && <p className="text-[8px] text-zinc-500 line-clamp-1">{c.character}</p>}
-              </div>
-            ))}
           </div>
         </div>
       )}
