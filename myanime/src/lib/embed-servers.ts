@@ -468,7 +468,9 @@ const anixtvHindi: EmbedServer = {
   category: "hindi",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    return `https://anixtv.in/anime/${p.anilistId}/episode/${p.episode}`;
+    const title = p.title ? encodeURIComponent(p.title) : `Anime-${p.anilistId}`;
+    const season = p.season || 1;
+    return `https://anixtv.in/anime-watch?action=hindi_1_player&id=${p.anilistId}&season=${season}&episode=${p.episode}&title=${title}`;
   },
 };
 

@@ -110,6 +110,7 @@ type Route =
   | { page: "tv-detail"; id: number }
   | { page: "movie-watch"; id: number }
   | { page: "tv-watch"; id: number; season: number; episode: number }
+  | { page: "hindi" }
   | { page: "sandbox" };
 
 // ============================================================
@@ -159,6 +160,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     else if (route.page === "tv-watch")
       window.location.hash = `watch-tv/${route.id}/${route.season}/${route.episode}`;
     else if (route.page === "sandbox") window.location.hash = "sandbox";
+    else if (route.page === "hindi") window.location.hash = "hindi";
     window.scrollTo(0, 0);
   },
   bookmarks: [],
@@ -192,6 +194,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === "watch-tv" && parts[1] && parts[2] && parts[3])
     return { page: "tv-watch", id: parseInt(parts[1]), season: parseInt(parts[2]), episode: parseInt(parts[3]) };
   if (parts[0] === "sandbox") return { page: "sandbox" };
+  if (parts[0] === "hindi") return { page: "hindi" };
   return { page: "home" };
 }
 

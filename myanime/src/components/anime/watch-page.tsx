@@ -146,6 +146,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
         anilistId: anilistId || undefined,
         tmdbId: undefined, episode: episodeNum,
         season: tmdbSeason || undefined, translation,
+        title: animeTitle || undefined,
       });
       if (url) {
         availableServers.push({
