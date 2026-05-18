@@ -370,8 +370,17 @@ const videasyAnime: EmbedServer = {
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    const dub = p.translation === "dub" ? "&dub=true" : "";
-    return `https://player.videasy.net/anime/${p.anilistId}/${p.episode}?nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true&color=00A8E1${dub}`;
+    // VidEasy auto-provides both sub & dub — no explicit param needed
+    // dub param is not documented but kept as optional hint
+    const params = new URLSearchParams({
+      nextEpisode: "true",
+      autoplayNextEpisode: "true",
+      episodeSelector: "true",
+      overlay: "true",
+      color: "00A8E1",
+    });
+    if (p.translation === "dub") params.set("dub", "true");
+    return `https://player.videasy.net/anime/${p.anilistId}/${p.episode}?${params}`;
   },
 };
 
@@ -389,6 +398,40 @@ const megaplayEmbed: EmbedServer = {
     if (!p.anilistId) return "";
     const lang = p.translation === "hindi" ? "hindi" : p.translation;
     return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/${lang}`;
+  },
+};
+
+// ============================================================
+// VidPlus Anime — AniList ID with dub query param
+// URL: https://player.vidplus.to/embed/anime/{anilistId}/{episode}?dub=true/false
+// ============================================================
+
+const vidplusAnime: EmbedServer = {
+  id: "vidplus-anime",
+  name: "Server 7",
+  priority: 17,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: false,
+  idType: "anilist",
+  color: "#EC4899",
+  category: "anime",
+  generateUrl: (p) => {
+    if (!p.anilistId) return "";
+    const params = new URLSearchParams({
+      autoplay: "true",
+      autonext: "true",
+      nextbutton: "true",
+      primarycolor: "00A8E1",
+      secondarycolor: "0099CC",
+      iconcolor: "FFFFFF",
+      icons: "netflix",
+      episodelist: "true",
+      poster: "true",
+      title: "true",
+    });
+    if (p.translation === "dub") params.set("dub", "true");
+    return `https://player.vidplus.to/embed/anime/${p.anilistId}/${p.episode}?${params}`;
   },
 };
 
@@ -415,8 +458,8 @@ const tryembed: EmbedServer = {
 
 const anixtvHindi: EmbedServer = {
   id: "anixtv-hindi",
-  name: "Server 7",
-  priority: 17,
+  name: "Server 8",
+  priority: 18,
   supportsSub: false,
   supportsDub: false,
   supportsHindi: true,
@@ -438,6 +481,7 @@ const ALL_SERVERS: EmbedServer[] = [
   peachify, vidcore, vidnestTv, vidfast, videasyTv, vidsrcme,
   vidplus, vidplays, embedmaster, vidlink, vidzen, vidking,
   vidnestAnime, vidnestAnimepahe, videasyAnime, megaplayEmbed, tryembed,
+  vidplusAnime,
   anixtvHindi,
 ];
 
