@@ -31,9 +31,9 @@ function useMounted() {
 }
 
 // ================================================================
-// LUFFY TV SPLIT INTRO — "LUFFY" (purple/left) | "TV" (white/right)
-// Dramatic split-screen reveal with particle burst → merge → flash exit
-// Pure CSS animation, React only mounts/unmounts
+// LUFFY TV INTRO — "LUFFY" (purple/left) | "TV" (white/right)
+// Clean split screen, letters reveal line-by-line one by one
+// Thin purple divider line, smooth glow, minimal & cinematic
 // ================================================================
 
 function LuffyIntro({ onComplete }: { onComplete: () => void }) {
@@ -51,52 +51,52 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 5000);
+    }, 5500);
     return () => clearTimeout(t);
   }, []);
 
   if (gone) return null;
 
   return (
-    <div className="split-intro">
-      {/* Background particles */}
-      <div className="split-particles">
-        {Array.from({ length: 20 }, (_, i) => (
-          <span key={i} className={`split-particle split-particle-${i + 1}`} />
+    <div className="ltv-intro">
+      {/* Left half — deep purple/dark, LUFFY text */}
+      <div className="ltv-left">
+        <div className="ltv-glow ltv-glow-purple" />
+        <div className="ltv-text ltv-text-left">
+          {['L','U','F','F','Y'].map((c, i) => (
+            <span key={i} className="ltv-char ltv-char-purple" style={{ '--i': i } as React.CSSProperties}>{c}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Right half — dark/black, TV text */}
+      <div className="ltv-right">
+        <div className="ltv-glow ltv-glow-white" />
+        <div className="ltv-text ltv-text-right">
+          {['T','V'].map((c, i) => (
+            <span key={i} className="ltv-char ltv-char-white" style={{ '--i': i + 5 } as React.CSSProperties}>{c}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Center divider — thin purple line */}
+      <div className="ltv-divider">
+        <div className="ltv-divider-core" />
+        <div className="ltv-divider-glow" />
+      </div>
+
+      {/* Subtle ambient particles */}
+      <div className="ltv-particles">
+        {Array.from({ length: 12 }, (_, i) => (
+          <span key={i} className={`ltv-dot ltv-dot-${i + 1}`} />
         ))}
       </div>
 
-      {/* Left half — LUFFY in purple */}
-      <div className="split-half split-half-left">
-        <div className="split-glow split-glow-purple" />
-        <div className="split-text-left">
-          {['L','U','F','F','Y'].map((c, i) => (
-            <span key={i} className="split-char split-char-purple" style={{ '--i': i } as React.CSSProperties}>{c}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Right half — TV in white */}
-      <div className="split-half split-half-right">
-        <div className="split-glow split-glow-white" />
-        <div className="split-text-right">
-          {['T','V'].map((c, i) => (
-            <span key={i} className="split-char split-char-white" style={{ '--i': i + 5 } as React.CSSProperties}>{c}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Center divider line */}
-      <div className="split-divider">
-        <div className="split-divider-line" />
-        <div className="split-divider-glow" />
-      </div>
-
-      {/* Flash overlay on exit */}
-      <div className="split-flash" />
+      {/* Flash overlay for exit */}
+      <div className="ltv-flash" />
 
       {/* Skip button */}
-      <button onClick={skip} className="split-skip" aria-label="Skip intro">
+      <button onClick={skip} className="ltv-skip" aria-label="Skip intro">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}>
           <path d="M5 4l10 8-10 8V4z" />
           <rect x="17" y="5" width="2" height="14" />
