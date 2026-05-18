@@ -42,6 +42,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
   const hlsRef = useRef<Hls | null>(null);
   const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const iframeLoadTimer = useRef<NodeJS.Timeout | null>(null);
 
   const [useDirectEmbed, setUseDirectEmbed] = useState(true); // Direct embed by default — NO sandbox
   const [useNativePlayer, setUseNativePlayer] = useState(false);
@@ -181,6 +182,28 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       setEmbedUrl(server.url);
       setLoading(true);
       setError(null);
+
+      // Timeout for iframe embeds — if iframe doesn't load within 12s, try proxy or next server
+      if (iframeLoadTimer.current) clearTimeout(iframeLoadTimer.current);
+      iframeLoadTimer.current = setTimeout(() => {
+        // If still loading after timeout, the iframe likely failed to connect
+        if (loading && !playing) {
+          if (useDirectEmbed) {
+            // Try proxy mode
+            setUseDirectEmbed(false);
+            setLoading(true);
+          } else {
+            // Proxy also failed — try next server
+            const currentIdx = servers.findIndex(s => s.id === activeServerId);
+            if (currentIdx < servers.length - 1) {
+              setActiveServerId(servers[currentIdx + 1].id);
+            } else {
+              setLoading(false);
+              setError("All embed servers failed to load.");
+            }
+          }
+        }
+      }, 12000);
     }
   }, [activeServerId, episodeNum, anilistId, translation]);
 
@@ -199,10 +222,27 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       const url = `/api/miruro/watch?provider=kiwi&id=${anilistId}&type=${translation}&slug=${encodeURIComponent(slug)}`;
       const res = await fetch(url);
       if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "No sources found"); }
+      if (!res.ok) {
+        // Miruro API is down — auto-skip to next non-native server
+        const nextNonNative = servers.find(s => !s.isNative && s.id !== activeServerId);
+        if (nextNonNative) {
+          setActiveServerId(nextNonNative.id);
+          return;
+        }
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "No sources found");
+      }
       const json = await res.json();
       const data = json.data || json;
-      if (!data.sources?.length) throw new Error("No stream sources available");
+      if (!data.sources?.length) {
+        // No sources — auto-skip to next server
+        const nextNonNative = servers.find(s => !s.isNative && s.id !== activeServerId);
+        if (nextNonNative) {
+          setActiveServerId(nextNonNative.id);
+          return;
+        }
+        throw new Error("No stream sources available");
+      }
 
       const intSources = data.sources.filter((s: StreamSource) => s.sourceType === "internal" || !s.sourceType);
       const extSources = data.sources.filter((s: StreamSource) => s.sourceType === "external");
@@ -216,7 +256,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       setError(err.message || "Failed to load stream");
     }
     setLoading(false); setKiwiLoading(false);
-  }, [anilistId, episodeNum, translation, episodeList]);
+  }, [anilistId, episodeNum, translation, episodeList, servers, activeServerId]);
 
   // Load MegaPlay Decryptor stream — returns direct m3u8 + subtitles + skip data
   const loadMegaPlayStream = useCallback(async () => {
@@ -234,7 +274,13 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       const url = `/api/megaplay/stream?aniId=${anilistId}&epNum=${episodeNum}&lang=${lang}`;
       const res = await fetch(url);
       if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "MegaPlay source not available"); }
+      if (!res.ok) {
+        // MegaPlay failed — auto-skip to next non-native server
+        const nextNonNative = servers.find(s => !s.isNative && s.id !== activeServerId);
+        if (nextNonNative) { setActiveServerId(nextNonNative.id); return; }
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "MegaPlay source not available");
+      }
       const json = await res.json();
 
       if (!json.success) throw new Error(json.error || "MegaPlay extraction failed");
@@ -269,7 +315,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       setError(err.message || "Failed to load MegaPlay stream");
     }
     setLoading(false); setKiwiLoading(false);
-  }, [anilistId, episodeNum, translation]);
+  }, [anilistId, episodeNum, translation, servers, activeServerId]);
 
   const playSource = useCallback((source: StreamSource, headers?: Record<string, string>) => {
     const video = videoRef.current; if (!video) return;
@@ -291,7 +337,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     } else { video.src = url; video.play().then(() => setPlaying(true)).catch(() => {}); }
   }, []);
 
-  useEffect(() => { return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current); }; }, []);
+  useEffect(() => { return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current); if (iframeLoadTimer.current) clearTimeout(iframeLoadTimer.current); }; }, []);
 
   const switchSource = (idx: number) => {
     const activeSources = sourceTab === "internal" ? internalSources : externalSources;
@@ -343,7 +389,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                 allowFullScreen
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; screen-wake-lock; clipboard-write; document-domain"
                 referrerPolicy="no-referrer"
-                onLoad={() => { setLoading(false); setPlaying(true); }}
+                onLoad={() => { setLoading(false); setPlaying(true); if (iframeLoadTimer.current) clearTimeout(iframeLoadTimer.current); }}
                 onError={() => {
                   if (useDirectEmbed) {
                     // Direct embed failed — try proxy mode as fallback
@@ -409,29 +455,31 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
 
             <div className="flex items-center gap-2 flex-wrap shrink-0">
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mr-1">Switch Server</span>
-              {servers.slice(0, 5).map((s, idx) => (
-                <button key={s.id}
-                  onClick={() => { setActiveServerId(s.id); setLoading(true); setError(null); }}
-                  className={`server-pill text-[11px] py-1.5 px-3 ${activeServerId === s.id ? "active" : ""}`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                  {s.name}
-                </button>
-              ))}
-              {/* Proxy / Direct toggle */}
-              {!useNativePlayer && (
-                <button
-                  onClick={() => { setUseDirectEmbed(!useDirectEmbed); setLoading(true); setError(null); }}
-                  className={`ml-1 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
-                    useDirectEmbed
-                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
-                      : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
-                  }`}
-                  title={useDirectEmbed ? "Direct embed — bypasses proxy" : "Proxy mode — anti-sandbox enabled"}
-                >
-                  {useDirectEmbed ? "Direct" : "Proxy"}
-                </button>
-              )}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {servers.map((s, idx) => (
+                  <button key={s.id}
+                    onClick={() => { setActiveServerId(s.id); setLoading(true); setError(null); }}
+                    className={`server-pill text-[11px] py-1.5 px-3 ${activeServerId === s.id ? "active" : ""}`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                    {s.name}
+                  </button>
+                ))}
+                {/* Proxy / Direct toggle */}
+                {!useNativePlayer && (
+                  <button
+                    onClick={() => { setUseDirectEmbed(!useDirectEmbed); setLoading(true); setError(null); }}
+                    className={`ml-1 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
+                      useDirectEmbed
+                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                        : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
+                    }`}
+                    title={useDirectEmbed ? "Direct embed — bypasses proxy" : "Proxy mode — anti-sandbox enabled"}
+                  >
+                    {useDirectEmbed ? "Direct" : "Proxy"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
