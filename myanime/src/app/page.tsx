@@ -22,7 +22,6 @@ import MangaDetailPage from "@/components/anime/manga-detail";
 import MangaReader from "@/components/anime/manga-reader";
 import EmbedSandbox from "@/components/anime/embed-sandbox";
 import SchedulePage from "@/components/anime/schedule-page";
-import LandingPage from "@/components/anime/landing-page";
 import Image from "next/image";
 
 const emptySubscribe = () => () => {};
@@ -121,18 +120,7 @@ export default function MainPage() {
   const mounted = useMounted();
   const [showSplash, setShowSplash] = useState(true);
   const [splashComplete, setSplashComplete] = useState(false);
-  const [showLanding, setShowLanding] = useState(false);
   const [enteredMain, setEnteredMain] = useState(false);
-
-  // Check if user has already visited (skip landing page on return)
-  useEffect(() => {
-    if (mounted) {
-      const hasEntered = localStorage.getItem("luffytv_entered");
-      if (hasEntered === "true") {
-        setEnteredMain(true);
-      }
-    }
-  }, [mounted]);
 
   // Hash-based routing
   useEffect(() => {
@@ -164,18 +152,8 @@ export default function MainPage() {
     setSplashComplete(true);
     setTimeout(() => {
       setShowSplash(false);
-      // After splash, check if we should show landing or go directly to main
-      const hasEntered = localStorage.getItem("luffytv_entered");
-      if (hasEntered !== "true") {
-        setShowLanding(true);
-      }
+      setEnteredMain(true);
     }, 500);
-  };
-
-  const handleEnterMain = () => {
-    setShowLanding(false);
-    setEnteredMain(true);
-    localStorage.setItem("luffytv_entered", "true");
   };
 
   if (!mounted) {
@@ -229,20 +207,15 @@ export default function MainPage() {
 
   return (
     <>
-      {/* ── Phase 1: Splash/Intro Animation ── */}
+      {/* ── Splash/Intro Animation ── */}
       {showSplash && (
         <div className={splashComplete ? "splash-fade-out" : ""}>
           <LuffyIntro onComplete={handleSplashComplete} />
         </div>
       )}
 
-      {/* ── Phase 2: Landing/Introduction Page ── */}
-      {showLanding && !enteredMain && (
-        <LandingPage onEnter={handleEnterMain} />
-      )}
-
-      {/* ── Phase 3: Main Application ── */}
-      {(enteredMain || (!showSplash && !showLanding)) && (
+      {/* ── Main Application ── */}
+      {enteredMain && (
         <div className="min-h-screen bg-black flex flex-col content-reveal">
           {!isMangaReader && <Navbar />}
           <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isMangaReader ? '' : 'pt-[72px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
