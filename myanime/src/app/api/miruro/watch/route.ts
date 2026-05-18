@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * providers have the episode and tries them in priority order.
  */
 export async function GET(req: NextRequest) {
-  const provider = req.nextUrl.searchParams.get("provider") || "kiwi";
+  const provider = req.nextUrl.searchParams.get("provider") || "miku";
   const id = parseInt(req.nextUrl.searchParams.get("id") || "0");
   const translationType = (req.nextUrl.searchParams.get("type") || "sub") as "sub" | "dub";
   const slug = req.nextUrl.searchParams.get("slug") || "1";
