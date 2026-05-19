@@ -2,5 +2,9 @@ node_modules/
 .next/
 .git/
 .netlify/
-*.pyc
-__pycache__/
+*.mp4
+*.tar.gz
+*.zip
+*.db
+package-lock.json
+skills/ppt/scripts/tectonic
