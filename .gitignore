@@ -41,12 +41,17 @@ dev.db
 
 # large data files
 *.json.bak
-
-# project-specific
+myanime/
+upload/
 agent-ctx/
 db/
 download/
 skills/
-upload/
-worklog.md
+examples/
+mini-services/
 lunar-ref.json
+worklog.md
+YumeZone_Research_Report.md
+allmanga_gist.json
+anifake_miruro.json
+anipy_allanime.json
