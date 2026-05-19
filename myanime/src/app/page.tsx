@@ -193,10 +193,12 @@ export default function MainPage() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Navbar — OUTSIDE the content-reveal div so position:fixed works */}
       <ErrorBoundary>
+      {!isWatchPage && !isMangaReader && <Navbar />}
+
+      {/* Main Content */}
       <div className={`min-h-screen bg-[#0b1116] flex flex-col ${!showSplash ? "content-reveal" : "opacity-0"}`}>
-        {!isWatchPage && !isMangaReader && <Navbar />}
         <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isWatchPage || isMangaReader ? '' : 'pt-[75px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
           {renderPage()}
         </main>
