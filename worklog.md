@@ -23,3 +23,26 @@ Stage Summary:
 - Hindi streaming supported through multiple server options
 - Build verified successfully
 - Pushed to GitHub: aznayeemghost/luffy-tv
+
+---
+Task ID: 1-6
+Agent: Main Agent
+Task: Fix navbar sticky+blur, hide on watch pages, fix iframe sizing, add Schedule page
+
+Work Log:
+- Fixed navbar: Added backdrop-blur-xl and bg-[#0b1116]/80 when scrolled, with transition-all duration-300
+- Fixed navbar: Hidden on watch/streaming pages (isWatchPage && isMangaReader)
+- Fixed iframe sizing: Added absolute inset-0, explicit width/height/minHeight styles, and injected CSS into proxy route to force fill
+- Fixed landing page spacing: Changed space-y-10 to space-y-12 for better section gaps
+- Built Schedule page with: scrollable day-by-day timeline, AniList airing schedule API, countdown timers, next airing banner, quick stats
+- Added schedule route to store.ts (Route type, hash routing, parseHash)
+- Added Schedule nav item to navbar with calendar icon
+- Added Schedule link to footer
+- Pushed to GitHub (force push due to conflicts)
+
+Stage Summary:
+- Navbar now stays sticky at top with backdrop-blur effect when scrolling
+- Navbar is hidden on watch/streaming pages for immersive viewing
+- Iframe/sandbox now fills container properly for all translation types (sub/dub/hindi)
+- New Schedule page with AniList airing schedule data, countdown timers, day selector
+- All changes pushed to https://github.com/aznayeemghost/luffy-tv
