@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd myanime && npm run build",
+  "outputDirectory": "myanime/.next",
+  "installCommand": "cd myanime && npm install",
+  "framework": "nextjs",
+  "rootDirectory": "myanime"
+}
