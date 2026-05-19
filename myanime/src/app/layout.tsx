@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Space_Mono, Inter } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -9,6 +9,17 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -34,7 +45,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0b0f19] text-[#e2e8f0] selection:bg-purple-500/30 selection:text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} ${spaceMono.variable} ${inter.variable} antialiased bg-[#050507] text-[#e2e8f0] selection:bg-[#7c6cf0]/30 selection:text-white`}
       >
         {children}
       </body>

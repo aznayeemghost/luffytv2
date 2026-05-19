@@ -90,7 +90,7 @@ async function fetchAniList(anilistId: number) {
       _source: "anilist",
     };
   } catch (err: any) {
-    console.error("[anime/info] AniList error:", err?.message || err);
+    console.warn("[anime/info] AniList primary failed, trying backups");
     return null;
   }
 }
@@ -136,7 +136,7 @@ async function fetchMiruro(anilistId: number) {
       _source: "miruro",
     };
   } catch (err: any) {
-    console.error("[anime/info] Miruro error:", err?.message || err);
+    console.warn("[anime/info] Miruro backup failed, trying MAL");
     return null;
   }
 }
@@ -191,7 +191,7 @@ async function fetchMAL(malId: number) {
       _source: "mal",
     };
   } catch (err: any) {
-    console.error("[anime/info] MAL error:", err?.message || err);
+    console.warn("[anime/info] MAL backup failed");
     return null;
   }
 }

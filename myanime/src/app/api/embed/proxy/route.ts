@@ -502,23 +502,7 @@ export async function GET(req: NextRequest) {
       `$1${baseUrl}$2`
     );
 
-    // Step 5: Inject CSS to force the embed to fill the iframe container
-    const FILL_CSS = `<style>
-html, body { width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; background: #000 !important; }
-video { width: 100% !important; height: 100% !important; object-fit: contain !important; }
-iframe { width: 100% !important; height: 100% !important; border: none !important; }
-#player, .player, [id*="player"], [class*="player"] { width: 100% !important; height: 100% !important; }
-</style>`;
-    // Inject CSS right after <head> or at the start
-    if (html.includes('<head>')) {
-      html = html.replace('<head>', '<head>' + FILL_CSS);
-    } else if (html.includes('<head ')) {
-      html = html.replace(/<head /, '<head ' + FILL_CSS + ' ');
-    } else {
-      html = FILL_CSS + html;
-    }
-
-    // Step 6: Remove Content-Security-Policy headers that might block framing
+    // Step 5: Remove Content-Security-Policy headers that might block framing
     // (We set our own permissive CSP in the response)
 
     return new NextResponse(html, {

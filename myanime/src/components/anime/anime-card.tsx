@@ -84,7 +84,7 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
       style={{ animationDelay: `${index * 50}ms` }}
     >
       {/* Card image container — 2/3 aspect ratio poster */}
-      <div className="relative aspect-[2/3] overflow-hidden bg-[#1a2530] rounded-xl">
+      <div className="relative aspect-[2/3] overflow-hidden bg-[#0f0f1a] rounded-xl">
         {/* Skeleton */}
         {!imgLoaded && <div className="absolute inset-0 skeleton" />}
 
@@ -100,7 +100,7 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
         )}
 
         {/* Default: Bottom gradient + title overlay */}
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/60 to-transparent opacity-80 group-hover:opacity-0 transition-opacity duration-300" />
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#05050a] via-[#05050a]/60 to-transparent opacity-80 group-hover:opacity-0 transition-opacity duration-300" />
         <div className="absolute inset-x-0 bottom-0 p-3 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
           <h3 className="text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">
             {title}
@@ -112,14 +112,14 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
           isTMDB
             ? mediaType === "movie"
               ? "bg-rose-500/80 text-white backdrop-blur-sm"
-              : "bg-cyan-500/80 text-white backdrop-blur-sm"
-            : "bg-cyan-500/80 text-white backdrop-blur-sm"
+              : "bg-purple-500/80 text-white backdrop-blur-sm"
+            : "bg-purple-500/80 text-white backdrop-blur-sm"
         }`}>
           {typeLabel}
         </div>
 
         {/* Hover: Full info reveal overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/80 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-3">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#05050a] via-[#05050a]/80 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-3">
           {/* Title */}
           <h3 className="text-sm font-bold text-white line-clamp-2 leading-tight mb-2">
             {title}
@@ -147,8 +147,8 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
               isTMDB
                 ? mediaType === "movie"
                   ? "bg-rose-500/20 text-rose-300"
-                  : "bg-cyan-500/20 text-cyan-300"
-                : "bg-cyan-500/20 text-cyan-300"
+                  : "bg-purple-500/20 text-purple-300"
+                : "bg-purple-500/20 text-purple-300"
             }`}>
               {typeLabel}
             </span>
@@ -161,7 +161,7 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
               onClick={() => {
                 handlePlayClick();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500 hover:bg-cyan-600 text-white text-[11px] font-semibold rounded-full transition-all shadow-lg shadow-cyan-500/25 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-[11px] font-semibold rounded-full transition-all shadow-lg shadow-purple-500/25 cursor-pointer"
             >
               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
@@ -185,12 +185,12 @@ export default function ContentCard({ anime, tmdbItem, index = 0 }: ContentCardP
 
         {/* Episode count / Year badge — bottom right (default view) */}
         {(episodes && episodes > 0) && (
-          <div className="absolute bottom-2 right-2 bg-[#0b1116]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-500/20 z-[5] group-hover:opacity-0 transition-opacity duration-300">
+          <div className="absolute bottom-2 right-2 bg-[#05050a]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-500/20 z-[5] group-hover:opacity-0 transition-opacity duration-300">
             EP:{episodes}
           </div>
         )}
         {(isTMDB && year) && (
-          <div className="absolute bottom-9 left-3 bg-[#0b1116]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 border border-white/10 z-[5] group-hover:opacity-0 transition-opacity duration-300">
+          <div className="absolute bottom-9 left-3 bg-[#05050a]/80 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 border border-white/10 z-[5] group-hover:opacity-0 transition-opacity duration-300">
             {year}
           </div>
         )}

@@ -211,6 +211,23 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
     loadAnilistDetail();
   }, [anilistId]);
 
+  // CRITICAL: ALL hooks MUST be before any early return (React Rules of Hooks)
+  // Load comments — moved here to prevent React error #310
+  const loadComments = useCallback(async () => {
+    setCommentLoading(true);
+    try {
+      const res = await fetch(`/api/comments?animeId=${encodeURIComponent(animeId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(data.comments || []);
+        setCommentStats(data.stats || { avgRating: 0, totalRatings: 0 });
+      }
+    } catch { /* ignore */ }
+    setCommentLoading(false);
+  }, [animeId]);
+
+  useEffect(() => { loadComments(); }, [loadComments]);
+
   if (loading) {
     return (
       <div className="space-y-6 fade-in">
@@ -231,10 +248,11 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   const alTitle = anilistMedia?.title || anilistInfo?.title || null;
   const miruroTitle = miruroInfo?.title || null;
 
-  const anilistTitle = alTitle?.english || alTitle?.romaji || miruroTitle?.english || miruroTitle?.romaji || "";
-  const anilistTitleRomaji = alTitle?.romaji || miruroTitle?.romaji || "";
-  const anilistTitleNative = alTitle?.native || miruroTitle?.native || "";
-  const allanimeTitle = anime ? (anime.englishName || anime.name) : "";
+  // CRITICAL: Ensure titles are strings, not objects (prevents React #310)
+  const anilistTitle = String(alTitle?.english || alTitle?.romaji || miruroTitle?.english || miruroTitle?.romaji || "");
+  const anilistTitleRomaji = String(alTitle?.romaji || miruroTitle?.romaji || "");
+  const anilistTitleNative = String(alTitle?.native || miruroTitle?.native || "");
+  const allanimeTitle = anime ? String(anime.englishName || anime.name || "") : "";
 
   const displayTitle = anilistTitle || allanimeTitle || "Unknown";
   const alImage = anilistMedia?.coverImage?.extraLarge || anilistMedia?.coverImage?.large || anilistInfo?.coverImage?.extraLarge || anilistInfo?.coverImage?.large || "";
@@ -250,11 +268,15 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   const alScoreRaw = anilistMedia?.averageScore ?? anilistInfo?.averageScore ?? miruroInfo?.averageScore ?? null;
   const anilistScore = alScoreRaw ? (alScoreRaw > 10 ? alScoreRaw / 10 : alScoreRaw) : null;
 
-  const anilistGenres: string[] = anilistMedia?.genres || anilistInfo?.genres || miruroInfo?.genres || anime?.genres || [];
+  // CRITICAL: Filter genres to ONLY strings — prevents React #310 (objects as children)
+  // Some APIs (MAL) return genres as objects {id, name}, filter those out
+  const rawGenres: any[] = anilistMedia?.genres || anilistInfo?.genres || miruroInfo?.genres || anime?.genres || [];
+  const anilistGenres: string[] = rawGenres.filter((g: any) => typeof g === "string").map((g: string) => g);
   const allGenres = anilistGenres;
 
-  const status = anilistMedia?.status || anilistInfo?.status || miruroInfo?.status || anime?.status || "";
-  const type = anilistMedia?.format || anilistInfo?.format || miruroInfo?.format || miruroInfo?.type || anime?.type || "";
+  // Safety: ensure status/type are strings, not objects (prevents React #310)
+  const status = String(anilistMedia?.status || anilistInfo?.status || miruroInfo?.status || anime?.status || "");
+  const type = String(anilistMedia?.format || anilistInfo?.format || miruroInfo?.format || miruroInfo?.type || anime?.type || "");
   const alSeason = (anilistMedia?.season || anilistInfo?.season) && (anilistMedia?.seasonYear || anilistInfo?.seasonYear)
     ? `${anilistMedia?.season || anilistInfo?.season} ${anilistMedia?.seasonYear || anilistInfo?.seasonYear}` : "";
   const season = alSeason || (miruroInfo?.season && miruroInfo?.seasonYear ? `${miruroInfo.season} ${miruroInfo.seasonYear}` : "") || anime?.season || "";
@@ -283,22 +305,6 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
   // Determine if we have any episodes to show (including generated numbered ones)
   // Check if we have any episode data at all — also consider numbered fallback episodes
   const hasAnyEpisodes = episodes.length > 0 || hasMiruroEps || (episodesCount != null && episodesCount > 0);
-
-  // Load comments
-  const loadComments = useCallback(async () => {
-    setCommentLoading(true);
-    try {
-      const res = await fetch(`/api/comments?animeId=${encodeURIComponent(animeId)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setComments(data.comments || []);
-        setCommentStats(data.stats || { avgRating: 0, totalRatings: 0 });
-      }
-    } catch { /* ignore */ }
-    setCommentLoading(false);
-  }, [animeId]);
-
-  useEffect(() => { loadComments(); }, [loadComments]);
 
   // Sort comments
   const sortedComments = [...comments].sort((a, b) => {
@@ -389,8 +395,8 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
       {banner && (
         <div className="relative min-h-[90vh] -mt-[75px] overflow-hidden">
           <img src={banner} alt="" className="absolute inset-0 w-full h-full object-cover ken-burns" key={`banner-${animeId}`} />
-          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#0b1116]/50 to-[#0b1116]/95" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#05050a]/50 to-[#05050a]/95" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#05050a] via-[#05050a]/40 to-transparent" />
 
           {/* Content */}
           <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12">
@@ -427,7 +433,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                       <button
                         key={g}
                         onClick={() => navigate({ page: "genre", genre: g })}
-                        className="px-3 py-1 text-xs font-medium bg-cyan-500/10 text-cyan-300 rounded-full border border-cyan-500/20 hover:bg-cyan-500/20 transition-all"
+                        className="px-3 py-1 text-xs font-medium bg-purple-500/10 text-purple-300 rounded-full border border-purple-500/20 hover:bg-purple-500/20 transition-all"
                       >
                         {g}
                       </button>
@@ -448,7 +454,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   </button>
                   <button
                     onClick={toggleBookmark}
-                    className={`pill-btn ${bookmarked ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" : "pill-btn-ghost"}`}
+                    className={`pill-btn ${bookmarked ? "bg-purple-500/10 text-purple-300 border border-purple-500/20" : "pill-btn-ghost"}`}
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill={bookmarked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2}>
                       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
@@ -500,17 +506,17 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                 <div key={c.id} className="shrink-0 text-center w-[120px]">
                   {/* Character */}
                   <div className="flex flex-col items-center">
-                    <div className="w-[80px] h-[80px] rounded-full overflow-hidden border-2 border-cyan-500/20 bg-[#1a2530] mb-1">
+                    <div className="w-[80px] h-[80px] rounded-full overflow-hidden border-2 border-purple-500/20 bg-[#0f0f1a] mb-1">
                       {c.image?.large || c.image?.medium ? (
                         <img src={c.image.large || c.image.medium} alt={cName} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-semibold">{cName.charAt(0)}</div>
                       )}
                     </div>
-                    <p className="text-[10px] text-cyan-300 font-medium line-clamp-1">{cName}</p>
+                    <p className="text-[10px] text-purple-300 font-medium line-clamp-1">{cName}</p>
                     {cNameNative && <p className="text-[8px] text-zinc-500 line-clamp-1">{cNameNative}</p>}
                     <span className={`text-[8px] font-bold mt-0.5 px-2 py-0.5 rounded-full ${
-                      c.role === "MAIN" ? "bg-cyan-500/15 text-cyan-300" : "bg-white/[0.05] text-zinc-400"
+                      c.role === "MAIN" ? "bg-purple-500/15 text-purple-300" : "bg-white/[0.05] text-zinc-400"
                     }`}>{c.role}</span>
                   </div>
 
@@ -518,7 +524,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   {va && (
                     <div className="flex flex-col items-center mt-2">
                       <div className="w-[8px] h-[8px] rounded-full bg-zinc-700 mb-1" />
-                      <div className="w-[60px] h-[60px] rounded-full overflow-hidden border-2 border-violet-500/20 bg-[#1a2530] mb-1">
+                      <div className="w-[60px] h-[60px] rounded-full overflow-hidden border-2 border-violet-500/20 bg-[#0f0f1a] mb-1">
                         {va.image?.large || va.image?.medium ? (
                           <img src={va.image.large || va.image.medium} alt={vaName} className="w-full h-full object-cover" />
                         ) : (
@@ -549,7 +555,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
               const sName = s.name?.full || "Unknown";
               return (
               <div key={s.id} className="shrink-0 text-center w-[100px]">
-                <div className="w-[80px] h-[80px] rounded-full overflow-hidden mx-auto mb-2 border-2 border-white/[0.06] bg-[#1a2530]">
+                <div className="w-[80px] h-[80px] rounded-full overflow-hidden mx-auto mb-2 border-2 border-white/[0.06] bg-[#0f0f1a]">
                   {s.image?.large || s.image?.medium ? (
                     <img src={s.image.large || s.image.medium} alt={sName} className="w-full h-full object-cover" />
                   ) : (
@@ -576,11 +582,11 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
             {anilistStudios.map(s => (
               <span key={s.id} className={`px-3 py-1.5 text-xs font-semibold rounded-full ${
                 s.isAnimationStudio
-                  ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20"
+                  ? "bg-purple-500/15 text-purple-300 border border-purple-500/20"
                   : "bg-white/[0.05] text-zinc-400 border border-white/[0.06]"
               }`}>
                 {s.name}
-                {s.isAnimationStudio && <span className="ml-1 text-[8px] text-cyan-500">★</span>}
+                {s.isAnimationStudio && <span className="ml-1 text-[8px] text-purple-500">★</span>}
               </span>
             ))}
           </div>
@@ -622,14 +628,14 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   onClick={() => navigate({ page: "anime", id: String(r.id) })}
                   className="shrink-0 w-[120px] group text-left"
                 >
-                  <div className="w-[120px] aspect-[3/4] rounded-lg overflow-hidden border border-white/[0.04] bg-[#1a2530] mb-1.5">
+                  <div className="w-[120px] aspect-[3/4] rounded-lg overflow-hidden border border-white/[0.04] bg-[#0f0f1a] mb-1.5">
                     {rImg ? (
                       <img src={rImg} alt={rTitle} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-xs text-zinc-600">{rTitle.charAt(0)}</div>
                     )}
                   </div>
-                  <p className="text-[10px] text-zinc-300 font-medium line-clamp-2 group-hover:text-cyan-300 transition-colors">{rTitle}</p>
+                  <p className="text-[10px] text-zinc-300 font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">{rTitle}</p>
                   {r.averageScore && (
                     <span className="text-[9px] text-emerald-400 font-semibold">{(r.averageScore > 10 ? r.averageScore / 10 : r.averageScore).toFixed(1)} ★</span>
                   )}
@@ -655,9 +661,9 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                 <button
                   key={r.id}
                   onClick={() => navigate({ page: "anime", id: String(r.id) })}
-                  className="flex items-center gap-3 w-full p-2 bg-[#131c26] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all group text-left"
+                  className="flex items-center gap-3 w-full p-2 bg-[#131c26] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all group text-left"
                 >
-                  <div className="w-12 h-16 rounded-md overflow-hidden shrink-0 bg-[#1a2530]">
+                  <div className="w-12 h-16 rounded-md overflow-hidden shrink-0 bg-[#0f0f1a]">
                     {rImg ? (
                       <img src={rImg} alt={rTitle} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
@@ -665,9 +671,9 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-cyan-300 transition-colors">{rTitle}</p>
+                    <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-purple-300 transition-colors">{rTitle}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-bold">{r.relationType?.replace(/_/g, " ")}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-bold">{r.relationType?.replace(/_/g, " ")}</span>
                       {r.format && <span className="text-[9px] text-zinc-500">{r.format}</span>}
                       {r.episodes && <span className="text-[9px] text-zinc-500">{r.episodes} EP</span>}
                     </div>
@@ -688,13 +694,13 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
               {episodesCount && <span className="text-[10px] text-zinc-500">({episodesCount} total)</span>}
             </div>
             {hasMiruroEps && miruroEps.dub.length > 0 && (
-              <div className="flex items-center gap-1 bg-[#1a2530] rounded-full p-0.5 border border-white/[0.06]">
+              <div className="flex items-center gap-1 bg-[#0f0f1a] rounded-full p-0.5 border border-white/[0.06]">
                 {(["sub", "dub"] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`px-4 py-1.5 text-[11px] font-bold rounded-full transition-all ${
-                      activeTab === tab ? "bg-cyan-500/15 text-cyan-300" : "text-zinc-500 hover:text-zinc-300"
+                      activeTab === tab ? "bg-purple-500/15 text-purple-300" : "text-zinc-500 hover:text-zinc-300"
                     }`}
                   >
                     {tab.toUpperCase()} ({tab === "sub" ? miruroEps.sub.length : miruroEps.dub.length})
@@ -714,25 +720,25 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                     <button
                       key={`miruro-${ep.number}`}
                       onClick={() => handleWatch(ep.number)}
-                      className="flex items-center gap-3 p-2 bg-[#131c26] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all group text-left"
+                      className="flex items-center gap-3 p-2 bg-[#131c26] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all group text-left"
                     >
                       {/* Thumbnail */}
-                      <div className="w-20 h-12 rounded-md overflow-hidden shrink-0 bg-[#1a2530] relative">
+                      <div className="w-20 h-12 rounded-md overflow-hidden shrink-0 bg-[#0f0f1a] relative">
                         {epThumbnail ? (
                           <img src={epThumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-xs font-bold text-cyan-400">{ep.number}</span>
+                            <span className="text-xs font-bold text-purple-400">{ep.number}</span>
                           </div>
                         )}
                         {/* Play overlay on hover */}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <svg className="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                         </div>
                       </div>
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-cyan-300 transition-colors">
+                        <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-purple-300 transition-colors">
                           EP {ep.number}
                         </p>
                         {epTitle && (
@@ -749,25 +755,25 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                     <button
                       key={`aa-${ep.episodeIdNum}`}
                       onClick={() => handleWatch(ep.episodeIdNum)}
-                      className="flex items-center gap-3 p-2 bg-[#131c26] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all group text-left"
+                      className="flex items-center gap-3 p-2 bg-[#131c26] rounded-lg border border-white/[0.03] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all group text-left"
                     >
                       {/* Thumbnail */}
-                      <div className="w-20 h-12 rounded-md overflow-hidden shrink-0 bg-[#1a2530] relative">
+                      <div className="w-20 h-12 rounded-md overflow-hidden shrink-0 bg-[#0f0f1a] relative">
                         {epThumbnail ? (
                           <img src={epThumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-xs font-bold text-cyan-400">{ep.episodeIdNum}</span>
+                            <span className="text-xs font-bold text-purple-400">{ep.episodeIdNum}</span>
                           </div>
                         )}
                         {/* Play overlay on hover */}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <svg className="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                         </div>
                       </div>
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-cyan-300 transition-colors">
+                        <p className="text-xs font-semibold text-zinc-300 line-clamp-1 group-hover:text-purple-300 transition-colors">
                           EP {ep.episodeIdNum}
                         </p>
                         {epTitle && (
@@ -794,9 +800,9 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
               <button
                 key={`gen-${num}`}
                 onClick={() => handleWatch(num)}
-                className="server-pill justify-center text-[11px] font-semibold py-2.5 px-2 hover:bg-cyan-500/10 hover:border-cyan-500/20 hover:text-cyan-300 transition-all"
+                className="server-pill justify-center text-[11px] font-semibold py-2.5 px-2 hover:bg-purple-500/10 hover:border-purple-500/20 hover:text-purple-300 transition-all"
               >
-                <svg className="w-3 h-3 text-cyan-400/60 shrink-0" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                <svg className="w-3 h-3 text-purple-400/60 shrink-0" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                 {num}
               </button>
             ))}
@@ -809,7 +815,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
 
       {/* No episodes at all — only show when we truly have no episode data */}
       {!hasAnyEpisodes && !loading && (
-        <div className="text-center py-12 mt-6 bg-[#151f2e] rounded-xl border border-white/[0.04]">
+        <div className="text-center py-12 mt-6 bg-[#0a0a14] rounded-xl border border-white/[0.04]">
           <svg className="w-12 h-12 text-zinc-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707A1 1 0 0112 5.586v12.828a1 1 0 01-1.707.707L5.586 15z" />
           </svg>
@@ -821,7 +827,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
       {/* ========== COMMENTS & RATINGS SECTION ========== */}
       <div className="mt-10 space-y-6">
         <div className="section-header flex items-center gap-2">
-          <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+          <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
           <h3 className="text-sm font-bold text-white">Comments &amp; Reviews</h3>
           <span className="text-[10px] text-zinc-500 ml-1">({comments.length})</span>
         </div>
@@ -848,7 +854,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   <div key={star} className="flex items-center gap-2">
                     <span className="text-[10px] text-zinc-500 w-3">{star}</span>
                     <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                    <div className="flex-1 h-1.5 bg-[#1a2530] rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-[#0f0f1a] rounded-full overflow-hidden">
                       <div className="h-full bg-amber-400/60 rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <span className="text-[10px] text-zinc-600 w-6 text-right">{count}</span>
@@ -867,7 +873,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
               placeholder="Your name"
               value={newUsername}
               onChange={e => setNewUsername(e.target.value)}
-              className="w-full sm:w-40 px-3 py-2 bg-[#0b1116] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-cyan-500/30"
+              className="w-full sm:w-40 px-3 py-2 bg-[#05050a] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-purple-500/30"
             />
             <div className="flex items-center gap-1">
               <span className="text-[10px] text-zinc-500 mr-1">Rate:</span>
@@ -895,7 +901,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
               rows={3}
-              className="flex-1 px-3 py-2 bg-[#0b1116] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-cyan-500/30 resize-none"
+              className="flex-1 px-3 py-2 bg-[#05050a] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-purple-500/30 resize-none"
             />
           </div>
           <div className="flex justify-end">
@@ -918,7 +924,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
               onClick={() => setCommentSort(sort)}
               className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all ${
                 commentSort === sort
-                  ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20"
+                  ? "bg-purple-500/15 text-purple-300 border border-purple-500/20"
                   : "text-zinc-500 hover:text-zinc-300 border border-transparent"
               }`}
             >
@@ -953,8 +959,8 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                   <div className="p-4 bg-[#131c26] rounded-xl border border-white/[0.04] hover:border-white/[0.06] transition-all">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/20 to-violet-500/20 flex items-center justify-center shrink-0 border border-white/[0.06]">
-                          <span className="text-xs font-bold text-cyan-300">{comment.username.charAt(0).toUpperCase()}</span>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500/20 to-violet-500/20 flex items-center justify-center shrink-0 border border-white/[0.06]">
+                          <span className="text-xs font-bold text-purple-300">{comment.username.charAt(0).toUpperCase()}</span>
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -984,20 +990,20 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                         <svg className="w-3.5 h-3.5" fill={hasLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                         {comment.likes > 0 && comment.likes}
                       </button>
-                      <button onClick={() => { setReplyTo(replyTo === comment.id ? null : comment.id); setReplyContent(""); }} className="text-[10px] text-zinc-500 hover:text-cyan-400 font-medium transition-colors">
+                      <button onClick={() => { setReplyTo(replyTo === comment.id ? null : comment.id); setReplyContent(""); }} className="text-[10px] text-zinc-500 hover:text-purple-400 font-medium transition-colors">
                         Reply
                       </button>
                     </div>
 
                     {/* Reply form */}
                     {replyTo === comment.id && (
-                      <div className="mt-3 p-3 bg-[#0b1116] rounded-lg space-y-2 border border-white/[0.03]">
+                      <div className="mt-3 p-3 bg-[#05050a] rounded-lg space-y-2 border border-white/[0.03]">
                         <textarea
                           placeholder="Write a reply..."
                           value={replyContent}
                           onChange={e => setReplyContent(e.target.value)}
                           rows={2}
-                          className="w-full px-3 py-2 bg-[#151f2e] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-cyan-500/30 resize-none"
+                          className="w-full px-3 py-2 bg-[#0a0a14] border border-white/[0.06] rounded-lg text-xs text-white placeholder-zinc-600 outline-none focus:border-purple-500/30 resize-none"
                         />
                         <div className="flex justify-end gap-2">
                           <button onClick={() => { setReplyTo(null); setReplyContent(""); }} className="text-[10px] text-zinc-500 hover:text-white px-3 py-1">Cancel</button>
@@ -1013,7 +1019,7 @@ export default function AnimeDetailPage({ animeId }: AnimeDetailProps) {
                       {replies.map(reply => {
                         const isReplyOwner = reply.username === (newUsername.trim() || localStorage.getItem("luffy_username"));
                         return (
-                          <div key={reply.id} className="p-3 bg-[#0b1116] rounded-lg border border-white/[0.03]">
+                          <div key={reply.id} className="p-3 bg-[#05050a] rounded-lg border border-white/[0.03]">
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500/20 to-rose-500/20 flex items-center justify-center shrink-0 border border-white/[0.06]">
                                 <span className="text-[9px] font-bold text-violet-300">{reply.username.charAt(0).toUpperCase()}</span>
