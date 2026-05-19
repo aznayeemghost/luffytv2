@@ -75,6 +75,16 @@ function HistoryIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function ScheduleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
 
 export default function Navbar() {
   const { route, navigate } = useAppStore();
@@ -84,8 +94,8 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -100,6 +110,7 @@ export default function Navbar() {
 
   const navItems = [
     { id: "home", label: "Home", icon: HomeIcon },
+    { id: "schedule", label: "Schedule", icon: ScheduleIcon },
     { id: "movies", label: "Movies", icon: MovieIcon },
     { id: "tv", label: "TV Shows", icon: TVIcon },
     { id: "dub", label: "Anime", icon: AnimeIcon },
@@ -109,6 +120,7 @@ export default function Navbar() {
 
   const isActive = (id: string) => {
     if (id === "home" && route.page === "home") return true;
+    if (id === "schedule" && route.page === "schedule") return true;
     if (id === "movies" && route.page === "movies") return true;
     if (id === "tv" && route.page === "tv") return true;
     if (id === "dub" && (route.page === "dub" || route.page === "anime" || route.page === "watch")) return true;
@@ -119,6 +131,7 @@ export default function Navbar() {
 
   const handleNav = (id: string) => {
     if (id === "home") navigate({ page: "home" });
+    else if (id === "schedule") navigate({ page: "schedule" });
     else if (id === "movies") navigate({ page: "movies" });
     else if (id === "tv") navigate({ page: "tv" });
     else if (id === "dub") navigate({ page: "dub" });
@@ -131,10 +144,10 @@ export default function Navbar() {
     <>
       {/* Desktop & Mobile Top Nav — 75px height */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 floating-nav ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "scrolled border-b border-white/[0.06]"
-            : "bg-transparent"
+            ? "bg-[#0b1116]/80 backdrop-blur-xl border-b border-white/[0.06] shadow-[0_4px_30px_rgba(0,0,0,0.3)]"
+            : "bg-transparent backdrop-blur-none"
         }`}
         style={{ height: 75 }}
       >

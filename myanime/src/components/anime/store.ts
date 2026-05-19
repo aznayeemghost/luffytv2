@@ -101,6 +101,7 @@ type Route =
   | { page: "bookmarks" }
   | { page: "history" }
   | { page: "dub" }
+  | { page: "schedule" }
   | { page: "movies" }
   | { page: "tv" }
   | { page: "manga" }
@@ -143,6 +144,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       else if (route.page === "bookmarks") window.location.hash = "bookmarks";
       else if (route.page === "history") window.location.hash = "history";
       else if (route.page === "dub") window.location.hash = "dub";
+      else if (route.page === "schedule") window.location.hash = "schedule";
       else if (route.page === "movies") window.location.hash = "movies";
       else if (route.page === "tv") window.location.hash = "tv";
       else if (route.page === "manga") window.location.hash = "manga";
@@ -180,6 +182,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === "bookmarks") return { page: "bookmarks" };
   if (parts[0] === "history") return { page: "history" };
   if (parts[0] === "dub") return { page: "dub" };
+  if (parts[0] === "schedule") return { page: "schedule" };
   if (parts[0] === "movies") return { page: "movies" };
   if (parts[0] === "tv") return { page: "tv" };
   if (parts[0] === "manga" && parts[1]) return { page: "manga-detail", id: parts[1] };

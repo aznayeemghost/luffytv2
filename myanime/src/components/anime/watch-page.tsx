@@ -453,7 +453,8 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                   ref={iframeRef}
                   key={`${embedUrl}-${useDirectEmbed}`}
                   src={useDirectEmbed ? embedUrl : `/api/embed/proxy?url=${encodeURIComponent(embedUrl)}`}
-                  className="w-full h-full border-0 relative z-10"
+                  className="absolute inset-0 w-full h-full border-0 relative z-10"
+                  style={{ width: '100%', height: '100%', minHeight: '100%' }}
                   allowFullScreen
                   allow="autoplay; fullscreen; picture-in-picture; encrypted-media; screen-wake-lock; clipboard-write; document-domain"
                   referrerPolicy="no-referrer"

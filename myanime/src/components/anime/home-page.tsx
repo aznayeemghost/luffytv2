@@ -318,7 +318,7 @@ export default function HomePage() {
   const heroTotal = Math.min(heroItems.length, 10);
 
   return (
-    <div className="space-y-10 fade-in" style={{ marginTop: -70 }}>
+    <div className="space-y-12 fade-in" style={{ marginTop: -75 }}>
       {/* Hero Carousel — 90vh, overlaps navbar */}
       {heroItem && (
         <div className="relative">

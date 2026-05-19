@@ -11,6 +11,7 @@ import GenrePage from "@/components/anime/genre-page";
 import BookmarksPage from "@/components/anime/bookmarks-page";
 import HistoryPage from "@/components/anime/history-page";
 import AnimeHomePage from "@/components/anime/anime-home";
+import SchedulePage from "@/components/anime/schedule-page";
 import MoviesPage from "@/components/anime/movies-page";
 import TVPage from "@/components/anime/tv-page";
 import MovieDetailPage from "@/components/anime/movie-detail";
@@ -167,6 +168,7 @@ export default function MainPage() {
       case "watch": return <WatchPage animeId={route.id} episodeNum={route.episode} />;
       case "genre": return <GenrePage genre={route.genre} />;
       case "dub": return <AnimeHomePage />;
+      case "schedule": return <SchedulePage />;
       case "bookmarks": return <BookmarksPage />;
       case "history": return <HistoryPage />;
       case "movies": return <MoviesPage />;
@@ -194,8 +196,8 @@ export default function MainPage() {
       {/* Main Content */}
       <ErrorBoundary>
       <div className={`min-h-screen bg-[#0b1116] flex flex-col ${!showSplash ? "content-reveal" : "opacity-0"}`}>
-        {!isMangaReader && <Navbar />}
-        <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isMangaReader ? '' : 'pt-[75px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
+        {!isWatchPage && !isMangaReader && <Navbar />}
+        <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isWatchPage || isMangaReader ? '' : 'pt-[75px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
           {renderPage()}
         </main>
         {!isWatchPage && !isMangaReader && (
@@ -230,6 +232,7 @@ export default function MainPage() {
                   <h4 className="text-xs font-semibold text-zinc-300 mb-4 uppercase tracking-wider">Discover</h4>
                   <div className="space-y-2.5">
                     <button onClick={() => navigate({ page: "home" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Home</button>
+                    <button onClick={() => navigate({ page: "schedule" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Schedule</button>
                     <button onClick={() => navigate({ page: "movies" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Movies</button>
                     <button onClick={() => navigate({ page: "tv" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">TV Shows</button>
                     <button onClick={() => navigate({ page: "dub" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Anime</button>
