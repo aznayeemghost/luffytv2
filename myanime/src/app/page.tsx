@@ -237,8 +237,8 @@ export default function MainPage() {
       {/* Main Content */}
       <ErrorBoundary>
       <div className={`min-h-screen bg-[#050507] flex flex-col ${!showSplash ? "content-reveal" : "opacity-0"}`}>
-        {!isMangaReader && <Navbar />}
-        <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isMangaReader ? '' : 'pt-[75px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
+        {!isWatchPage && !isMangaReader && <Navbar />}
+        <main className={`max-w-[1400px] mx-auto px-4 lg:px-8 ${isWatchPage || isMangaReader ? '' : 'pt-[75px]'} ${isWatchPage || isMangaReader ? "" : "pb-24 lg:pb-12"} flex-1`}>
           {renderPage()}
         </main>
         {!isWatchPage && !isMangaReader && (
