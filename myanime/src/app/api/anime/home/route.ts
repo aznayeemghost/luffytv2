@@ -54,7 +54,7 @@ function normalizeItem(item: any): Record<string, any> {
     seasonYear: item.seasonYear || item.year || undefined,
     episodes: item.episodes ?? undefined,
     duration: item.duration ?? undefined,
-    genres: Array.isArray(item.genres) ? item.genres : undefined,
+    genres: Array.isArray(item.genres) ? item.genres.filter((g: any) => typeof g === "string") : undefined,
     averageScore: item.averageScore ?? (item.score ? Math.round(item.score * 10) : undefined),
     popularity: item.popularity ?? undefined,
     trending: item.trending ?? undefined,
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         trendingData = alTrending.map(normalizeItem);
       }
     } catch (err) {
-      console.error("[home] AniList trending error:", err);
+      // AniList is primary — silent on failure
     }
 
     if (trendingData.length === 0) {
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
           trendingSource = "miruro";
         }
       } catch (err) {
-        console.error("[home] Miruro trending error:", err);
+        // Miruro backup — silent
       }
     }
 
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
           trendingSource = "mal";
         }
       } catch (err) {
-        console.error("[home] MAL trending error:", err);
+        // MAL backup — silent
       }
     }
 
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         popularData = alPopular.map(normalizeItem);
       }
     } catch (err) {
-      console.error("[home] AniList popular error:", err);
+      // AniList is primary — silent on failure
     }
 
     if (popularData.length === 0) {
@@ -129,19 +129,19 @@ export async function GET(request: NextRequest) {
           popularSource = "miruro";
         }
       } catch (err) {
-        console.error("[home] Miruro popular error:", err);
+        // Miruro backup — silent
       }
     }
 
     if (popularData.length === 0) {
       try {
-        const malData = await malTopAnime(1, 20, "bypopularity");
+        const malData = await malTopAnime(1, 20, "bypopularity"); // MAL API valid ranking_type
         if (malData && malData.length > 0) {
           popularData = malData.map(normalizeItem);
           popularSource = "mal";
         }
       } catch (err) {
-        console.error("[home] MAL popular error:", err);
+        // MAL backup — silent
       }
     }
 
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
         recentSource = "miruro";
       }
     } catch (err) {
-      console.error("[home] Miruro recent error:", err);
+      // Miruro recent — silent on failure
     }
 
     if (recentData.length === 0) {
@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
           recentSource = "anilist";
         }
       } catch (err) {
-        console.error("[home] AniList recent error:", err);
+        // AniList backup — silent
       }
     }
 
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
           recentSource = "mal";
         }
       } catch (err) {
-        console.error("[home] MAL recent error:", err);
+        // MAL backup — silent
       }
     }
 

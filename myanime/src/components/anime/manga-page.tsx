@@ -112,7 +112,7 @@ export default function MangaPage() {
             placeholder="Search manga by title, author..."
             value={searchQuery}
             onChange={e => onSearchChange(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 bg-[#1a2530] border border-white/[0.06] rounded-xl text-sm text-white placeholder-zinc-500 outline-none focus:border-red-500/40 focus:ring-1 focus:ring-red-500/20 transition-all"
+            className="w-full h-11 pl-10 pr-4 bg-[#0f0f1a] border border-white/[0.06] rounded-xl text-sm text-white placeholder-zinc-500 outline-none focus:border-red-500/40 focus:ring-1 focus:ring-red-500/20 transition-all"
           />
           {searching && (
             <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
@@ -136,7 +136,7 @@ export default function MangaPage() {
               ))}
             </div>
           ) : !searching ? (
-            <div className="text-center py-20 bg-[#151f2e] rounded-2xl border border-white/[0.04]">
+            <div className="text-center py-20 bg-[#0a0a14] rounded-2xl border border-white/[0.04]">
               <svg className="w-12 h-12 text-zinc-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -163,7 +163,7 @@ export default function MangaPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 bg-[#151f2e] rounded-xl border border-white/[0.04]">
+              <div className="text-center py-8 bg-[#0a0a14] rounded-xl border border-white/[0.04]">
                 <p className="text-zinc-500 text-xs">No manga in this section</p>
               </div>
             )}
@@ -173,7 +173,7 @@ export default function MangaPage() {
 
       {/* Empty State */}
       {!searchMode && sections.length === 0 && (
-        <div className="text-center py-24 bg-[#151f2e] rounded-2xl border border-white/[0.04]">
+        <div className="text-center py-24 bg-[#0a0a14] rounded-2xl border border-white/[0.04]">
           <svg className="w-14 h-14 text-zinc-600 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
@@ -199,7 +199,7 @@ function MangaCard({ manga, onClick }: { manga: MangaEntry; onClick: () => void 
       tabIndex={0}
       className="content-card group text-left w-full focus-ring"
     >
-      <div className="relative aspect-[2/3] overflow-hidden bg-[#1a2530] rounded-xl">
+      <div className="relative aspect-[2/3] overflow-hidden bg-[#0f0f1a] rounded-xl">
         {!imgLoaded && <div className="absolute inset-0 skeleton" />}
         {poster && (
           <img
@@ -211,7 +211,7 @@ function MangaCard({ manga, onClick }: { manga: MangaEntry; onClick: () => void 
           />
         )}
         {/* Bottom gradient */}
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/60 to-transparent opacity-80 group-hover:opacity-0 transition-opacity duration-300" />
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#05050a] via-[#05050a]/60 to-transparent opacity-80 group-hover:opacity-0 transition-opacity duration-300" />
         <div className="absolute inset-x-0 bottom-0 p-2.5 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
           <h3 className="text-[11px] font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">{displayTitle}</h3>
         </div>
@@ -220,7 +220,7 @@ function MangaCard({ manga, onClick }: { manga: MangaEntry; onClick: () => void 
           {manga.type || "MANGA"}
         </div>
         {/* Hover overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/80 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-3">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#05050a] via-[#05050a]/80 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-3">
           <h3 className="text-sm font-bold text-white line-clamp-2 leading-tight mb-1.5">{displayTitle}</h3>
           <div className="flex items-center gap-2 flex-wrap">
             {manga.year && <span className="text-[10px] text-zinc-400">{manga.year}</span>}

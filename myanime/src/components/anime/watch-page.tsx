@@ -2,22 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAppStore } from "./store";
-import { getAnimeServers, getHindiServers, type EmbedServer } from "@/lib/embed-servers";
-import Hls from "hls.js";
+import { getAnimeServers, getHindiServers } from "@/lib/embed-servers";
 
 interface WatchPageProps {
   animeId: string;
   episodeNum: number;
-}
-
-interface StreamSource {
-  url: string;
-  quality?: string;
-  isM3U8?: boolean;
-  sourceName?: string;
-  sourceType?: "internal" | "external";
-  provider?: string;
-  type?: string;
 }
 
 interface ServerInfo {
@@ -25,36 +14,23 @@ interface ServerInfo {
   name: string;
   url: string;
   color: string;
-  icon?: string;
-  idType: "tmdb" | "anilist" | "native";
+  idType: "tmdb" | "anilist";
   supportsDub: boolean;
   supportsHindi: boolean;
-  category: "anime" | "tmdb" | "hindi" | "native";
-  isNative?: boolean;
+  category: "anime" | "tmdb" | "hindi";
   noSandbox?: boolean;
 }
 
-const MAX_LOAD_TIME = 25000;
 type TranslationType = "sub" | "dub" | "hindi";
 
 export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
   const navigate = useAppStore(s => s.navigate);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
-  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const [useDirectEmbed, setUseDirectEmbed] = useState(true);
-  const [useNativePlayer, setUseNativePlayer] = useState(false);
-  const [mikuLoading, setMikuLoading] = useState(false);
   const [servers, setServers] = useState<ServerInfo[]>([]);
   const [activeServerId, setActiveServerId] = useState<string>("");
   const [embedUrl, setEmbedUrl] = useState<string>("");
-  const [sources, setSources] = useState<StreamSource[]>([]);
-  const [internalSources, setInternalSources] = useState<StreamSource[]>([]);
-  const [externalSources, setExternalSources] = useState<StreamSource[]>([]);
-  const [currentSource, setCurrentSource] = useState(0);
-  const [sourceTab, setSourceTab] = useState<"internal" | "external">("internal");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -64,18 +40,19 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
   const [animeImage, setAnimeImage] = useState("");
   const [animeDescription, setAnimeDescription] = useState("");
   const [anilistId, setAnilistId] = useState<number | null>(null);
+  const [malId, setMalId] = useState<number | null>(null);
   const [tmdbSeason, setTmdbSeason] = useState<number | null>(null);
   const [tmdbBackdrop, setTmdbBackdrop] = useState("");
   const [tmdbRating, setTmdbRating] = useState<number | null>(null);
   const [tmdbGenres, setTmdbGenres] = useState<string[]>([]);
 
-  // Parse anime ID
+  // Parse anime ID — runs once on mount
   useEffect(() => {
     const cleanId = animeId.replace(/^miruro_/, "").replace(/^mal_/, "");
     if (/^\d+$/.test(cleanId)) setAnilistId(parseInt(cleanId));
   }, [animeId]);
 
-  // Load anime info — AniList PRIMARY, Official MAL API + TMDB as BACKUP
+  // Load anime info — fetches AniList data which includes malId
   useEffect(() => {
     let cancelled = false;
     async function loadInfo() {
@@ -85,43 +62,41 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
         if (res.ok) {
           const data = await res.json();
           const anime = data.anime;
-          const miruro = data.miruroInfo;
-          // AniList is PRIMARY — fallback chain: anilistInfo → malData → tmdbFallbackInfo → allanime → miruro
           const anilistInfo = data.anilistInfo;
           const tmdbFallback = data.tmdbFallbackInfo;
           const malInfo = data._source === "mal" ? data.anilistInfo : null;
 
-          // Title: AniList → MAL → TMDB fallback → AllAnime → Miruro
           setAnimeTitle(
             anilistInfo?.title?.english || anilistInfo?.title?.romaji ||
             malInfo?.title?.english || malInfo?.title?.romaji ||
             tmdbFallback?.title?.english || tmdbFallback?.title?.romaji ||
-            anime?.englishName || anime?.name ||
-            miruro?.title?.english || miruro?.title?.romaji || ""
+            anime?.englishName || anime?.name || ""
           );
-          // Image: AniList → MAL → TMDB fallback → AllAnime → Miruro
           setAnimeImage(
             anilistInfo?.coverImage?.extraLarge || anilistInfo?.coverImage?.large ||
             malInfo?.coverImage?.extraLarge || malInfo?.coverImage?.large ||
             tmdbFallback?.coverImage?.extraLarge || tmdbFallback?.coverImage?.large ||
-            anime?.thumbnail ||
-            miruro?.coverImage?.extraLarge || miruro?.coverImage?.large || ""
+            anime?.thumbnail || ""
           );
-          // Description: AniList → MAL → TMDB fallback → AllAnime → Miruro
           setAnimeDescription(
             anilistInfo?.description?.replace(/<[^>]*>/g, "") ||
             malInfo?.description?.replace(/<[^>]*>/g, "") ||
             tmdbFallback?.description?.replace(/<[^>]*>/g, "") ||
-            anime?.description ||
-            miruro?.description?.replace(/<[^>]*>/g, "") || ""
+            anime?.description || ""
           );
 
-          // AniList ID: Always prefer AniList ID for streaming servers
-          if (!anilistId && anilistInfo?.id) {
+          // Extract AniList ID and MAL ID from AniList response
+          if (anilistInfo?.id && !anilistId) {
             setAnilistId(anilistInfo.id);
           }
-          // If AniList is down but we got a TMDB fallback, we still try to resolve
-          // the AniList ID from the info data for streaming purposes
+          // AniList returns idMal which is the MAL ID — critical for megaplay MAL servers
+          if (anilistInfo?.idMal) {
+            setMalId(anilistInfo.idMal);
+          }
+          // Also check if the anime object has malId
+          if (!malId && anime?.idMal) {
+            setMalId(anime.idMal);
+          }
 
           if (data.tmdbSeason) setTmdbSeason(data.tmdbSeason);
           else if (data.zenshinMappings?.season?.tmdb) setTmdbSeason(data.zenshinMappings.season.tmdb);
@@ -129,21 +104,20 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             if (data.tmdbData.backdropUrl) setTmdbBackdrop(data.tmdbData.backdropUrl);
             else if (data.tmdbData.backdrop_path) setTmdbBackdrop(`https://image.tmdb.org/t/p/w780${data.tmdbData.backdrop_path}`);
             if (data.tmdbData.vote_average) setTmdbRating(data.tmdbData.vote_average);
-            if (data.tmdbData.genres) setTmdbGenres(data.tmdbData.genres.map((g: any) => g.name));
+            if (data.tmdbData.genres) setTmdbGenres(data.tmdbData.genres.map((g: any) => typeof g === "string" ? g : g.name));
           }
-          // Also use TMDB fallback data for rating/genres when AniList is down
           if (!tmdbRating && tmdbFallback?.averageScore) {
             setTmdbRating(tmdbFallback.averageScore > 10 ? tmdbFallback.averageScore / 10 : tmdbFallback.averageScore);
           }
           if (tmdbGenres.length === 0 && tmdbFallback?.genres?.length) {
-            setTmdbGenres(tmdbFallback.genres);
+            setTmdbGenres(tmdbFallback.genres.filter((g: any) => typeof g === "string"));
           }
         }
       } catch { /* ignore */ }
     }
     loadInfo();
     return () => { cancelled = true; };
-  }, [animeId]);
+  }, [animeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load episodes list
   useEffect(() => {
@@ -169,11 +143,11 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
     const availableServers: ServerInfo[] = [];
 
     if (translation === "hindi") {
-      // Hindi Dub: show only dedicated Hindi servers
       const hindiServers = getHindiServers();
       for (const server of hindiServers) {
         const url = server.generateUrl({
           anilistId: anilistId || undefined,
+          malId: malId || undefined,
           episode: episodeNum,
           translation: "hindi",
           title: animeTitle,
@@ -183,30 +157,19 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             id: server.id, name: server.name, url,
             color: server.color, idType: server.idType,
             supportsDub: false, supportsHindi: true,
-            category: "hindi", isNative: false,
+            category: "hindi",
             noSandbox: server.noSandbox,
           });
         }
       }
     } else {
-      // SUB/DUB: show anime servers (native + anilist-based)
       const animeServers = getAnimeServers();
       for (const server of animeServers) {
         if (translation === "dub" && !server.supportsDub) continue;
 
-        if (server.isNative) {
-          if (!anilistId) continue;
-          availableServers.push({
-            id: server.id, name: server.name, url: `native:${server.id}`,
-            color: server.color, idType: "native",
-            supportsDub: server.supportsDub, supportsHindi: false,
-            category: server.category, isNative: true,
-          });
-          continue;
-        }
-
         const url = server.generateUrl({
           anilistId: anilistId || undefined,
+          malId: malId || undefined,
           tmdbId: undefined, episode: episodeNum,
           season: tmdbSeason || undefined, translation,
         });
@@ -215,7 +178,8 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             id: server.id, name: server.name, url,
             color: server.color, idType: server.idType,
             supportsDub: server.supportsDub, supportsHindi: false,
-            category: server.category, isNative: false,
+            category: server.category,
+            noSandbox: server.noSandbox,
           });
         }
       }
@@ -226,210 +190,79 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
       const currentStillValid = availableServers.some(s => s.id === activeServerId);
       if (!currentStillValid) setActiveServerId(availableServers[0].id);
     }
-  }, [anilistId, tmdbSeason, episodeNum, translation, animeTitle]);
+  }, [anilistId, malId, tmdbSeason, episodeNum, translation, animeTitle]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When active server changes
+  // When active server changes, update embed URL
   useEffect(() => {
     const server = servers.find(s => s.id === activeServerId);
     if (!server) return;
 
-    if (server.isNative) {
-      setUseDirectEmbed(true);
-      setUseNativePlayer(true);
-      if (server.id === "miruro-miku" || server.id === "miruro-miku-2") {
-        loadMikuStream();
-      } else if (server.id === "megaplay-decrypter") {
-        loadMegaplayStream();
-      }
-    } else {
-      setUseNativePlayer(false);
-      // For noSandbox servers (like AnixTV Hindi), default to proxy mode
-      // since they block direct framing with X-Frame-Options
-      setUseDirectEmbed(!server.noSandbox);
-      setEmbedUrl(server.url);
-      setLoading(true);
-      setError(null);
-    }
-  }, [activeServerId, episodeNum, anilistId, translation]);
+    // Internal API routes (like /api/miruro/player) should always load directly
+    const isInternalApi = server.url.startsWith("/api/");
+    setUseDirectEmbed(isInternalApi || !server.noSandbox);
+    setEmbedUrl(server.url);
+    setLoading(true);
+    setError(null);
+    setPlaying(false);
 
-  // Load MegaPlay Decrypter stream (direct HLS m3u8)
-  const loadMegaplayStream = useCallback(async () => {
-    if (!anilistId) return;
-    setLoading(true); setError(null); setPlaying(false);
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-    loadTimeoutRef.current = setTimeout(() => {
+    // Auto-dismiss loading spinner after 6s — cross-origin iframes often
+    // don't fire onLoad, so the spinner would get stuck forever otherwise
+    const timer = setTimeout(() => {
       setLoading(false);
-      setError("Stream is taking too long. Try another server.");
-    }, MAX_LOAD_TIME);
+      setPlaying(true);
+    }, 6000);
 
-    try {
-      const lang = translation === "dub" ? "dub" : "sub";
-      const url = `https://megaplaydecryptor.vercel.app/api/stream?aniId=${anilistId}&epNum=${episodeNum}&lang=${lang}`;
-      const res = await fetch(url);
-      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+    return () => clearTimeout(timer);
+  }, [activeServerId, servers]);
 
-      if (!res.ok) throw new Error(`API returned ${res.status}`);
-      const json = await res.json();
-
-      if (!json.success) throw new Error(json.error || "Failed to get stream");
-      const data = json.results;
-      if (!data?.m3u8) throw new Error("No m3u8 stream available");
-
-      // Play the HLS stream
-      const video = videoRef.current;
-      if (!video) return;
-
-      if (Hls.isSupported()) {
-        const hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60, startLevel: -1 });
-        hls.loadSource(data.m3u8);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().then(() => setPlaying(true)).catch(() => {});
-        });
-        hls.on(Hls.Events.ERROR, (_e, errData) => {
-          if (errData.fatal) {
-            if (errData.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-            else { setError("Stream error."); hls.destroy(); }
-          }
-        });
-        hlsRef.current = hls;
-      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = data.m3u8;
-        video.play().then(() => setPlaying(true)).catch(() => {});
-      }
-
-      // Set source info for quality display
-      setSources([{
-        url: data.m3u8,
-        quality: "Auto",
-        isM3U8: true,
-        sourceName: "MegaPlay",
-        sourceType: "internal",
-      }]);
-      setInternalSources([{
-        url: data.m3u8,
-        quality: "Auto",
-        isM3U8: true,
-        sourceName: "MegaPlay",
-        sourceType: "internal",
-      }]);
-      setSourceTab("internal");
-      setCurrentSource(0);
-      setLoading(false);
-    } catch (err: any) {
-      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-      setError(err.message || "Failed to load MegaPlay stream");
-      setLoading(false);
+  // Auto-switch to next server on failure
+  const autoSwitchToNextServer = useCallback(() => {
+    const currentIdx = servers.findIndex(s => s.id === activeServerId);
+    for (let i = currentIdx + 1; i < servers.length; i++) {
+      setActiveServerId(servers[i].id);
+      return;
     }
-  }, [anilistId, episodeNum, translation]);
-
-  const loadMikuStream = useCallback(async () => {
-    if (!anilistId) return;
-    setLoading(true); setError(null); setPlaying(false); setMikuLoading(true);
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-    loadTimeoutRef.current = setTimeout(() => {
-      setLoading(false); setMikuLoading(false);
-      setError("Stream is taking too long. Try another server.");
-    }, MAX_LOAD_TIME);
-
-    try {
-      const slug = episodeList.find(e => e.number === episodeNum)?.slug || String(episodeNum);
-      // Pass epNum so the API can auto-switch providers if the first one fails
-      const url = `/api/miruro/watch?provider=miku&id=${anilistId}&type=${translation}&slug=${encodeURIComponent(slug)}&epNum=${episodeNum}`;
-      const res = await fetch(url);
-      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "No sources found"); }
-      const json = await res.json();
-      const data = json.data || json;
-      if (!data.sources?.length) throw new Error("No stream sources available");
-
-      // Log which provider actually worked (for debugging auto-switch)
-      if (data.activeProvider && data.activeProvider !== "miku") {
-        console.log(`[WatchPage] Auto-switched from miku to ${data.activeProvider} (tried: ${data.triedProviders?.join(", ")})`);
+    for (let i = 0; i < currentIdx; i++) {
+      if (servers[i].id !== activeServerId) {
+        setActiveServerId(servers[i].id);
+        return;
       }
-
-      const intSources = data.sources.filter((s: StreamSource) => s.sourceType === "internal" || !s.sourceType);
-      const extSources = data.sources.filter((s: StreamSource) => s.sourceType === "external");
-      setSources(data.sources); setInternalSources(intSources); setExternalSources(extSources);
-      const preferred = intSources.length > 0 ? intSources : extSources;
-      setSourceTab(preferred === intSources ? "internal" : "external");
-      setCurrentSource(0);
-      if (preferred.length > 0) playSource(preferred[0], data.headers);
-    } catch (err: any) {
-      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-      setError(err.message || "Failed to load stream");
     }
-    setLoading(false); setMikuLoading(false);
-  }, [anilistId, episodeNum, translation, episodeList]);
+    setError("All servers failed. Try refreshing the page.");
+  }, [servers, activeServerId]);
 
-  const playSource = useCallback((source: StreamSource, headers?: Record<string, string>) => {
-    const video = videoRef.current; if (!video) return;
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    if (source.sourceType === "external") { window.open(source.url, "_blank", "noopener,noreferrer"); return; }
-    const url = source.url;
-    if (source.isM3U8 || url.includes(".m3u8") || url.includes("/api/stream")) {
-      if (Hls.isSupported()) {
-        const hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60, startLevel: -1,
-          xhrSetup: (xhr) => { if (headers) Object.entries(headers).forEach(([k, v]) => { try { xhr.setRequestHeader(k, v); } catch {} }); },
-        });
-        hls.loadSource(url); hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().then(() => setPlaying(true)).catch(() => {}); });
-        hls.on(Hls.Events.ERROR, (_e, data) => { if (data.fatal) { if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad(); else { setError("Stream error."); hls.destroy(); } } });
-        hlsRef.current = hls;
-      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = url; video.play().then(() => setPlaying(true)).catch(() => {});
-      }
-    } else { video.src = url; video.play().then(() => setPlaying(true)).catch(() => {}); }
-  }, []);
-
-  useEffect(() => { return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current); }; }, []);
-
-  const switchSource = (idx: number) => {
-    const activeSources = sourceTab === "internal" ? internalSources : externalSources;
-    if (idx < activeSources.length && activeSources[idx]) { setCurrentSource(idx); playSource(activeSources[idx]); }
+  const switchTranslation = (trans: TranslationType) => {
+    setTranslation(trans);
+    setActiveServerId("");
   };
-  const switchTranslation = (trans: TranslationType) => { setTranslation(trans); setActiveServerId(""); };
-  const switchEpisode = (epNum: number) => { navigate({ page: "watch", id: animeId, episode: epNum, title: animeTitle, image: animeImage }); };
+  const switchEpisode = (epNum: number) => {
+    navigate({ page: "watch", id: animeId, episode: epNum, title: animeTitle, image: animeImage });
+  };
+
   const retryLoad = () => {
     setError(null);
-    const server = servers.find(s => s.id === activeServerId);
-    if (server?.isNative) {
-      if (server.id === "megaplay-decrypter") loadMegaplayStream();
-      else loadMikuStream(); // miruro-miku and miruro-miku-2 both use miku provider
+    if (!useDirectEmbed) {
+      setUseDirectEmbed(true);
+      setLoading(true);
     } else {
-      if (!useDirectEmbed) {
-        setUseDirectEmbed(true);
-        setLoading(true);
-      } else {
-        const currentIdx = servers.findIndex(s => s.id === activeServerId);
-        if (currentIdx < servers.length - 1) setActiveServerId(servers[currentIdx + 1].id);
-        else setActiveServerId(servers[0]?.id || "");
-      }
+      const currentIdx = servers.findIndex(s => s.id === activeServerId);
+      if (currentIdx < servers.length - 1) setActiveServerId(servers[currentIdx + 1].id);
+      else setActiveServerId(servers[0]?.id || "");
     }
   };
 
   const activeServer = servers.find(s => s.id === activeServerId);
-  const activeSources = sourceTab === "internal" ? internalSources : externalSources;
   const prevEp = episodeNum > 1 ? episodeNum - 1 : null;
   const nextEp = episodeList.find(e => e.number === episodeNum + 1) ? episodeNum + 1 : null;
-
-  // Check if Hindi servers are available
   const hindiAvailable = getHindiServers().length > 0;
 
   return (
     <div className="fade-in">
-      {/* Immersive blurred background */}
       {tmdbBackdrop && <div className="immersive-bg" style={{ backgroundImage: `url(${tmdbBackdrop})` }} />}
 
-      {/* Grid: video + sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 -mx-4 lg:-mx-8">
-        {/* Video Section */}
         <div className="space-y-0">
-          {/* Video Player */}
           <div className="relative bg-black overflow-hidden aspect-video rounded-none lg:rounded-2xl player-glow">
-            {/* Hindi not available message */}
             {translation === "hindi" && servers.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/95 z-20">
                 <div className="text-center space-y-4 max-w-sm px-6">
@@ -439,7 +272,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                     </svg>
                   </div>
                   <h3 className="text-orange-300 text-lg font-bold">Hindi Dub Not Available</h3>
-                  <p className="text-zinc-400 text-sm">This anime does not have a Hindi dub stream. Try switching to SUB or DUB.</p>
+                  <p className="text-zinc-400 text-sm">This anime doesn&apos;t have a Hindi dub. Try SUB or DUB.</p>
                   <div className="flex items-center justify-center gap-2">
                     <button onClick={() => switchTranslation("sub")} className="pill-btn pill-btn-primary text-xs py-2 px-4">Watch SUB</button>
                     <button onClick={() => switchTranslation("dub")} className="pill-btn pill-btn-ghost text-xs py-2 px-4">Watch DUB</button>
@@ -448,40 +281,42 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
               </div>
             )}
 
-            {!useNativePlayer && embedUrl && (
-                <iframe
-                  ref={iframeRef}
-                  key={`${embedUrl}-${useDirectEmbed}`}
-                  src={useDirectEmbed ? embedUrl : `/api/embed/proxy?url=${encodeURIComponent(embedUrl)}`}
-                  className="absolute inset-0 w-full h-full border-0 relative z-10"
-                  style={{ width: '100%', height: '100%', minHeight: '100%' }}
-                  allowFullScreen
-                  allow="autoplay; fullscreen; picture-in-picture; encrypted-media; screen-wake-lock; clipboard-write; document-domain"
-                  referrerPolicy="no-referrer"
-                  onLoad={() => { setLoading(false); setPlaying(true); }}
-                  onError={() => {
-                    if (useDirectEmbed) {
-                      setUseDirectEmbed(false);
-                      setLoading(true);
-                    } else {
-                      const currentIdx = servers.findIndex(s => s.id === activeServerId);
-                      if (currentIdx < servers.length - 1) setActiveServerId(servers[currentIdx + 1].id);
-                      else { setLoading(false); setError("All embed servers failed."); }
-                    }
-                  }}
-                  title={`${animeTitle} - Episode ${episodeNum}`}
-                />
+            {embedUrl && !(translation === "hindi" && servers.length === 0) && (
+              <iframe
+                ref={iframeRef}
+                key={`${activeServerId}-${embedUrl}-${useDirectEmbed}`}
+                src={(() => {
+                  // Internal API routes always load directly
+                  if (embedUrl.startsWith("/api/")) return embedUrl;
+                  // External embeds: try direct first, then proxy fallback
+                  return useDirectEmbed ? embedUrl : `/api/embed/proxy?url=${encodeURIComponent(embedUrl)}`;
+                })()}
+                className="w-full h-full border-0 relative z-10"
+                allowFullScreen
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; screen-wake-lock; clipboard-write; document-domain"
+                referrerPolicy="no-referrer"
+                onLoad={() => { setLoading(false); setPlaying(true); }}
+                onLoadCapture={() => { setLoading(false); setPlaying(true); }}
+                onError={() => {
+                  if (embedUrl.startsWith("/api/")) {
+                    autoSwitchToNextServer();
+                  } else if (useDirectEmbed) {
+                    setUseDirectEmbed(false);
+                    setLoading(true);
+                  } else {
+                    autoSwitchToNextServer();
+                  }
+                }}
+                title={`${animeTitle} - Episode ${episodeNum}`}
+              />
             )}
-            {useNativePlayer && (
-              <video ref={videoRef} className="w-full h-full" controls playsInline autoPlay
-                onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />
-            )}
+
             {loading && !(translation === "hindi" && servers.length === 0) && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20">
                 <div className="text-center space-y-4">
-                  <div className="w-14 h-14 rounded-full border-2 border-cyan-500/20 border-t-cyan-500/60 animate-spin mx-auto" />
-                  <p className="text-cyan-300/60 text-xs font-medium">
-                    {useNativePlayer ? "Loading stream..." : `Loading from ${activeServer?.name || "server"}...`}
+                  <div className="w-14 h-14 rounded-full border-2 border-purple-500/20 border-t-purple-500/60 animate-spin mx-auto" />
+                  <p className="text-purple-300/60 text-xs font-medium">
+                    {`Loading from ${activeServer?.name || "server"}...`}
                   </p>
                 </div>
               </div>
@@ -495,10 +330,7 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                   <p className="text-zinc-300 text-sm">{error}</p>
                   <div className="flex items-center justify-center gap-2 flex-wrap">
                     <button onClick={retryLoad} className="pill-btn pill-btn-primary text-xs py-2 px-4">Retry</button>
-                    <button onClick={() => {
-                      const currentIdx = servers.findIndex(s => s.id === activeServerId);
-                      if (currentIdx < servers.length - 1) setActiveServerId(servers[currentIdx + 1].id);
-                    }} className="pill-btn pill-btn-ghost text-xs py-2 px-4">Next Server</button>
+                    <button onClick={autoSwitchToNextServer} className="pill-btn pill-btn-ghost text-xs py-2 px-4">Next Server</button>
                   </div>
                 </div>
               </div>
@@ -510,9 +342,9 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Now Playing</span>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Now Playing</span>
                   <span className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold rounded-full ${
-                    translation === "sub" ? "bg-cyan-500/15 text-cyan-300" : translation === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                    translation === "sub" ? "bg-purple-500/15 text-purple-300" : translation === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
                   }`}>
                     {translation === "hindi" ? "HINDI DUB" : translation.toUpperCase()}
                   </span>
@@ -520,22 +352,19 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                 <h3 className="text-sm font-bold text-white truncate">{animeTitle}</h3>
                 <p className="text-xs text-zinc-500">Episode {episodeNum}</p>
               </div>
-              {!useNativePlayer && (
-                <button
-                  onClick={() => { setUseDirectEmbed(!useDirectEmbed); setLoading(true); setError(null); }}
-                  className={`shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
-                    useDirectEmbed
-                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
-                      : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
-                  }`}
-                  title={useDirectEmbed ? "Direct embed — original URL" : "Proxy mode — routed through server"}
-                >
-                  {useDirectEmbed ? "Direct" : "Proxy"}
-                </button>
-              )}
+              <button
+                onClick={() => { setUseDirectEmbed(!useDirectEmbed); setLoading(true); setError(null); }}
+                className={`shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-full transition-all ${
+                  useDirectEmbed
+                    ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                    : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/15"
+                }`}
+                title={useDirectEmbed ? "Direct embed" : "Proxy mode"}
+              >
+                {useDirectEmbed ? "Direct" : "Proxy"}
+              </button>
             </div>
 
-            {/* All servers — full grid */}
             {servers.length > 0 && (
               <div className="space-y-1.5">
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Servers ({servers.length})</span>
@@ -562,14 +391,13 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             <span className="text-[10px] text-zinc-500">{episodeList.length || "?"} episodes</span>
           </div>
 
-          {/* Translation toggle — SUB / DUB / HINDI DUB */}
           <div className="p-3 border-b border-white/[0.04]">
-            <div className="flex items-center gap-1 bg-[#0b1116] rounded-full p-0.5">
+            <div className="flex items-center gap-1 bg-[#05050a] rounded-full p-0.5">
               {(["sub", "dub", "hindi"] as const).map(t => (
                 <button key={t} onClick={() => switchTranslation(t)}
                   className={`flex-1 py-1.5 text-[10px] font-bold rounded-full transition-all ${
                     translation === t
-                      ? t === "sub" ? "bg-cyan-500/15 text-cyan-300" : t === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                      ? t === "sub" ? "bg-purple-500/15 text-purple-300" : t === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}>
                   {t === "hindi" ? "HINDI DUB" : t.toUpperCase()}
@@ -578,7 +406,6 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
             </div>
           </div>
 
-          {/* Episode list */}
           <div className="max-h-[620px] overflow-y-auto">
             {episodeList.length > 0 ? episodeList.map(ep => (
               <button
@@ -586,24 +413,24 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                 onClick={() => switchEpisode(ep.number)}
                 className={`w-full flex items-center gap-3 p-3 text-left transition-all ${
                   ep.number === episodeNum
-                    ? "bg-cyan-500/10 border-l-3 border-cyan-500"
+                    ? "bg-purple-500/10 border-l-3 border-purple-500"
                     : "hover:bg-white/[0.02]"
                 }`}
               >
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
                   ep.number === episodeNum
-                    ? "bg-cyan-500 text-white"
-                    : "bg-[#1a2530] text-zinc-500"
+                    ? "bg-purple-500 text-white"
+                    : "bg-[#0f0f1a] text-zinc-500"
                 }`}>
                   {ep.number}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium line-clamp-1 ${ep.number === episodeNum ? "text-cyan-300" : "text-zinc-300"}`}>
+                  <p className={`text-sm font-medium line-clamp-1 ${ep.number === episodeNum ? "text-purple-300" : "text-zinc-300"}`}>
                     Episode {ep.number}
                   </p>
                 </div>
                 {ep.number === episodeNum && (
-                  <svg className="w-4 h-4 text-cyan-400 shrink-0 animate-pulse" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                  <svg className="w-4 h-4 text-purple-400 shrink-0 animate-pulse" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                 )}
               </button>
             )) : (
@@ -652,25 +479,8 @@ export default function WatchPage({ animeId, episodeNum }: WatchPageProps) {
                 </p>
               )}
               <button onClick={() => navigate({ page: "anime", id: anilistId ? String(anilistId) : animeId })}
-                className="text-[11px] text-cyan-400/70 hover:text-cyan-400 mt-2 transition-colors font-medium">View Details →</button>
+                className="text-[11px] text-purple-400/70 hover:text-purple-400 mt-2 transition-colors font-medium">View Details →</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quality selector for native/kiwi/megaplay */}
-      {useNativePlayer && (internalSources.length > 0 || externalSources.length > 0) && (
-        <div className="mt-3 -mx-4 lg:-mx-8 bg-[#131c26] rounded-xl p-4 border border-white/[0.04]">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Quality</span>
-          </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {(sourceTab === "internal" ? internalSources : externalSources).map((s, i) => (
-              <button key={i} onClick={() => switchSource(i)}
-                className={`server-pill text-[11px] py-1.5 px-3 ${currentSource === i && sourceTab === "internal" ? "active" : ""}`}>
-                {s.quality || s.sourceName || `${i + 1}`}
-              </button>
-            ))}
           </div>
         </div>
       )}

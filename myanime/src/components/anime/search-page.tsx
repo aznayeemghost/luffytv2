@@ -166,7 +166,7 @@ export default function SearchPage({ initialQuery }: SearchPageProps) {
           {/* Anime Results — AniList PRIMARY */}
           {(anilistResults.length > 0 || miruroResults.length > 0 || animeResults.length > 0) && (activeTab === "all" || activeTab === "anime") && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-zinc-300">Anime <span className="text-[10px] text-cyan-500 ml-1">via AniList</span></h3>
+              <h3 className="text-sm font-semibold text-zinc-300">Anime <span className="text-[10px] text-purple-500 ml-1">via AniList</span></h3>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
                 {anilistResults.map((item, i) => (
                   <AnimeCard key={`al-${item.id}`} anime={item} index={i} />

@@ -76,14 +76,8 @@ export default function DubWatchPage({
     }
   }, [isMiruro, animeId, navigate]);
 
-  if (isMiruro) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 text-[#06b6d4] animate-spin" />
-        <span className="ml-3 text-zinc-400 text-sm">Redirecting to player...</span>
-      </div>
-    );
-  }
+  // CRITICAL: ALL hooks MUST be before any early return (React Rules of Hooks)
+  // The isMiruro check was previously here causing React error #310
 
   // Fetch anime info
   useEffect(() => {
@@ -296,6 +290,16 @@ export default function DubWatchPage({
   }, [toonStreamSlug, isMovie, selectedEpisode, episodes, info?.title]);
 
   const currentStreamUrl = servers.length > 0 ? servers[selectedServer]?.embed : movieStreams[selectedServer]?.iframe || "";
+
+  // isMiruro redirect — MUST be after all hooks (React Rules of Hooks)
+  if (isMiruro) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 text-[#06b6d4] animate-spin" />
+        <span className="ml-3 text-zinc-400 text-sm">Redirecting to player...</span>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

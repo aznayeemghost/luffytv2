@@ -105,8 +105,8 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
         )}
 
         {/* Dual gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#0b1116]/50 to-[#0b1116]/95" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#05050a]/50 to-[#05050a]/95" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#05050a] via-[#05050a]/40 to-transparent" />
 
         {/* Content — 2 column */}
         <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12">
@@ -229,7 +229,7 @@ export default function MovieDetailPage({ movieId }: { movieId: number }) {
               <div className="flex gap-4 overflow-x-auto scroll-container pb-2">
                 {movie.credits.cast.slice(0, 12).map(person => (
                   <div key={person.id} className="shrink-0 text-center w-[110px]">
-                    <div className="w-[110px] h-[110px] rounded-full bg-[#1a2530] overflow-hidden mx-auto mb-2 border-2 border-white/[0.06]">
+                    <div className="w-[110px] h-[110px] rounded-full bg-[#0f0f1a] overflow-hidden mx-auto mb-2 border-2 border-white/[0.06]">
                       {person.profile_path ? (
                         <img src={`https://image.tmdb.org/t/p/w185${person.profile_path}`} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
                       ) : (

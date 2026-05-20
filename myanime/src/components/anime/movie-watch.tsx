@@ -109,7 +109,7 @@ export default function MovieWatchPage({ movieId }: { movieId: number }) {
       <div className="bg-[#131c26] rounded-none lg:rounded-xl p-4 mt-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Now Playing</span>
+            <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Now Playing</span>
           </div>
           <h3 className="text-sm font-bold text-white truncate">{movie?.title || "Loading..."}</h3>
           {movie?.tagline && <p className="text-[10px] text-zinc-500 italic mt-0.5">&quot;{movie.tagline}&quot;</p>}
@@ -168,7 +168,7 @@ export default function MovieWatchPage({ movieId }: { movieId: number }) {
               {movie.genres && movie.genres.length > 0 && (
                 <div className="flex gap-1.5 mt-2 flex-wrap">
                   {movie.genres.map(g => (
-                    <span key={g.id} className="px-2.5 py-0.5 text-[9px] font-semibold rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/15">{g.name}</span>
+                    <span key={g.id} className="px-2.5 py-0.5 text-[9px] font-semibold rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/15">{g.name}</span>
                   ))}
                 </div>
               )}
@@ -179,7 +179,7 @@ export default function MovieWatchPage({ movieId }: { movieId: number }) {
                 </div>
               )}
               <button onClick={() => navigate({ page: "movie-detail", id: movie.id })}
-                className="text-[11px] text-cyan-400/70 hover:text-cyan-400 mt-2 transition-colors font-medium">View Full Details →</button>
+                className="text-[11px] text-purple-400/70 hover:text-purple-400 mt-2 transition-colors font-medium">View Full Details →</button>
             </div>
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function MovieWatchPage({ movieId }: { movieId: number }) {
           <div className="flex gap-4 overflow-x-auto scroll-container pb-2">
             {topCast.map(person => (
               <div key={person.id} className="shrink-0 text-center w-[90px]">
-                <div className="w-[80px] h-[80px] rounded-full bg-[#1a2530] overflow-hidden mx-auto mb-2 border-2 border-white/[0.06]">
+                <div className="w-[80px] h-[80px] rounded-full bg-[#0f0f1a] overflow-hidden mx-auto mb-2 border-2 border-white/[0.06]">
                   {person.profile_path ? (
                     <img src={`https://image.tmdb.org/t/p/w185${person.profile_path}`} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
