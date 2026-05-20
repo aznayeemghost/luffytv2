@@ -205,10 +205,10 @@ export default function Navbar() {
               <button
                 key={link.id}
                 onClick={() => handleNav(link.id)}
-                className={`px-3 py-1.5 rounded-full text-[12px] font-bold tracking-[0.06em] uppercase transition-all duration-200 ${
+                className={`nav-link-glass px-3 py-1.5 rounded-full text-[12px] font-bold tracking-[0.06em] uppercase transition-all duration-300 ${
                   isActive(link.id)
-                    ? "text-white bg-white/10"
-                    : "text-white/45 hover:text-white hover:bg-white/[0.04]"
+                    ? "nav-link-active text-white"
+                    : "text-white/45 hover:text-white"
                 }`}
                 style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
               >
