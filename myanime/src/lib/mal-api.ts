@@ -214,9 +214,7 @@ async function malFetch<T>(
     }
 
     if (!res.ok) {
-      // Silent fail — MAL is backup only, AniList is primary
-      // Don't log scary errors that confuse users — just skip to next fallback
-      console.warn(`[MAL] Backup API skipped (${res.status}) — using AniList/Miruro instead`);
+      console.error(`[MAL] Request failed: ${res.status} ${res.statusText} for ${endpoint}`);
       return null;
     }
 
@@ -355,8 +353,7 @@ export async function malSearch(
       q: query,
       page: String(page),
       limit: String(Math.min(limit, 100)), // MAL allows up to 100 per page
-      // Minimal fields to avoid 400 errors — MAL API is picky about valid fields per endpoint
-      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status",
+      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status,average_episode_duration,start_date",
     });
 
     const response = await malFetch<{ data: Array<{ node: MALAnimeNode }>; paging?: { next?: string } }>(
@@ -386,7 +383,7 @@ export async function malSearch(
 
 /**
  * Get top anime ranking.
- * ranking_type: "all" | "airing" | "upcoming" | "tv" | "ova" | "movie" | "bypopularity" | "favorite"
+ * ranking_type: "all" | "airing" | "upcoming" | "tv" | "ova" | "movie" | "popular" | "favorite"
  */
 export async function malTopAnime(
   page = 1,
@@ -398,8 +395,7 @@ export async function malTopAnime(
       ranking_type: rankingType || "all",
       page: String(page),
       limit: String(Math.min(limit, 100)),
-      // Only use fields that are valid for the ranking endpoint
-      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status",
+      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status,average_episode_duration,start_date",
     });
 
     const response = await malFetch<{ data: Array<{ node: MALAnimeNode }> }>(
@@ -440,7 +436,7 @@ export async function malSeasonNow(
       year: String(year),
       page: String(page),
       limit: String(Math.min(limit, 100)),
-      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status",
+      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status,average_episode_duration,start_date",
     });
 
     const response = await malFetch<{ data: Array<{ node: MALAnimeNode }> }>(
@@ -482,7 +478,7 @@ export async function malSeasonUpcoming(
       year: String(year),
       page: String(page),
       limit: String(Math.min(limit, 100)),
-      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status",
+      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status,average_episode_duration,start_date",
     });
 
     const response = await malFetch<{ data: Array<{ node: MALAnimeNode }> }>(
@@ -514,7 +510,7 @@ export async function malSeason(
     const params = new URLSearchParams({
       page: String(page),
       limit: String(Math.min(limit, 100)),
-      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status",
+      fields: "alternative_titles,start_season,media_type,num_episodes,mean,rank,popularity,nsfw,genres,status,average_episode_duration,start_date",
     });
 
     const response = await malFetch<{ data: Array<{ node: MALAnimeNode }> }>(

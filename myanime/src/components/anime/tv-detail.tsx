@@ -129,8 +129,8 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
         )}
 
         {/* Dual gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#05050a]/50 to-[#05050a]/95" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#05050a] via-[#05050a]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#0b1116]/50 to-[#0b1116]/95" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1116] via-[#0b1116]/40 to-transparent" />
 
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-12">
@@ -246,7 +246,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
               <div className="flex gap-4 overflow-x-auto scroll-container pb-2">
                 {show.credits.cast.slice(0, 12).map(person => (
                   <div key={person.id} className="shrink-0 text-center w-[110px]">
-                    <div className="w-[110px] h-[110px] rounded-full bg-[#0f0f1a] overflow-hidden mx-auto mb-2 border-2 border-white/[0.06]">
+                    <div className="w-[110px] h-[110px] rounded-full bg-[#1a2530] overflow-hidden mx-auto mb-2 border-2 border-white/[0.06]">
                       {person.profile_path ? (
                         <img src={`https://image.tmdb.org/t/p/w185${person.profile_path}`} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
@@ -275,7 +275,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
             <select
               value={selectedSeason}
               onChange={e => setSelectedSeason(parseInt(e.target.value))}
-              className="bg-[#0f0f1a] text-zinc-300 text-sm px-4 py-2 rounded-full border border-white/[0.06] outline-none focus:border-violet-500/30"
+              className="bg-[#1a2530] text-zinc-300 text-sm px-4 py-2 rounded-full border border-white/[0.06] outline-none focus:border-violet-500/30"
             >
               {Array.from({ length: show.number_of_seasons }, (_, i) => (
                 <option key={i + 1} value={i + 1}>Season {i + 1}</option>
@@ -292,7 +292,7 @@ export default function TVDetailPage({ tvId }: { tvId: number }) {
               className="episode-item w-full flex items-center gap-4 p-3 rounded-xl text-left hover:bg-violet-500/[0.06] transition-all group"
             >
               {/* Thumbnail or episode number */}
-              <div className="w-28 h-16 rounded-lg overflow-hidden shrink-0 bg-[#0f0f1a] relative">
+              <div className="w-28 h-16 rounded-lg overflow-hidden shrink-0 bg-[#1a2530] relative">
                 {ep.still_path ? (
                   <img src={`https://image.tmdb.org/t/p/w300${ep.still_path}`} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
                 ) : (

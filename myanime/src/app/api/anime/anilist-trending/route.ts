@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         trendingData = await getTrending(1, 25);
         if (trendingData.length > 0) source = "anilist";
       } catch (err) {
-        // AniList is primary — only log if it completely fails
+        console.error("[anilist-trending] AniList trending error:", err);
       }
 
       // Layer 2: Miruro backup
@@ -43,17 +43,17 @@ export async function GET(request: NextRequest) {
           trendingData = await miruroTrending(1, 25);
           if (trendingData.length > 0) source = "miruro";
         } catch (err) {
-          // Miruro backup skipped — silent
+          console.error("[anilist-trending] Miruro trending error:", err);
         }
       }
 
       // Layer 3: Official MAL API v2
       if (trendingData.length === 0) {
         try {
-          trendingData = await malTopAnime(1, 25, "airing"); // valid: airing, upcoming, all, tv, movie, popular
+          trendingData = await malTopAnime(1, 25, "airing");
           if (trendingData.length > 0) source = "mal";
         } catch (err) {
-          // MAL backup skipped — silent
+          console.error("[anilist-trending] MAL trending error:", err);
         }
       }
 
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         popularData = await getPopular(1, 25);
         if (popularData.length > 0) source = "anilist";
       } catch (err) {
-        // AniList is primary
+        console.error("[anilist-trending] AniList popular error:", err);
       }
 
       // Layer 2: Miruro backup
@@ -80,17 +80,17 @@ export async function GET(request: NextRequest) {
           popularData = await miruroPopular(1, 25);
           if (popularData.length > 0) source = "miruro";
         } catch (err) {
-          // Miruro backup skipped — silent
+          console.error("[anilist-trending] Miruro popular error:", err);
         }
       }
 
       // Layer 3: Official MAL API
       if (popularData.length === 0) {
         try {
-          popularData = await malTopAnime(1, 25, "bypopularity"); // MAL API valid ranking_type
+          popularData = await malTopAnime(1, 25, "bypopularity");
           if (popularData.length > 0) source = "mal";
         } catch (err) {
-          // MAL backup skipped — silent
+          console.error("[anilist-trending] MAL popular error:", err);
         }
       }
 
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
         topRatedData = await getTopRated(1, 25);
         if (topRatedData.length > 0) source = "anilist";
       } catch (err) {
-        // AniList is primary
+        console.error("[anilist-trending] AniList topRated error:", err);
       }
 
       // Layer 2: Miruro backup (use popular as topRated proxy)
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
           topRatedData = await miruroPopular(1, 25);
           if (topRatedData.length > 0) source = "miruro";
         } catch (err) {
-          // Miruro backup skipped — silent
+          console.error("[anilist-trending] Miruro topRated error:", err);
         }
       }
 
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
           topRatedData = await malTopAnime(1, 25, "all");
           if (topRatedData.length > 0) source = "mal";
         } catch (err) {
-          // MAL backup skipped — silent
+          console.error("[anilist-trending] MAL topRated error:", err);
         }
       }
 
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
         seasonData = await getSeasonAnime(currentSeason, year, 1, 25);
         if (seasonData.length > 0) source = "anilist";
       } catch (err) {
-        // AniList is primary
+        console.error("[anilist-trending] AniList season error:", err);
       }
 
       // Layer 2: Miruro backup (use trending and filter by season)
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
           );
           if (seasonData.length > 0) source = "miruro";
         } catch (err) {
-          // Miruro backup skipped — silent
+          console.error("[anilist-trending] Miruro season error:", err);
         }
       }
 
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
           seasonData = await malSeasonNow(1, 25);
           if (seasonData.length > 0) source = "mal";
         } catch (err) {
-          // MAL backup skipped — silent
+          console.error("[anilist-trending] MAL season error:", err);
         }
       }
 

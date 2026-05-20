@@ -1,13 +1,12 @@
 // Embed Server Providers for Luffy TV
 //
-// Servers are categorized by content type and ID type:
-// - Anime servers (1-6) → use AniList ID (iframe embeds)
-// - Miruro/Megaplay servers (11-14) → use AniList ID + MAL ID (iframe embeds via megaplay.buzz)
-// - Hindi servers → dedicated Hindi Dub servers (AniList ID) — ONLY anixtv
-// - Movie/TV servers → use TMDB ID (iframe embeds)
+// Servers are categorized by content type:
+// - Anime servers → use AniList ID (native + anilist-based)
+// - Hindi servers → dedicated Hindi Dub servers (AniList ID)
+// - Movie/TV servers → use TMDB ID (tmdb-based)
 //
-// Megaplay.buzz replaces the old broken Miruro HLS player.
-// All megaplay servers are direct iframe embeds that WORK.
+// Names are generic: "Server 1", "Server 2", etc. — numbered PER CONTEXT
+// Anime pages show anime + hindi servers, Movie/TV pages show only TMDB servers
 
 export interface EmbedServer {
   id: string;
@@ -16,16 +15,16 @@ export interface EmbedServer {
   supportsSub: boolean;
   supportsDub: boolean;
   supportsHindi: boolean;
-  idType: "tmdb" | "anilist";  // What ID this server uses
+  idType: "tmdb" | "anilist" | "native";  // What ID/method this server uses
   color: string;
-  category: "anime" | "tmdb" | "hindi";
+  category: "anime" | "tmdb" | "hindi" | "native";
+  isNative?: boolean;     // If true, this server uses native HLS player (not iframe)
   noSandbox?: boolean;    // If true, this server needs iframe without sandbox
   generateUrl: (params: EmbedUrlParams) => string;
 }
 
 export interface EmbedUrlParams {
   anilistId?: number;
-  malId?: number;
   tmdbId?: number;
   imdbId?: string;
   episode: number;
@@ -39,14 +38,65 @@ export interface EmbedUrlParams {
 // =====================================================
 
 // ============================================================
+// Native servers — Miruro Miku (direct HLS, no iframe)
+// Miku is the primary provider — user requested
+// ============================================================
+
+const miruroMiku: EmbedServer = {
+  id: "miruro-miku",
+  name: "Server 1",
+  priority: 0,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: false,
+  idType: "native",
+  color: "#00ff88",
+  category: "native",
+  isNative: true,
+  generateUrl: () => "native:miku",
+};
+
+const miruroMiku2: EmbedServer = {
+  id: "miruro-miku-2",
+  name: "Server 2",
+  priority: 1,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: false,
+  idType: "native",
+  color: "#22d3ee",
+  category: "native",
+  isNative: true,
+  generateUrl: () => "native:miku",  // Uses miku provider with auto-fallback to other providers
+};
+
+// ============================================================
+// MegaPlay Decrypter — Native HLS via API (sub/dub, direct m3u8)
+// Uses: https://megaplaydecryptor.vercel.app/api/stream
+// ============================================================
+
+const megaplayDecrypter: EmbedServer = {
+  id: "megaplay-decrypter",
+  name: "Server 3",
+  priority: 2,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: false,
+  idType: "native",
+  color: "#F59E0B",
+  category: "native",
+  isNative: true,
+  generateUrl: () => "native:megaplay",
+};
+
+// ============================================================
 // AniList-based servers — use AniList ID for anime embeds
-// These are iframe embed servers that use the AniList ID directly
 // ============================================================
 
 const vidnestAnime: EmbedServer = {
   id: "vidnest-anime",
-  name: "Server 1",
-  priority: 0,
+  name: "Server 4",
+  priority: 4,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -55,15 +105,15 @@ const vidnestAnime: EmbedServer = {
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    const lang = p.translation === "dub" ? "dub" : "sub";
+    const lang = p.translation === "hindi" ? "hindi" : p.translation;
     return `https://vidnest.fun/anime/${p.anilistId}/${p.episode}/${lang}`;
   },
 };
 
 const vidnestAnimepahe: EmbedServer = {
   id: "vidnest-animepahe",
-  name: "Server 2",
-  priority: 1,
+  name: "Server 5",
+  priority: 5,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -72,48 +122,49 @@ const vidnestAnimepahe: EmbedServer = {
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    const lang = p.translation === "dub" ? "dub" : "sub";
+    const lang = p.translation === "hindi" ? "hindi" : p.translation;
     return `https://vidnest.fun/animepahe/${p.anilistId}/${p.episode}/${lang}`;
   },
 };
 
 const videasyAnime: EmbedServer = {
   id: "videasy-anime",
-  name: "Server 3",
-  priority: 2,
+  name: "Server 6",
+  priority: 6,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
   idType: "anilist",
-  color: "#8B5CF6",
+  color: "#00A8E1",
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    return `https://player.videasy.net/anime/${p.anilistId}/${p.episode}?nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true&color=8B5CF6`;
+    const dub = p.translation === "dub" ? "&dub=true" : "";
+    return `https://player.videasy.net/anime/${p.anilistId}/${p.episode}?nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true&color=00A8E1${dub}`;
   },
 };
 
-const vidplusAnime: EmbedServer = {
-  id: "vidplus-anime",
-  name: "Server 4",
-  priority: 3,
+const megaplayEmbed: EmbedServer = {
+  id: "megaplay-embed",
+  name: "Server 7",
+  priority: 7,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
   idType: "anilist",
-  color: "#EC4899",
+  color: "#F59E0B",
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    const isDub = p.translation === "dub";
-    return `https://player.vidplus.to/embed/anime/${p.anilistId}/${p.episode}?autoplay=true&autonext=true&nextbutton=true&dub=${isDub}&primarycolor=8B5CF6`;
+    const lang = p.translation === "hindi" ? "hindi" : p.translation;
+    return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/${lang}`;
   },
 };
 
-const tryembedAnime: EmbedServer = {
-  id: "tryembed-anime",
-  name: "Server 5",
-  priority: 4,
+const tryembed: EmbedServer = {
+  id: "tryembed",
+  name: "Server 8",
+  priority: 8,
   supportsSub: true,
   supportsDub: true,
   supportsHindi: false,
@@ -122,132 +173,35 @@ const tryembedAnime: EmbedServer = {
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    const lang = p.translation === "dub" ? "dub" : "sub";
-    return `https://tryembed.us.cc/embed/anime/${p.anilistId}/${p.episode}/${lang}?autoplay=true&autoSkip=true`;
+    const lang = p.translation === "hindi" ? "hindi" : p.translation;
+    return `https://tryembed.us.cc/embed/anime/${p.anilistId}/${p.episode}/${lang}`;
   },
 };
 
-const megaplayAniSub: EmbedServer = {
-  id: "megaplay-ani-sub",
-  name: "Server 6",
-  priority: 5,
+const vidplusAnime: EmbedServer = {
+  id: "vidplus-anime",
+  name: "Server 9",
+  priority: 9,
   supportsSub: true,
-  supportsDub: false,
-  supportsHindi: false,
-  idType: "anilist",
-  color: "#F59E0B",
-  category: "anime",
-  generateUrl: (p) => {
-    if (!p.anilistId) return "";
-    return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/sub`;
-  },
-};
-
-const megaplayAniDub: EmbedServer = {
-  id: "megaplay-ani-dub",
-  name: "Server 7",
-  priority: 6,
-  supportsSub: false,
   supportsDub: true,
   supportsHindi: false,
   idType: "anilist",
-  color: "#FB923C",
+  color: "#EC4899",
   category: "anime",
   generateUrl: (p) => {
     if (!p.anilistId) return "";
-    return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/dub`;
+    const lang = p.translation === "hindi" ? "hindi" : p.translation;
+    return `https://player.vidplus.to/embed/anime/${p.anilistId}/${p.episode}/${lang}?autoplay=true`;
   },
 };
 
 // ============================================================
-// Megaplay/Miruro MAL-based servers — use MAL ID
-// These are the "Server 11-14" the user requested
-// megaplay.buzz /stream/mal/ endpoint
-// ============================================================
-
-const megaplayMalSub: EmbedServer = {
-  id: "megaplay-mal-sub",
-  name: "Server 11",
-  priority: 10,
-  supportsSub: true,
-  supportsDub: false,
-  supportsHindi: false,
-  idType: "anilist",
-  color: "#06B6D4",
-  category: "anime",
-  generateUrl: (p) => {
-    // Use MAL ID if available, otherwise fall back to AniList endpoint
-    if (p.malId) {
-      return `https://megaplay.buzz/stream/mal/${p.malId}/${p.episode}/sub`;
-    }
-    if (p.anilistId) {
-      return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/sub`;
-    }
-    return "";
-  },
-};
-
-const megaplayMalDub: EmbedServer = {
-  id: "megaplay-mal-dub",
-  name: "Server 12",
-  priority: 11,
-  supportsSub: false,
-  supportsDub: true,
-  supportsHindi: false,
-  idType: "anilist",
-  color: "#3B82F6",
-  category: "anime",
-  generateUrl: (p) => {
-    if (p.malId) {
-      return `https://megaplay.buzz/stream/mal/${p.malId}/${p.episode}/dub`;
-    }
-    if (p.anilistId) {
-      return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/dub`;
-    }
-    return "";
-  },
-};
-
-const megaplayAniSub2: EmbedServer = {
-  id: "megaplay-ani-sub2",
-  name: "Server 13",
-  priority: 12,
-  supportsSub: true,
-  supportsDub: false,
-  supportsHindi: false,
-  idType: "anilist",
-  color: "#A78BFA",
-  category: "anime",
-  generateUrl: (p) => {
-    if (!p.anilistId) return "";
-    return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/sub`;
-  },
-};
-
-const megaplayAniDub2: EmbedServer = {
-  id: "megaplay-ani-dub2",
-  name: "Server 14",
-  priority: 13,
-  supportsSub: false,
-  supportsDub: true,
-  supportsHindi: false,
-  idType: "anilist",
-  color: "#8B5CF6",
-  category: "anime",
-  generateUrl: (p) => {
-    if (!p.anilistId) return "";
-    return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/dub`;
-  },
-};
-
-// ============================================================
-// Hindi-specific servers — ONLY anixtv as requested by user
-// "in hindi sector only one server that is hindi server 1 anixtv ok"
+// Hindi-specific servers — dedicated Hindi Dub category
 // ============================================================
 
 const anixtvHindi: EmbedServer = {
   id: "anixtv-hindi",
-  name: "Hindi Server 1",
+  name: "Hindi Server",
   priority: 0,  // Top priority for Hindi
   supportsSub: false,
   supportsDub: false,
@@ -263,15 +217,110 @@ const anixtvHindi: EmbedServer = {
   },
 };
 
+const megaplayHindi: EmbedServer = {
+  id: "megaplay-hindi",
+  name: "Hindi Dub 2",
+  priority: 1,
+  supportsSub: false,
+  supportsDub: false,
+  supportsHindi: true,
+  idType: "anilist",
+  color: "#F97316",
+  category: "hindi",
+  generateUrl: (p) => {
+    if (!p.anilistId) return "";
+    return `https://megaplay.buzz/stream/ani/${p.anilistId}/${p.episode}/hindi`;
+  },
+};
+
+const vidnestHindi: EmbedServer = {
+  id: "vidnest-hindi",
+  name: "Hindi Dub 3",
+  priority: 2,
+  supportsSub: false,
+  supportsDub: false,
+  supportsHindi: true,
+  idType: "anilist",
+  color: "#A855F7",
+  category: "hindi",
+  generateUrl: (p) => {
+    if (!p.anilistId) return "";
+    return `https://vidnest.fun/anime/${p.anilistId}/${p.episode}/hindi`;
+  },
+};
+
+const vidnestPaheHindi: EmbedServer = {
+  id: "vidnest-pahe-hindi",
+  name: "Hindi Dub 4",
+  priority: 3,
+  supportsSub: false,
+  supportsDub: false,
+  supportsHindi: true,
+  idType: "anilist",
+  color: "#8B5CF6",
+  category: "hindi",
+  generateUrl: (p) => {
+    if (!p.anilistId) return "";
+    return `https://vidnest.fun/animepahe/${p.anilistId}/${p.episode}/hindi`;
+  },
+};
+
+const tryembedHindi: EmbedServer = {
+  id: "tryembed-hindi",
+  name: "Hindi Dub 5",
+  priority: 4,
+  supportsSub: false,
+  supportsDub: false,
+  supportsHindi: true,
+  idType: "anilist",
+  color: "#10B981",
+  category: "hindi",
+  generateUrl: (p) => {
+    if (!p.anilistId) return "";
+    return `https://tryembed.us.cc/embed/anime/${p.anilistId}/${p.episode}/hindi`;
+  },
+};
+
 // ============================================================
-// TMDB-based servers — use TMDB ID for Movies and TV Shows
-// Based on documentation from each provider
+// TMDB-based servers — use TMDB ID for /tv/{tmdb_id}/{s}/{e}
+// Used for Movies and TV Shows
 // ============================================================
+
+const peachify: EmbedServer = {
+  id: "peachify",
+  name: "Server 1",
+  priority: 1,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: true,
+  idType: "tmdb",
+  color: "#F472B6",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    const params = new URLSearchParams({
+      autoPlay: "true",
+      autoNext: "30",
+      showNextBtn: "true",
+      accent: "00A8E1",
+    });
+    if (p.translation === "hindi") {
+      params.set("dub", "Hindi");
+      params.set("sub", "English");
+    } else if (p.translation === "dub") {
+      params.set("dub", "English");
+    }
+    if (p.season && p.season > 0) {
+      return `https://peachify.top/embed/tv/${p.tmdbId}/${p.season}/${p.episode}?${params}`;
+    }
+    return `https://peachify.top/embed/movie/${p.tmdbId}?${params}`;
+  },
+};
 
 const vidcore: EmbedServer = {
   id: "vidcore",
-  name: "Server 1",
-  priority: 0,
+  name: "Server 2",
+  priority: 2,
   supportsSub: true,
   supportsDub: false,
   supportsHindi: false,
@@ -287,47 +336,9 @@ const vidcore: EmbedServer = {
   },
 };
 
-const vidplays: EmbedServer = {
-  id: "vidplays",
-  name: "Server 2",
-  priority: 1,
-  supportsSub: true,
-  supportsDub: false,
-  supportsHindi: false,
-  idType: "tmdb",
-  color: "#14B8A6",
-  category: "tmdb",
-  generateUrl: (p) => {
-    if (!p.tmdbId) return "";
-    if (p.season && p.season > 0) {
-      return `https://vidplays.fun/embed/tv/${p.tmdbId}/${p.season}/${p.episode}`;
-    }
-    return `https://vidplays.fun/embed/movie/${p.tmdbId}`;
-  },
-};
-
-const vidfast: EmbedServer = {
-  id: "vidfast",
-  name: "Server 3",
-  priority: 2,
-  supportsSub: true,
-  supportsDub: false,
-  supportsHindi: false,
-  idType: "tmdb",
-  color: "#3B82F6",
-  category: "tmdb",
-  generateUrl: (p) => {
-    if (!p.tmdbId) return "";
-    if (p.season && p.season > 0) {
-      return `https://vidfast.pro/tv/${p.tmdbId}/${p.season}/${p.episode}?autoPlay=true&nextButton=true&autoNext=true`;
-    }
-    return `https://vidfast.pro/movie/${p.tmdbId}?autoPlay=true`;
-  },
-};
-
 const vidnestTv: EmbedServer = {
   id: "vidnest-tv",
-  name: "Server 4",
+  name: "Server 3",
   priority: 3,
   supportsSub: true,
   supportsDub: false,
@@ -342,29 +353,65 @@ const vidnestTv: EmbedServer = {
   },
 };
 
-const videasyTv: EmbedServer = {
-  id: "videasy-tv",
-  name: "Server 5",
+const vidfast: EmbedServer = {
+  id: "vidfast",
+  name: "Server 4",
   priority: 4,
   supportsSub: true,
   supportsDub: false,
   supportsHindi: false,
   idType: "tmdb",
-  color: "#8B5CF6",
+  color: "#3B82F6",
   category: "tmdb",
   generateUrl: (p) => {
     if (!p.tmdbId) return "";
     if (p.season && p.season > 0) {
-      return `https://player.videasy.net/tv/${p.tmdbId}/${p.season}/${p.episode}?color=8B5CF6&nextEpisode=true&autoplayNextEpisode=true`;
+      return `https://vidfast.pro/tv/${p.tmdbId}/${p.season}/${p.episode}?autoPlay=true&theme=00A8E1`;
     }
-    return `https://player.videasy.net/movie/${p.tmdbId}?color=8B5CF6`;
+    return `https://vidfast.pro/movie/${p.tmdbId}?autoPlay=true&theme=00A8E1`;
+  },
+};
+
+const videasyTv: EmbedServer = {
+  id: "videasy-tv",
+  name: "Server 5",
+  priority: 5,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#00A8E1",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      return `https://player.videasy.net/tv/${p.tmdbId}/${p.season}/${p.episode}?color=00A8E1&nextEpisode=true&autoplayNextEpisode=true`;
+    }
+    return `https://player.videasy.net/movie/${p.tmdbId}?color=00A8E1`;
+  },
+};
+
+const vidsrcme: EmbedServer = {
+  id: "vidsrcme",
+  name: "Server 6",
+  priority: 6,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#22C55E",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    const season = p.season || 1;
+    return `https://vidsrcme.ru/embed/tv?tmdb=${p.tmdbId}&season=${season}&episode=${p.episode}`;
   },
 };
 
 const vidplus: EmbedServer = {
   id: "vidplus",
-  name: "Server 6",
-  priority: 5,
+  name: "Server 7",
+  priority: 7,
   supportsSub: true,
   supportsDub: false,
   supportsHindi: false,
@@ -374,47 +421,35 @@ const vidplus: EmbedServer = {
   generateUrl: (p) => {
     if (!p.tmdbId) return "";
     if (p.season && p.season > 0) {
-      return `https://player.vidplus.to/embed/tv/${p.tmdbId}/${p.season}/${p.episode}?autoplay=true&autonext=true&nextbutton=true&primarycolor=8B5CF6`;
+      return `https://player.vidplus.to/embed/tv/${p.tmdbId}/${p.season}/${p.episode}?autoplay=true`;
     }
-    return `https://player.vidplus.to/embed/movie/${p.tmdbId}?autoplay=true&primarycolor=8B5CF6`;
+    return `https://player.vidplus.to/embed/movie/${p.tmdbId}?autoplay=true`;
   },
 };
 
-const peachify: EmbedServer = {
-  id: "peachify",
-  name: "Server 7",
-  priority: 6,
+const vidplays: EmbedServer = {
+  id: "vidplays",
+  name: "Server 8",
+  priority: 8,
   supportsSub: true,
-  supportsDub: true,
-  supportsHindi: true,
+  supportsDub: false,
+  supportsHindi: false,
   idType: "tmdb",
-  color: "#F472B6",
+  color: "#14B8A6",
   category: "tmdb",
   generateUrl: (p) => {
     if (!p.tmdbId) return "";
-    const params = new URLSearchParams({
-      autoPlay: "true",
-      autoNext: "30",
-      showNextBtn: "true",
-      accent: "8B5CF6",
-    });
-    if (p.translation === "hindi") {
-      params.set("dub", "Hindi");
-      params.set("sub", "English");
-    } else if (p.translation === "dub") {
-      params.set("dub", "English");
-    }
     if (p.season && p.season > 0) {
-      return `https://peachify.top/embed/tv/${p.tmdbId}/${p.season}/${p.episode}?${params}`;
+      return `https://vidplays.fun/embed/tv/${p.tmdbId}/${p.season}/${p.episode}?autoplay=true`;
     }
-    return `https://peachify.top/embed/movie/${p.tmdbId}?${params}`;
+    return `https://vidplays.fun/embed/movie/${p.tmdbId}?autoplay=true`;
   },
 };
 
 const embedmaster: EmbedServer = {
   id: "embedmaster",
-  name: "Server 8",
-  priority: 7,
+  name: "Server 9",
+  priority: 9,
   supportsSub: true,
   supportsDub: false,
   supportsHindi: false,
@@ -432,8 +467,8 @@ const embedmaster: EmbedServer = {
 
 const vidlink: EmbedServer = {
   id: "vidlink",
-  name: "Server 9",
-  priority: 8,
+  name: "Server 10",
+  priority: 10,
   supportsSub: true,
   supportsDub: false,
   supportsHindi: false,
@@ -449,20 +484,47 @@ const vidlink: EmbedServer = {
   },
 };
 
-const vidsrcme: EmbedServer = {
-  id: "vidsrcme",
-  name: "Server 10",
-  priority: 9,
+const vidzen: EmbedServer = {
+  id: "vidzen",
+  name: "Server 11",
+  priority: 11,
   supportsSub: true,
   supportsDub: false,
   supportsHindi: false,
   idType: "tmdb",
-  color: "#22C55E",
+  color: "#F97316",
   category: "tmdb",
   generateUrl: (p) => {
     if (!p.tmdbId) return "";
-    const season = p.season || 1;
-    return `https://vidsrcme.ru/embed/tv?tmdb=${p.tmdbId}&season=${season}&episode=${p.episode}`;
+    if (p.season && p.season > 0) {
+      return `https://vidzen.fun/tv/${p.tmdbId}/${p.season}/${p.episode}`;
+    }
+    return `https://vidzen.fun/movie/${p.tmdbId}`;
+  },
+};
+
+const vidking: EmbedServer = {
+  id: "vidking",
+  name: "Server 12",
+  priority: 12,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#E11D48",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    const params = new URLSearchParams({
+      color: "00A8E1",
+      autoPlay: "true",
+    });
+    if (p.season && p.season > 0) {
+      params.set("nextEpisode", "true");
+      params.set("episodeSelector", "true");
+      return `https://www.vidking.net/embed/tv/${p.tmdbId}/${p.season}/${p.episode}?${params}`;
+    }
+    return `https://www.vidking.net/embed/movie/${p.tmdbId}?${params}`;
   },
 };
 
@@ -471,41 +533,40 @@ const vidsrcme: EmbedServer = {
 // ============================================================
 
 const ALL_SERVERS: EmbedServer[] = [
-  // AniList-based anime servers (iframe embeds) — Servers 1-7
-  vidnestAnime, vidnestAnimepahe, videasyAnime, vidplusAnime,
-  tryembedAnime, megaplayAniSub, megaplayAniDub,
-  // Megaplay/Miruro servers — Servers 11-14 (user requested these names)
-  megaplayMalSub, megaplayMalDub, megaplayAniSub2, megaplayAniDub2,
-  // Hindi servers (only anixtv)
-  anixtvHindi,
-  // TMDB-based Movie/TV servers
-  vidcore, vidplays, vidfast, vidnestTv, videasyTv,
-  vidplus, peachify, embedmaster, vidlink, vidsrcme,
+  miruroMiku, miruroMiku2,
+  megaplayDecrypter,
+  vidnestAnime, vidnestAnimepahe, videasyAnime, megaplayEmbed, tryembed, vidplusAnime,
+  anixtvHindi, megaplayHindi, vidnestHindi, vidnestPaheHindi, tryembedHindi,
+  peachify, vidcore, vidnestTv, vidfast, videasyTv, vidsrcme,
+  vidplus, vidplays, embedmaster, vidlink, vidzen, vidking,
 ];
 
 /**
  * Get servers available for Anime content (SUB/DUB)
- * Includes: anilist-based servers only (iframe embeds + megaplay)
+ * Includes: native (miku + kiwi + megaplay decrypter), anilist-based
  * Excludes: Hindi-specific servers and TMDB-based servers
- * Megaplay servers 11-14 are included for SUB/DUB
  */
 export function getAnimeServers(): EmbedServer[] {
   const servers = ALL_SERVERS.filter(s =>
-    s.idType === "anilist" && s.category !== "hindi"
+    (s.idType === "native" || s.idType === "anilist") && s.category !== "hindi"
   );
-  // Keep the pre-assigned names (Server 1-7 and Server 11-14)
-  return servers;
+  return servers.map((s, i) => ({
+    ...s,
+    name: `Server ${i + 1}`,
+    priority: i,
+  }));
 }
 
 /**
  * Get servers available for Hindi Dub
- * Only anixtv — user requested "in hindi sector only one server that is hindi server 1 anixtv"
+ * These are dedicated Hindi Dub servers only
+ * If this returns servers, Hindi dub is available for the anime
  */
 export function getHindiServers(): EmbedServer[] {
   const servers = ALL_SERVERS.filter(s => s.category === "hindi");
   return servers.map((s, i) => ({
     ...s,
-    name: i === 0 ? "Hindi Server 1 AnixTV" : `Hindi Server ${i + 1}`,
+    name: i === 0 ? "Hindi Server" : `Hindi Server ${i + 1}`,
     priority: i,
   }));
 }
@@ -535,6 +596,13 @@ export function getEmbedUrl(serverId: string, params: EmbedUrlParams): string {
   const server = ALL_SERVERS.find(s => s.id === serverId);
   if (!server) return "";
   return server.generateUrl(params);
+}
+
+/**
+ * Get native servers (Miruro Miku + Kiwi + MegaPlay Decrypter)
+ */
+export function getNativeServers(): EmbedServer[] {
+  return ALL_SERVERS.filter(s => s.isNative);
 }
 
 /**

@@ -1,42 +1,64 @@
 "use client";
 
-import { useState } from "react";
-import { useAppStore, getSectionNavLinks } from "./store";
-import type { SectionSubPage } from "./store";
+import { useState, useEffect } from "react";
+import { useAppStore } from "./store";
 
-/* ─── Cat-on-Moon Mascot SVG (nav version — closed happy eyes) ─── */
-function NavMascot({ className }: { className?: string }) {
+// SVG icons for nav items
+function HomeIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Crescent moon */}
-      <path d="M20 85 C20 45, 85 20, 95 55 C100 70, 90 90, 60 95 C35 98, 20 95, 20 85Z" fill="#7c6cf0" opacity="0.18"/>
-      <path d="M30 82 C30 50, 80 30, 88 58 C92 68, 84 85, 58 90 C38 93, 30 90, 30 82Z" fill="#7c6cf0" opacity="0.25"/>
-      {/* Cat body */}
-      <ellipse cx="58" cy="62" rx="18" ry="16" fill="#e8e6f0"/>
-      {/* Cat head */}
-      <circle cx="58" cy="46" r="14" fill="#e8e6f0"/>
-      {/* Cat ears */}
-      <path d="M46 38 L42 22 L52 34 Z" fill="#e8e6f0"/>
-      <path d="M70 38 L74 22 L64 34 Z" fill="#e8e6f0"/>
-      <path d="M47 37 L44 25 L52 34 Z" fill="#d4c8f0"/>
-      <path d="M69 37 L72 25 L64 34 Z" fill="#d4c8f0"/>
-      {/* Closed happy eyes (upside-down U) */}
-      <path d="M51 44 Q53 40 55 44" stroke="#2d1b69" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
-      <path d="M61 44 Q63 40 65 44" stroke="#2d1b69" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
-      {/* Nose */}
-      <ellipse cx="58" cy="48" rx="1.5" ry="1" fill="#d4a0c0"/>
-      {/* Whiskers */}
-      <line x1="44" y1="47" x2="52" y2="48" stroke="#c4b8d8" strokeWidth="0.7"/>
-      <line x1="44" y1="50" x2="52" y2="49" stroke="#c4b8d8" strokeWidth="0.7"/>
-      <line x1="64" y1="48" x2="72" y2="47" stroke="#c4b8d8" strokeWidth="0.7"/>
-      <line x1="64" y1="49" x2="72" y2="50" stroke="#c4b8d8" strokeWidth="0.7"/>
-      {/* Tail */}
-      <path d="M76 62 Q85 55, 82 45 Q80 40, 78 42" stroke="#d4c8f0" strokeWidth="3" fill="none" strokeLinecap="round"/>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   );
 }
-
-/* ─── Search Icon ─── */
+function MovieIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+      <line x1="7" y1="2" x2="7" y2="22" />
+      <line x1="17" y1="2" x2="17" y2="22" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <line x1="2" y1="7" x2="7" y2="7" />
+      <line x1="2" y1="17" x2="7" y2="17" />
+      <line x1="17" y1="7" x2="22" y2="7" />
+      <line x1="17" y1="17" x2="22" y2="17" />
+    </svg>
+  );
+}
+function TVIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
+      <polyline points="17 2 12 7 7 2" />
+    </svg>
+  );
+}
+function AnimeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+      <line x1="9" y1="9" x2="9.01" y2="9" />
+      <line x1="15" y1="9" x2="15.01" y2="9" />
+    </svg>
+  );
+}
+function MangaIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+    </svg>
+  );
+}
+function ListIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
 function SearchIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -45,12 +67,37 @@ function SearchIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function HistoryIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+function ScheduleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
 
 export default function Navbar() {
-  const { route, navigate, sectionSubPage, setSectionSubPage } = useAppStore();
+  const { route, navigate } = useAppStore();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,254 +108,185 @@ export default function Navbar() {
     }
   };
 
-  // Dynamic nav links — change based on current section
-  const sectionLinks = getSectionNavLinks(route);
-  const isInSection = sectionLinks.length > 0;
-
-  // Default nav links (shown on home, features, contact, watchnow, etc.)
-  const defaultNavLinks = [
-    { id: "home", label: "Home" },
-    { id: "features", label: "Features" },
-    { id: "contact", label: "Contact" },
+  const navItems = [
+    { id: "home", label: "Home", icon: HomeIcon },
+    { id: "schedule", label: "Schedule", icon: ScheduleIcon },
+    { id: "movies", label: "Movies", icon: MovieIcon },
+    { id: "tv", label: "TV Shows", icon: TVIcon },
+    { id: "dub", label: "Anime", icon: AnimeIcon },
+    { id: "manga", label: "Manga", icon: MangaIcon },
+    { id: "bookmarks", label: "My List", icon: ListIcon },
   ];
 
-  const navLinks = isInSection ? sectionLinks : defaultNavLinks;
-
   const isActive = (id: string) => {
-    if (isInSection) {
-      // Section sub-page active state
-      const currentSub = sectionSubPage;
-      return id === currentSub;
-    }
-    // Default nav active state
     if (id === "home" && route.page === "home") return true;
-    if (id === "features" && route.page === "features") return true;
-    if (id === "contact" && route.page === "contact") return true;
+    if (id === "schedule" && route.page === "schedule") return true;
+    if (id === "movies" && route.page === "movies") return true;
+    if (id === "tv" && route.page === "tv") return true;
+    if (id === "dub" && (route.page === "dub" || route.page === "anime" || route.page === "watch")) return true;
+    if (id === "manga" && (route.page === "manga" || route.page === "manga-detail" || route.page === "manga-read")) return true;
+    if (id === "bookmarks" && route.page === "bookmarks") return true;
     return false;
   };
 
   const handleNav = (id: string) => {
-    if (isInSection) {
-      // Section sub-page navigation
-      setSectionSubPage(id as SectionSubPage);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      // Default navigation
-      if (id === "home") navigate({ page: "home" });
-      else if (id === "features") {
-        if (route.page === "home") {
-          const el = document.getElementById("features-section");
-          if (el) el.scrollIntoView({ behavior: "smooth" });
-          else navigate({ page: "home" });
-        } else {
-          navigate({ page: "features" });
-        }
-      }
-      else if (id === "contact") navigate({ page: "contact" });
-    }
-    setMobileMenuOpen(false);
-  };
-
-  // Mobile bottom nav items
-  const bottomNavItems = [
-    { id: "home", label: "Home", icon: () => (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-        <polyline points="9 22 9 12 15 12 15 22" />
-      </svg>
-    )},
-    { id: "watchnow", label: "Watch", icon: () => (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-        <polygon points="5 3 19 12 5 21 5 3" />
-      </svg>
-    )},
-    { id: "features", label: "Features", icon: () => (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.18V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0-1.18-2.82H3a2 2 0 0 1 0-4h.09" />
-      </svg>
-    )},
-    { id: "contact", label: "Contact", icon: () => (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-        <polyline points="22,6 12,13 2,6" />
-      </svg>
-    )},
-  ];
-
-  const isBottomActive = (id: string) => {
-    if (id === "home" && route.page === "home") return true;
-    if (id === "watchnow" && route.page === "watchnow") return true;
-    if (id === "watchnow" && ["dub", "movies", "tv", "manga", "anime", "watch", "movie-detail", "tv-detail", "movie-watch", "tv-watch", "manga-detail", "manga-read"].includes(route.page)) return true;
-    if (id === "features" && route.page === "features") return true;
-    if (id === "contact" && route.page === "contact") return true;
-    return false;
-  };
-
-  const handleBottomNav = (id: string) => {
     if (id === "home") navigate({ page: "home" });
-    else if (id === "watchnow") navigate({ page: "watchnow" });
-    else if (id === "features") {
-      if (route.page === "home") {
-        const el = document.getElementById("features-section");
-        if (el) el.scrollIntoView({ behavior: "smooth" });
-      } else navigate({ page: "features" });
-    }
-    else if (id === "contact") navigate({ page: "contact" });
+    else if (id === "schedule") navigate({ page: "schedule" });
+    else if (id === "movies") navigate({ page: "movies" });
+    else if (id === "tv") navigate({ page: "tv" });
+    else if (id === "dub") navigate({ page: "dub" });
+    else if (id === "manga") navigate({ page: "manga" });
+    else if (id === "bookmarks") navigate({ page: "bookmarks" });
+    setMobileMenuOpen(false);
   };
 
   return (
     <>
-      {/* ═══════════════════════════════════════════
-          FLOATING PILL NAVBAR — LunarAnime style
-          Transparent glassmorphism, always visible
-          ═══════════════════════════════════════════ */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center">
-        {/* Mascot floating above the pill */}
-        <div className="lunar-mascot-float -mb-3 drop-shadow-[0_4px_12px_rgba(124,108,240,0.3)]">
-          <NavMascot className="w-12 h-10 hidden sm:block" />
-        </div>
+      {/* Desktop & Mobile Top Nav — 75px height */}
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-[#0b1116]/80 backdrop-blur-xl border-b border-white/[0.06] shadow-[0_4px_30px_rgba(0,0,0,0.3)]"
+            : "bg-transparent backdrop-blur-none"
+        }`}
+        style={{ height: 75 }}
+      >
+        <div className="max-w-[1400px] mx-auto px-4 lg:px-8 h-full">
+          <div className="flex items-center justify-between h-full">
+            {/* Logo */}
+            <button onClick={() => navigate({ page: "home" })} className="flex items-center gap-2.5 group shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 group-hover:shadow-cyan-500/50 transition-all group-hover:scale-105">
+                <svg className="w-4.5 h-4.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </div>
+              <span className="hidden sm:block text-lg font-bold gradient-text tracking-tight">Luffy TV</span>
+            </button>
 
-        {/* Pill navbar */}
-        <nav className="lunar-nav-pill px-3 sm:px-5 py-2.5 flex items-center gap-2 sm:gap-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-          {/* Logo */}
-          <button
-            onClick={() => navigate({ page: "home" })}
-            className="flex items-center gap-2 shrink-0 group"
-          >
-            <NavMascot className="w-7 h-6 sm:hidden group-hover:drop-shadow-[0_0_8px_rgba(124,108,240,0.5)] transition-all" />
-            <span
-              className="hidden sm:block text-sm font-bold tracking-wide"
-              style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-            >
-              LUFFY <span className="text-[#7c6cf0]">TV</span>
-            </span>
-          </button>
+            {/* Desktop Nav Items */}
+            <div className="hidden md:flex items-center gap-1 ml-8">
+              {navItems.map(item => {
+                const IconComp = item.icon;
+                const active = isActive(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNav(item.id)}
+                    className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                      active
+                        ? "text-cyan-400 bg-cyan-500/10"
+                        : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <IconComp className="w-4 h-4" />
+                    <span>{item.label}</span>
+                    {/* Active dot indicator */}
+                    {active && (
+                      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(0,168,225,0.6)]" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Divider */}
-          <div className="hidden sm:block w-px h-5 bg-white/10" />
+            {/* Right side: Search pill + History icon */}
+            <div className="flex items-center gap-3">
+              {/* Search pill */}
+              <div className="hidden sm:flex items-center">
+                <div className="relative group">
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-cyan-400 transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && searchQuery.trim()) { navigate({ page: "search", query: searchQuery.trim() }); setSearchQuery(""); } }}
+                    className="w-[220px] focus:w-[320px] h-9 pl-9 pr-3 bg-white/[0.06] border border-white/[0.08] rounded-full text-sm text-white placeholder-zinc-500 outline-none transition-all duration-300 focus:border-cyan-500/30 focus:bg-white/[0.08] focus:shadow-[0_0_12px_rgba(0,168,225,0.1)]"
+                  />
+                  <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-600 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06]">⌘K</kbd>
+                </div>
+              </div>
 
-          {/* Nav Links — hidden on mobile */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map(link => (
+              {/* Mobile search button */}
               <button
-                key={link.id}
-                onClick={() => handleNav(link.id)}
-                className={`px-3 py-1.5 rounded-full text-[12px] font-bold tracking-[0.06em] uppercase transition-all duration-200 ${
-                  isActive(link.id)
-                    ? "text-white bg-white/10"
-                    : "text-white/45 hover:text-white hover:bg-white/[0.04]"
-                }`}
-                style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+                onClick={() => setSearchOpen(true)}
+                className="sm:hidden p-2 text-zinc-400 hover:text-white hover:bg-white/[0.04] rounded-lg transition-all"
               >
-                {link.label}
+                <SearchIcon className="w-5 h-5" />
               </button>
-            ))}
+
+              {/* History icon */}
+              <button
+                onClick={() => navigate({ page: "history" })}
+                className="p-2 text-zinc-400 hover:text-cyan-400 hover:bg-white/[0.04] rounded-lg transition-all"
+                title="Watch History"
+              >
+                <HistoryIcon className="w-5 h-5" />
+              </button>
+
+              {/* Mobile hamburger */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 text-zinc-400 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  {mobileMenuOpen ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
+                </svg>
+              </button>
+            </div>
           </div>
+        </div>
+      </nav>
 
-          {/* CTA — Watch Now (purple + white) */}
-          <button
-            onClick={() => navigate({ page: "watchnow" })}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-full text-[12px] font-bold tracking-[0.04em] uppercase bg-[#7c6cf0] text-white hover:bg-[#6b5ce0] hover:shadow-[0_0_20px_rgba(124,108,240,0.4)] transition-all"
-            style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-            Watch Now
-          </button>
-
-          {/* Mobile: search + hamburger */}
-          <div className="flex md:hidden items-center gap-1">
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="p-2 text-white/45 hover:text-white transition-colors"
-            >
-              <SearchIcon className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-white/45 hover:text-white transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                {mobileMenuOpen
-                  ? <path d="M6 18L18 6M6 6l12 12" />
-                  : <path d="M4 6h16M4 12h16M4 18h16" />
-                }
-              </svg>
-            </button>
-          </div>
-        </nav>
-      </div>
-
-      {/* ═══════════════════════════════════════════
-          MOBILE MENU OVERLAY
-          ═══════════════════════════════════════════ */}
+      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[60] bg-[#050507]/98 backdrop-blur-2xl pt-28 px-6 fade-in">
+        <div className="md:hidden fixed inset-0 z-[60] bg-[#0b1116]/98 backdrop-blur-2xl pt-24 px-6 fade-in">
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute top-6 right-6 p-2 text-white/40 hover:text-white"
+            className="absolute top-5 right-5 p-2 text-zinc-400 hover:text-white"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
           <div className="space-y-2">
-            {/* If in a section, show "Back to Home" first */}
-            {isInSection && (
-              <button
-                onClick={() => { navigate({ page: "home" }); setMobileMenuOpen(false); }}
-                className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold uppercase tracking-wider text-white/45 hover:text-white hover:bg-white/[0.04] transition-all"
-                style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
-                Back to Home
-              </button>
-            )}
-            {navLinks.map(link => (
-              <button
-                key={link.id}
-                onClick={() => handleNav(link.id)}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold uppercase tracking-wider transition-all ${
-                  isActive(link.id)
-                    ? "text-white bg-white/8 border border-white/10"
-                    : "text-white/45 hover:text-white hover:bg-white/[0.04]"
-                }`}
-                style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-              >
-                {link.label}
-              </button>
-            ))}
-            {/* Watch Now CTA in mobile menu */}
-            <button
-              onClick={() => { navigate({ page: "watchnow" }); setMobileMenuOpen(false); }}
-              className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-sm font-bold uppercase tracking-wider bg-[#7c6cf0] text-white hover:bg-[#6b5ce0] transition-all"
-              style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-              Watch Now
-            </button>
+            {navItems.map(item => {
+              const IconComp = item.icon;
+              const active = isActive(item.id);
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNav(item.id)}
+                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-base font-medium transition-all ${
+                    active
+                      ? "text-cyan-400 bg-cyan-500/10 border border-cyan-500/15"
+                      : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+                  }`}
+                >
+                  <IconComp className="w-5 h-5" />
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          SEARCH MODAL
-          ═══════════════════════════════════════════ */}
+      {/* Search Modal */}
       {searchOpen && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]" onClick={() => setSearchOpen(false)}>
-          <div className="absolute inset-0 bg-[#050507]/80 backdrop-blur-sm" />
-          <div className="relative w-full max-w-xl mx-4 bg-[#0d0d10] rounded-2xl overflow-hidden shadow-2xl shadow-black/60 border border-white/[0.07]" onClick={e => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-[#0b1116]/80 backdrop-blur-sm" />
+          <div className="relative w-full max-w-xl mx-4 bg-[#151f2e] rounded-2xl overflow-hidden shadow-2xl shadow-black/60 border border-white/[0.06]" onClick={e => e.stopPropagation()}>
             <form onSubmit={handleSearch} className="flex items-center gap-3 p-4">
-              <SearchIcon className="w-5 h-5 text-[#7c6cf0] shrink-0" />
+              <SearchIcon className="w-5 h-5 text-cyan-400 shrink-0" />
               <input
                 autoFocus
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search movies, TV shows, anime, manga..."
-                className="flex-1 bg-transparent text-white placeholder-white/25 text-sm outline-none"
-                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm outline-none"
               />
-              <button type="button" onClick={() => setSearchOpen(false)} className="text-[10px] text-white/25 bg-white/[0.06] px-2 py-1 rounded-md border border-white/[0.06]" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>ESC</button>
+              <button type="button" onClick={() => setSearchOpen(false)} className="text-xs text-zinc-500 bg-white/[0.06] px-2 py-1 rounded-md border border-white/[0.06]">ESC</button>
             </form>
             {searchQuery && (
               <div className="p-3 border-t border-white/[0.04]">
@@ -316,8 +294,8 @@ export default function Navbar() {
                   onClick={handleSearch}
                   className="w-full flex items-center gap-3 p-2.5 hover:bg-white/[0.04] rounded-lg transition-colors text-left"
                 >
-                  <SearchIcon className="w-4 h-4 text-white/25" />
-                  <span className="text-sm text-white/45">Search for &quot;{searchQuery}&quot;</span>
+                  <SearchIcon className="w-4 h-4 text-zinc-500" />
+                  <span className="text-sm text-zinc-400">Search for &quot;{searchQuery}&quot;</span>
                 </button>
               </div>
             )}
@@ -325,47 +303,30 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          MOBILE BOTTOM NAV
-          ═══════════════════════════════════════════ */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0d0d10]/95 backdrop-blur-xl border-t border-white/[0.06]">
+      {/* Mobile Bottom Nav */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-nav border-t border-white/[0.06]">
         <div className="flex items-center justify-around py-2 px-2" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
-          {bottomNavItems.map(item => {
+          {navItems.slice(0, 4).map(item => {
             const IconComp = item.icon;
-            const active = isBottomActive(item.id);
+            const active = isActive(item.id);
             return (
               <button
                 key={item.id}
-                onClick={() => handleBottomNav(item.id)}
-                className={`flex flex-col items-center gap-0.5 py-1 px-3 ${item.id === "watchnow" ? "-mt-4" : ""}`}
+                onClick={() => handleNav(item.id)}
+                className="mobile-nav-item flex flex-col items-center gap-0.5 py-1 px-3"
               >
-                {item.id === "watchnow" ? (
-                  <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg ${active ? "bg-[#7c6cf0] shadow-[0_0_16px_rgba(124,108,240,0.5)]" : "bg-[#7c6cf0]/80 shadow-[0_0_8px_rgba(124,108,240,0.3)]"}`}>
-                    <IconComp />
-                  </div>
-                ) : (
-                  <IconComp />
-                )}
-                <span
-                  className={`text-[10px] font-bold tracking-wider ${active ? "text-[#7c6cf0]" : "text-white/25"}`}
-                  style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-                >
-                  {item.label}
-                </span>
+                <IconComp className={`w-5 h-5 ${active ? "text-cyan-400" : "text-zinc-500"}`} />
+                <span className={`text-[10px] font-medium ${active ? "text-cyan-400" : "text-zinc-500"}`}>{item.label}</span>
+                {active && <div className="nav-indicator" />}
               </button>
             );
           })}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex flex-col items-center gap-0.5 py-1 px-3"
+            className="mobile-nav-item flex flex-col items-center gap-0.5 py-1 px-3"
           >
-            <SearchIcon className="w-5 h-5 text-white/25" />
-            <span
-              className="text-[10px] font-bold tracking-wider text-white/25"
-              style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-            >
-              Search
-            </span>
+            <SearchIcon className="w-5 h-5 text-zinc-500" />
+            <span className="text-[10px] font-medium text-zinc-500">Search</span>
           </button>
         </div>
       </div>

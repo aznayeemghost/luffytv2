@@ -161,10 +161,10 @@ function ContentSection({ title, children, icon }: { title: string; children: Re
           <h2 className="text-base sm:text-lg font-bold text-white">{title}</h2>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => scroll("left")} className="scroll-btn p-2 text-zinc-500 hover:text-white bg-[#0f0f1a]/80 hover:bg-purple-500/20 rounded-full transition-all backdrop-blur-sm border border-white/[0.06]">
+          <button onClick={() => scroll("left")} className="scroll-btn p-2 text-zinc-500 hover:text-white bg-[#1a2530]/80 hover:bg-cyan-500/20 rounded-full transition-all backdrop-blur-sm border border-white/[0.06]">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <button onClick={() => scroll("right")} className="scroll-btn p-2 text-zinc-500 hover:text-white bg-[#0f0f1a]/80 hover:bg-purple-500/20 rounded-full transition-all backdrop-blur-sm border border-white/[0.06]">
+          <button onClick={() => scroll("right")} className="scroll-btn p-2 text-zinc-500 hover:text-white bg-[#1a2530]/80 hover:bg-cyan-500/20 rounded-full transition-all backdrop-blur-sm border border-white/[0.06]">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
@@ -322,7 +322,7 @@ export default function AnimeHomePage() {
       {/* Header */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
             <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
               <path d="M8 14s1.5 2 4 2 4-2 4-2" />
@@ -339,14 +339,14 @@ export default function AnimeHomePage() {
         {/* Language Filter */}
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-zinc-600 uppercase tracking-wider font-bold shrink-0">Language</span>
-          <div className="flex items-center gap-1 bg-[#0f0f1a] rounded-full p-0.5 border border-white/[0.06]">
+          <div className="flex items-center gap-1 bg-[#1a2530] rounded-full p-0.5 border border-white/[0.06]">
             {(["sub", "dub", "hindi"] as const).map(lang => (
               <button
                 key={lang}
                 onClick={() => setActiveLang(lang)}
                 className={`px-4 py-1.5 text-[11px] font-bold rounded-full transition-all ${
                   activeLang === lang
-                    ? lang === "sub" ? "bg-purple-500/15 text-purple-300" : lang === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
+                    ? lang === "sub" ? "bg-cyan-500/15 text-cyan-300" : lang === "dub" ? "bg-violet-500/15 text-violet-300" : "bg-orange-500/15 text-orange-300"
                     : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
@@ -362,8 +362,8 @@ export default function AnimeHomePage() {
             onClick={() => setActiveGenre(null)}
             className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full transition-all border ${
               !activeGenre
-                ? "bg-purple-500/15 border-purple-500/20 text-purple-300"
-                : "bg-[#0f0f1a] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
+                ? "bg-cyan-500/15 border-cyan-500/20 text-cyan-300"
+                : "bg-[#1a2530] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
             }`}
           >
             All
@@ -374,8 +374,8 @@ export default function AnimeHomePage() {
               onClick={() => setActiveGenre(activeGenre === genre ? null : genre)}
               className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full transition-all border ${
                 activeGenre === genre
-                  ? "bg-purple-500/15 border-purple-500/20 text-purple-300"
-                  : "bg-[#0f0f1a] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
+                  ? "bg-cyan-500/15 border-cyan-500/20 text-cyan-300"
+                  : "bg-[#1a2530] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
               }`}
             >
               {genre}
@@ -389,8 +389,8 @@ export default function AnimeHomePage() {
             onClick={() => setActiveSeason(null)}
             className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full transition-all border ${
               !activeSeason
-                ? "bg-purple-500/15 border-purple-500/20 text-purple-300"
-                : "bg-[#0f0f1a] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
+                ? "bg-cyan-500/15 border-cyan-500/20 text-cyan-300"
+                : "bg-[#1a2530] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
             }`}
           >
             All Seasons
@@ -401,8 +401,8 @@ export default function AnimeHomePage() {
               onClick={() => setActiveSeason(activeSeason === s.label ? null : s.label)}
               className={`shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-full transition-all border ${
                 activeSeason === s.label
-                  ? "bg-purple-500/15 border-purple-500/20 text-purple-300"
-                  : "bg-[#0f0f1a] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
+                  ? "bg-cyan-500/15 border-cyan-500/20 text-cyan-300"
+                  : "bg-[#1a2530] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
               }`}
             >
               {s.label}
@@ -454,7 +454,7 @@ export default function AnimeHomePage() {
           {trending.length > 0 && (
             <ContentSection
               title="Trending Anime"
-              icon={<svg className="w-5 h-5 text-purple-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" /></svg>}
+              icon={<svg className="w-5 h-5 text-cyan-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" /></svg>}
             >
               {trending.slice(0, 20).map((anime, i) => (
                 <div key={`${anime.id}-${i}`} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
@@ -468,7 +468,7 @@ export default function AnimeHomePage() {
           {popular.length > 0 && (
             <ContentSection
               title="Popular Anime"
-              icon={<svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
+              icon={<svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>}
             >
               {popular.slice(0, 20).map((anime, i) => (
                 <div key={`${anime.id}-${i}`} className="shrink-0 w-[140px] sm:w-[160px] lg:w-[180px]">
@@ -524,17 +524,17 @@ export default function AnimeHomePage() {
 
           {/* Empty State with retry */}
           {!hasAnyData && (
-            <div className="text-center py-20 bg-[#0a0a14] rounded-2xl border border-white/[0.04]">
+            <div className="text-center py-20 bg-[#151f2e] rounded-2xl border border-white/[0.04]">
               <div className="space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full bg-purple-500/10 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="w-16 h-16 mx-auto rounded-full bg-cyan-500/10 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                   </svg>
                 </div>
                 <p className="text-zinc-400 text-sm">Loading anime from backup sources...</p>
                 <button
                   onClick={() => window.location.reload()}
-                  className="px-4 py-2 text-xs font-bold bg-purple-500/15 text-purple-300 rounded-full hover:bg-purple-500/25 transition-all border border-purple-500/20"
+                  className="px-4 py-2 text-xs font-bold bg-cyan-500/15 text-cyan-300 rounded-full hover:bg-cyan-500/25 transition-all border border-cyan-500/20"
                 >
                   Refresh Page
                 </button>

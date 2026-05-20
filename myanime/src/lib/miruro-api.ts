@@ -1,15 +1,8 @@
 // Miruro API Client - Direct m3u8 streaming for sub & dub
 // Based on the Python MiruroScraper API with auto-provider switching
 // If one provider fails, automatically tries the next one
-// Also includes alternative API endpoints for reliability
 
 const MIRURO_API = "https://miruro-api.vercel.app";
-// Backup API endpoints — tried in order if primary fails
-const MIRURO_BACKUP_APIS = [
-  "https://miruro-api.vercel.app",
-  "https://api.miruro.tv",
-  "https://miruro-api.fly.dev",
-];
 
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
@@ -22,7 +15,6 @@ const HEADERS = {
 // NO kiwi as primary — miku is the main provider, kiwi is backup only
 const PROVIDER_PRIORITY = [
   "miku", "ax-mimi", "ax-wave", "ax-shiro", "ax-yuki", "ax-zen", "bee", "kiwi", "zoro",
-  "arc", "jet",
 ];
 
 // Which providers support HLS vs embed
@@ -36,71 +28,29 @@ const PROVIDER_CAPABILITIES: Record<string, { hls: boolean; embed: boolean }> = 
   "ax-zen":   { hls: true, embed: false },
   "bee":      { hls: true, embed: false },
   "zoro":     { hls: false, embed: true },
-  "arc":      { hls: true, embed: false },
-  "jet":      { hls: true, embed: false },
 };
-
-// Cache for working API base URL
-let workingApiBase: string | null = null;
-let lastApiCheck = 0;
-const API_CHECK_INTERVAL = 5 * 60 * 1000; // 5 min
 
 async function fetchWithRetry(url: string, options: RequestInit, retries = 2): Promise<Response> {
   for (let i = 0; i <= retries; i++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // Reduced from 15s to 10s
+      const timeout = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeout);
       if (res.ok) return res;
       if (res.status === 429 || res.status >= 500) {
         if (i < retries) {
-          await new Promise(r => setTimeout(r, 800 * (i + 1))); // Reduced wait time
+          await new Promise(r => setTimeout(r, 1000 * (i + 1)));
           continue;
         }
       }
       return res;
     } catch (err) {
       if (i === retries) throw err;
-      await new Promise(r => setTimeout(r, 800 * (i + 1)));
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
     }
   }
   throw new Error("Max retries exceeded");
-}
-
-// Try multiple API base URLs for reliability
-async function fetchWithBaseUrlFallback(path: string, options: RequestInit): Promise<Response> {
-  // Try the known working base first
-  const basesToTry = workingApiBase
-    ? [workingApiBase, ...MIRURO_BACKUP_APIS.filter(b => b !== workingApiBase)]
-    : [...MIRURO_BACKUP_APIS];
-
-  let lastError: Error | null = null;
-
-  for (const base of basesToTry) {
-    try {
-      const url = `${base}${path}`;
-      const res = await fetchWithRetry(url, options);
-      if (res.ok) {
-        // Cache the working base URL
-        workingApiBase = base;
-        lastApiCheck = Date.now();
-        return res;
-      }
-      // If 404, this API exists but doesn't have the data — no point trying other bases
-      if (res.status === 404) return res;
-      // For other errors, try next base
-      lastError = new Error(`API ${base} returned ${res.status}`);
-    } catch (err: any) {
-      lastError = err;
-      // Try next base URL
-      continue;
-    }
-  }
-
-  // All bases failed — reset cached base
-  workingApiBase = null;
-  throw lastError || new Error("All Miruro API bases failed");
 }
 
 // ---- Types ----
@@ -190,8 +140,8 @@ export interface NormalizedEpisodesResult {
 
 export async function miruroSearch(query: string, page = 1): Promise<MiruroSearchResult> {
   try {
-    const res = await fetchWithBaseUrlFallback(
-      `/search?q=${encodeURIComponent(query)}&page=${page}`,
+    const res = await fetchWithRetry(
+      `${MIRURO_API}/search?q=${encodeURIComponent(query)}&page=${page}`,
       { headers: HEADERS, next: { revalidate: 120 } }
     );
     if (!res.ok) throw new Error(`Search failed: ${res.status}`);
@@ -203,7 +153,7 @@ export async function miruroSearch(query: string, page = 1): Promise<MiruroSearc
 
 export async function miruroInfo(anilistId: number): Promise<MiruroAnimeResult | null> {
   try {
-    const res = await fetchWithBaseUrlFallback(`/info/${anilistId}`, {
+    const res = await fetchWithRetry(`${MIRURO_API}/info/${anilistId}`, {
       headers: HEADERS, next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
@@ -216,8 +166,8 @@ export async function miruroInfo(anilistId: number): Promise<MiruroAnimeResult |
 
 export async function miruroTrending(page = 1, perPage = 20): Promise<MiruroAnimeResult[]> {
   try {
-    const res = await fetchWithBaseUrlFallback(
-      `/trending?page=${page}&perPage=${perPage}`,
+    const res = await fetchWithRetry(
+      `${MIRURO_API}/trending?page=${page}&perPage=${perPage}`,
       { headers: HEADERS, next: { revalidate: 300 } }
     );
     if (!res.ok) return [];
@@ -230,8 +180,8 @@ export async function miruroTrending(page = 1, perPage = 20): Promise<MiruroAnim
 
 export async function miruroPopular(page = 1, perPage = 20): Promise<MiruroAnimeResult[]> {
   try {
-    const res = await fetchWithBaseUrlFallback(
-      `/popular?page=${page}&perPage=${perPage}`,
+    const res = await fetchWithRetry(
+      `${MIRURO_API}/popular?page=${page}&perPage=${perPage}`,
       { headers: HEADERS, next: { revalidate: 600 } }
     );
     if (!res.ok) return [];
@@ -244,8 +194,8 @@ export async function miruroPopular(page = 1, perPage = 20): Promise<MiruroAnime
 
 export async function miruroRecent(page = 1, perPage = 20): Promise<MiruroAnimeResult[]> {
   try {
-    const res = await fetchWithBaseUrlFallback(
-      `/recent?page=${page}&perPage=${perPage}`,
+    const res = await fetchWithRetry(
+      `${MIRURO_API}/recent?page=${page}&perPage=${perPage}`,
       { headers: HEADERS, next: { revalidate: 60 } }
     );
     if (!res.ok) return [];
@@ -339,7 +289,7 @@ function normalizeProviderEpisodes(
  */
 export async function miruroEpisodes(anilistId: number): Promise<NormalizedEpisodesResult> {
   try {
-    const res = await fetchWithBaseUrlFallback(`/episodes/${anilistId}`, {
+    const res = await fetchWithRetry(`${MIRURO_API}/episodes/${anilistId}`, {
       headers: HEADERS, next: { revalidate: 600 },
     });
     if (!res.ok) return { sub: [], dub: [], defaultProvider: "", allProviders: [], providersMap: {} };
@@ -456,7 +406,6 @@ function classifySource(url: string): "internal" | "external" {
 
 /**
  * Watch a single provider — returns stream data or null
- * Uses base URL fallback for reliability
  */
 export async function miruroWatchProvider(
   provider: string,
@@ -465,8 +414,8 @@ export async function miruroWatchProvider(
   episodeSlug: string
 ): Promise<MiruroWatchResult | null> {
   try {
-    const path = `/watch/${provider}/${anilistId}/${translationType}/${episodeSlug}`;
-    const res = await fetchWithBaseUrlFallback(path, {
+    const url = `${MIRURO_API}/watch/${provider}/${anilistId}/${translationType}/${episodeSlug}`;
+    const res = await fetchWithRetry(url, {
       headers: HEADERS, next: { revalidate: 300 },
     });
     if (!res.ok) return null;
@@ -534,7 +483,7 @@ export async function miruroWatch(
     providersToTry = [...PROVIDER_PRIORITY];
   }
 
-  // Try each provider in order — with fast timeout so we don't waste time
+  // Try each provider in order
   for (const currentProvider of providersToTry) {
     triedProviders.push(currentProvider);
 
