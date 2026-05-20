@@ -10,9 +10,23 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],
+    unoptimized: true, // Skip Next.js image optimization for faster builds on Vercel
   },
+
+  // Compress responses
+  compress: true,
+
   async headers() {
     return [
+      {
+        source: "/api/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=60, stale-while-revalidate=300",
+          },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [

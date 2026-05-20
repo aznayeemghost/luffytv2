@@ -250,8 +250,6 @@ export default function HomePage() {
 
   useEffect(() => {
     async function load() {
-      // Optimized: Only fetch essential data first, then load rest lazily
-      // Use 5-minute cache via sessionStorage to avoid refetch on navigation
       const CACHE_KEY = "ltv_home_cache";
       const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
       try {
@@ -276,28 +274,33 @@ export default function HomePage() {
         }
       } catch {}
 
-      // Priority fetch: hero content first (2 calls), then rest in background
-      const promises = [
+      // PRIORITY LOAD: Fetch hero data first (2 calls), show page immediately
+      // Then load remaining sections in background
+      const [trending, anilist] = await Promise.all([
         fetch("/api/tmdb/trending?type=all&time=week").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/anime/anilist-trending").then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
+
+      // Show page with hero content ASAP
+      if (trending?.results) setTrendingAll(trending.results);
+      if (anilist) {
+        if (anilist.trending?.length > 0) setAnilistTrending(mapAniListToMiruro(anilist.trending));
+        if (anilist.popular?.length > 0) setAnilistPopular(mapAniListToMiruro(anilist.popular));
+        if (anilist.topRated?.length > 0) setAnilistTopRated(mapAniListToMiruro(anilist.topRated));
+      }
+      setLoading(false); // Show page NOW with hero content
+
+      // Load remaining sections in background — user sees hero immediately
+      const [anime, pMovies, pTV, tMovies, trMovies, trTV] = await Promise.all([
         fetch("/api/anime/home").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/tmdb/movies?category=popular").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/tmdb/tv?category=popular").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/tmdb/trending?type=movie&time=week").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/tmdb/movies?category=top_rated").then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/tmdb/tv?category=top_rated").then(r => r.ok ? r.json() : null).catch(() => null),
-      ];
-
-      const [trending, anilist, anime, pMovies, pTV, tMovies, trMovies, trTV] = await Promise.all(promises);
+      ]);
 
       if (anime) setAnimeData(anime);
-      // AniList PRIMARY for anime sections
-      if (anilist) {
-        if (anilist.trending?.length > 0) setAnilistTrending(mapAniListToMiruro(anilist.trending));
-        if (anilist.popular?.length > 0) setAnilistPopular(mapAniListToMiruro(anilist.popular));
-        if (anilist.topRated?.length > 0) setAnilistTopRated(mapAniListToMiruro(anilist.topRated));
-      }
-      if (trending?.results) setTrendingAll(trending.results);
       if (tMovies?.results) setTrendingMovies(tMovies.results);
       if (pMovies?.results) setPopularMovies(pMovies.results);
       if (pTV?.results) setPopularTV(pTV.results);
@@ -311,8 +314,6 @@ export default function HomePage() {
           data: { trendingAll: trending?.results || [], anilistTrending: anilist?.trending || [], anilistPopular: anilist?.popular || [], anilistTopRated: anilist?.topRated || [], popularMovies: pMovies?.results || [], popularTV: pTV?.results || [], trendingMovies: tMovies?.results || [], topRatedMovies: trMovies?.results || [], topRatedTV: trTV?.results || [], animeData: anime }
         }));
       } catch {}
-
-      setLoading(false);
     }
     load();
   }, []);

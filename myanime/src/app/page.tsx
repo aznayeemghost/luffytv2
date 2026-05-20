@@ -13,6 +13,7 @@ const GenrePage = lazy(() => import("@/components/anime/genre-page"));
 const BookmarksPage = lazy(() => import("@/components/anime/bookmarks-page"));
 const HistoryPage = lazy(() => import("@/components/anime/history-page"));
 const AnimeHomePage = lazy(() => import("@/components/anime/anime-home"));
+const AnimeSectionPage = lazy(() => import("@/components/anime/anime-section-page"));
 const SchedulePage = lazy(() => import("@/components/anime/schedule-page"));
 const MoviesPage = lazy(() => import("@/components/anime/movies-page"));
 const TVPage = lazy(() => import("@/components/anime/tv-page"));
@@ -23,6 +24,8 @@ const TVWatchPage = lazy(() => import("@/components/anime/tv-watch"));
 const MangaPage = lazy(() => import("@/components/anime/manga-page"));
 const MangaDetailPage = lazy(() => import("@/components/anime/manga-detail"));
 const MangaReader = lazy(() => import("@/components/anime/manga-reader"));
+const WatchNowPage = lazy(() => import("@/components/anime/watchnow-page"));
+const ContactPage = lazy(() => import("@/components/anime/contact-page"));
 
 // Minimal page loading fallback
 function PageLoader() {
@@ -86,7 +89,7 @@ function LuffyIntro({ onComplete }: { onComplete: () => void }) {
     const t = setTimeout(() => {
       setGone(true);
       onCompleteRef.current();
-    }, 2200); // Reduced from 3500 to 2200
+    }, 1500); // Fast 1.5s intro
     return () => clearTimeout(t);
   }, []);
 
@@ -173,7 +176,8 @@ export default function MainPage() {
             case "anime": return <AnimeDetailPage animeId={route.id} />;
             case "watch": return <WatchPage animeId={route.id} episodeNum={route.episode} />;
             case "genre": return <GenrePage genre={route.genre} />;
-            case "dub": return <AnimeHomePage />;
+            case "dub": return <AnimeSectionPage />;
+            case "anime-home": return <AnimeHomePage />;
             case "schedule": return <SchedulePage />;
             case "bookmarks": return <BookmarksPage />;
             case "history": return <HistoryPage />;
@@ -186,6 +190,15 @@ export default function MainPage() {
             case "tv-detail": return <TVDetailPage tvId={route.id} />;
             case "movie-watch": return <MovieWatchPage movieId={route.id} />;
             case "tv-watch": return <TVWatchPage tvId={route.id} season={route.season} episode={route.episode} />;
+            case "watchnow": return <WatchNowPage />;
+            case "contact": return <ContactPage />;
+            case "features": {
+              setTimeout(() => {
+                const el = document.getElementById("features-section");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }, 300);
+              return <HomePage />;
+            }
             default: return <HomePage />;
           }
         })()}
@@ -226,6 +239,8 @@ export default function MainPage() {
                   <h4 className="text-xs font-semibold text-zinc-300 mb-4 uppercase tracking-wider">Discover</h4>
                   <div className="space-y-2.5">
                     <button onClick={() => navigate({ page: "home" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Home</button>
+                    <button onClick={() => navigate({ page: "watchnow" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Watch Now</button>
+                    <button onClick={() => navigate({ page: "features" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Features</button>
                     <button onClick={() => navigate({ page: "schedule" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Schedule</button>
                     <button onClick={() => navigate({ page: "movies" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Movies</button>
                     <button onClick={() => navigate({ page: "tv" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">TV Shows</button>
@@ -243,6 +258,7 @@ export default function MainPage() {
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-300 mb-4 uppercase tracking-wider">Support</h4>
                   <div className="space-y-2.5">
+                    <button onClick={() => navigate({ page: "contact" })} className="block text-xs text-zinc-500 hover:text-cyan-400 transition-colors">Contact</button>
                     <span className="block text-xs text-zinc-600">Luffy TV v4.0</span>
                     <span className="block text-xs text-zinc-600">We do not host any files</span>
                   </div>
