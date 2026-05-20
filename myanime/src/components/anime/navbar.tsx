@@ -170,7 +170,7 @@ export default function Navbar() {
           FLOATING PILL NAVBAR — LunarAnime style
           Transparent glassmorphism, always visible
           ═══════════════════════════════════════════ */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center" style={{ willChange: 'transform' }}>
         {/* Mascot floating above the pill */}
         <div className="lunar-mascot-float -mb-3 drop-shadow-[0_4px_12px_rgba(124,108,240,0.3)]">
           <NavMascot className="w-12 h-10 hidden sm:block" />
@@ -254,7 +254,7 @@ export default function Navbar() {
           MOBILE MENU OVERLAY
           ═══════════════════════════════════════════ */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[60] bg-[#050507]/98 backdrop-blur-2xl pt-28 px-6 fade-in">
+        <div className="md:hidden fixed inset-0 z-[110] bg-[#050507]/98 backdrop-blur-2xl pt-28 px-6 fade-in">
           <button
             onClick={() => setMobileMenuOpen(false)}
             className="absolute top-6 right-6 p-2 text-white/40 hover:text-white"
@@ -306,7 +306,7 @@ export default function Navbar() {
           SEARCH MODAL
           ═══════════════════════════════════════════ */}
       {searchOpen && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]" onClick={() => setSearchOpen(false)}>
+        <div className="fixed inset-0 z-[120] flex items-start justify-center pt-[15vh]" onClick={() => setSearchOpen(false)}>
           <div className="absolute inset-0 bg-[#050507]/80 backdrop-blur-sm" />
           <div className="relative w-full max-w-xl mx-4 bg-[#0d0d10] rounded-2xl overflow-hidden shadow-2xl shadow-black/60 border border-white/[0.07]" onClick={e => e.stopPropagation()}>
             <form onSubmit={handleSearch} className="flex items-center gap-3 p-4">
@@ -339,7 +339,7 @@ export default function Navbar() {
       {/* ═══════════════════════════════════════════
           MOBILE BOTTOM NAV
           ═══════════════════════════════════════════ */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0d0d10]/95 backdrop-blur-xl border-t border-white/[0.06]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#0d0d10]/95 backdrop-blur-xl border-t border-white/[0.06]">
         <div className="flex items-center justify-around py-2 px-2" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
           {bottomNavItems.map(item => {
             const IconComp = item.icon;
