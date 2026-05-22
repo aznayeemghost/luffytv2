@@ -75,6 +75,7 @@ export default function Navbar() {
   // Default nav links (shown on home, features, contact, watchnow, etc.)
   const defaultNavLinks = [
     { id: "home", label: "Home" },
+    { id: "guide", label: "Guide" },
     { id: "features", label: "Features" },
     { id: "contact", label: "Contact" },
   ];
@@ -89,6 +90,7 @@ export default function Navbar() {
     }
     // Default nav active state
     if (id === "home" && route.page === "home") return true;
+    if (id === "guide" && route.page === "guide") return true;
     if (id === "features" && route.page === "features") return true;
     if (id === "contact" && route.page === "contact") return true;
     return false;
@@ -102,6 +104,7 @@ export default function Navbar() {
     } else {
       // Default navigation
       if (id === "home") navigate({ page: "home" });
+      else if (id === "guide") navigate({ page: "guide" });
       else if (id === "features") {
         if (route.page === "home") {
           const el = document.getElementById("features-section");
@@ -122,6 +125,12 @@ export default function Navbar() {
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
         <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    )},
+    { id: "guide", label: "Guide", icon: () => (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
       </svg>
     )},
     { id: "watchnow", label: "Watch", icon: () => (
@@ -145,6 +154,7 @@ export default function Navbar() {
 
   const isBottomActive = (id: string) => {
     if (id === "home" && route.page === "home") return true;
+    if (id === "guide" && route.page === "guide") return true;
     if (id === "watchnow" && route.page === "watchnow") return true;
     if (id === "watchnow" && ["dub", "movies", "tv", "manga", "anime", "watch", "movie-detail", "tv-detail", "movie-watch", "tv-watch", "manga-detail", "manga-read"].includes(route.page)) return true;
     if (id === "features" && route.page === "features") return true;
@@ -154,6 +164,7 @@ export default function Navbar() {
 
   const handleBottomNav = (id: string) => {
     if (id === "home") navigate({ page: "home" });
+    else if (id === "guide") navigate({ page: "guide" });
     else if (id === "watchnow") navigate({ page: "watchnow" });
     else if (id === "features") {
       if (route.page === "home") {

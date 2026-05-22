@@ -112,6 +112,7 @@ type Route =
   | { page: "tv-watch"; id: number; season: number; episode: number }
   | { page: "watchnow" }
   | { page: "contact" }
+  | { page: "guide" }
   | { page: "features" };
 
 // ============================================================
@@ -242,6 +243,7 @@ export function parseHash(hash: string): Route {
     return { page: "tv-watch", id: parseInt(parts[1]), season: parseInt(parts[2]), episode: parseInt(parts[3]) };
   if (parts[0] === "watchnow") return { page: "watchnow" };
   if (parts[0] === "contact") return { page: "contact" };
+  if (parts[0] === "guide") return { page: "guide" };
   if (parts[0] === "features") return { page: "features" };
   return { page: "home" };
 }
