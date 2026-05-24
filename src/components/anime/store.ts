@@ -113,7 +113,8 @@ type Route =
   | { page: "watchnow" }
   | { page: "contact" }
   | { page: "guide" }
-  | { page: "features" };
+  | { page: "features" }
+  | { page: "live" };
 
 // ============================================================
 // App Store
@@ -173,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       else if (route.page === "watchnow") window.location.hash = "watchnow";
       else if (route.page === "contact") window.location.hash = "contact";
       else if (route.page === "features") window.location.hash = "features";
+      else if (route.page === "live") window.location.hash = "live";
       window.scrollTo(0, 0);
     }
   },
@@ -245,6 +247,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === "contact") return { page: "contact" };
   if (parts[0] === "guide") return { page: "guide" };
   if (parts[0] === "features") return { page: "features" };
+  if (parts[0] === "live") return { page: "live" };
   return { page: "home" };
 }
 

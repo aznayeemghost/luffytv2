@@ -23,6 +23,7 @@ import MangaReader from "@/components/anime/manga-reader";
 import WatchNowPage from "@/components/anime/watchnow-page";
 import ContactPage from "@/components/anime/contact-page";
 import GuidePage from "@/components/anime/guide-page";
+import LivePage from "@/components/anime/live-page";
 
 // Error Boundary — catches client-side crashes gracefully
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
@@ -215,6 +216,7 @@ export default function MainPage() {
       case "watchnow": return <WatchNowPage />;
       case "contact": return <ContactPage />;
       case "guide": return <GuidePage />;
+      case "live": return <LivePage />;
       case "features": {
         // Scroll to features section after rendering home page
         setTimeout(() => {
@@ -257,6 +259,7 @@ export default function MainPage() {
                 <div className="flex items-center gap-6">
                   {[
                     { label: "Home", page: "home" as const },
+                    { label: "Live TV", page: "live" as const },
                     { label: "Guide", page: "guide" as const },
                     { label: "Watch Now", page: "watchnow" as const },
                     { label: "Features", page: "features" as const },

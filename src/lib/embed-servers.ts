@@ -1,17 +1,18 @@
 // Embed Server Providers for Luffy TV
 //
 // Servers are categorized by content type and ID type:
-// - Anime servers (1-6) → use AniList ID (iframe embeds)
-// - Miruro/Megaplay servers (11-14) → use AniList ID + MAL ID (iframe embeds via megaplay.buzz)
-// - Hindi servers → dedicated Hindi Dub servers (AniList ID) — ONLY anixtv
-// - Movie/TV servers → use TMDB ID (iframe embeds)
-//
-// Megaplay.buzz replaces the old broken Miruro HLS player.
-// All megaplay servers are direct iframe embeds that WORK.
+// - Anime servers (1-14) → use AniList ID (iframe embeds)
+//   - Servers 1-7: AniList-based direct embeds
+//   - Servers 11-14: Megaplay/Miruro MAL-based embeds
+// - Hindi servers → dedicated Hindi Dub servers (AniList ID)
+// - TMDB servers → use TMDB ID for Movies and TV Shows (iframe embeds)
+//   - Named servers: VidCore, VidPlays, VidFast, VidNest, Videasy, VidPlus,
+//     Peachify, EmbedMaster, VidLink, VidSrcMe, ScreenScape, VidRock,
+//     VidZen, VidAPI, VidBinge, 2Embed, VidSrc.to, VidSrc.io, DropFile, SuperEmbed
 
 export interface EmbedServer {
   id: string;
-  name: string;           // Display name: "Server 1", "Server 2", etc.
+  name: string;           // Display name: "Server 1", "VidCore", etc.
   priority: number;
   supportsSub: boolean;
   supportsDub: boolean;
@@ -32,6 +33,7 @@ export interface EmbedUrlParams {
   season?: number;
   translation: "sub" | "dub" | "hindi";
   title?: string;
+  language?: string;       // Language code: en, es, ja, fr, hi, etc.
 }
 
 // =====================================================
@@ -241,8 +243,7 @@ const megaplayAniDub2: EmbedServer = {
 };
 
 // ============================================================
-// Hindi-specific servers — ONLY anixtv as requested by user
-// "in hindi sector only one server that is hindi server 1 anixtv ok"
+// Hindi-specific servers — AniList-based Hindi Dub servers
 // ============================================================
 
 const anixtvHindi: EmbedServer = {
@@ -270,7 +271,7 @@ const anixtvHindi: EmbedServer = {
 
 const vidcore: EmbedServer = {
   id: "vidcore",
-  name: "Server 1",
+  name: "VidCore",
   priority: 0,
   supportsSub: true,
   supportsDub: false,
@@ -289,7 +290,7 @@ const vidcore: EmbedServer = {
 
 const vidplays: EmbedServer = {
   id: "vidplays",
-  name: "Server 2",
+  name: "VidPlays",
   priority: 1,
   supportsSub: true,
   supportsDub: false,
@@ -308,7 +309,7 @@ const vidplays: EmbedServer = {
 
 const vidfast: EmbedServer = {
   id: "vidfast",
-  name: "Server 3",
+  name: "VidFast",
   priority: 2,
   supportsSub: true,
   supportsDub: false,
@@ -327,7 +328,7 @@ const vidfast: EmbedServer = {
 
 const vidnestTv: EmbedServer = {
   id: "vidnest-tv",
-  name: "Server 4",
+  name: "VidNest",
   priority: 3,
   supportsSub: true,
   supportsDub: false,
@@ -344,7 +345,7 @@ const vidnestTv: EmbedServer = {
 
 const videasyTv: EmbedServer = {
   id: "videasy-tv",
-  name: "Server 5",
+  name: "Videasy",
   priority: 4,
   supportsSub: true,
   supportsDub: false,
@@ -363,7 +364,7 @@ const videasyTv: EmbedServer = {
 
 const vidplus: EmbedServer = {
   id: "vidplus",
-  name: "Server 6",
+  name: "VidPlus",
   priority: 5,
   supportsSub: true,
   supportsDub: false,
@@ -382,7 +383,7 @@ const vidplus: EmbedServer = {
 
 const peachify: EmbedServer = {
   id: "peachify",
-  name: "Server 7",
+  name: "Peachify",
   priority: 6,
   supportsSub: true,
   supportsDub: true,
@@ -413,7 +414,7 @@ const peachify: EmbedServer = {
 
 const embedmaster: EmbedServer = {
   id: "embedmaster",
-  name: "Server 8",
+  name: "EmbedMaster",
   priority: 7,
   supportsSub: true,
   supportsDub: false,
@@ -432,7 +433,7 @@ const embedmaster: EmbedServer = {
 
 const vidlink: EmbedServer = {
   id: "vidlink",
-  name: "Server 9",
+  name: "VidLink",
   priority: 8,
   supportsSub: true,
   supportsDub: false,
@@ -451,7 +452,7 @@ const vidlink: EmbedServer = {
 
 const vidsrcme: EmbedServer = {
   id: "vidsrcme",
-  name: "Server 10",
+  name: "VidSrcMe",
   priority: 9,
   supportsSub: true,
   supportsDub: false,
@@ -467,6 +468,245 @@ const vidsrcme: EmbedServer = {
 };
 
 // ============================================================
+// NEW TMDB-based servers — additional embed providers
+// ============================================================
+
+const screenscape: EmbedServer = {
+  id: "screenscape",
+  name: "ScreenScape",
+  priority: 10,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: true,
+  idType: "tmdb",
+  color: "#FF6B35",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      let url = `https://screenscape.me/embed?tmdb=${p.tmdbId}&type=tv&season=${p.season}&episode=${p.episode}`;
+      if (p.translation === "hindi") {
+        url += "&lan=hindi";
+      }
+      return url;
+    }
+    let url = `https://screenscape.me/embed?tmdb=${p.tmdbId}&type=movie`;
+    if (p.translation === "hindi") {
+      url += "&lan=hindi";
+    }
+    return url;
+  },
+};
+
+const vidrock: EmbedServer = {
+  id: "vidrock",
+  name: "VidRock",
+  priority: 11,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#EF4444",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      return `https://vidrock.ru/tv/${p.tmdbId}/${p.season}/${p.episode}`;
+    }
+    return `https://vidrock.ru/movie/${p.tmdbId}`;
+  },
+};
+
+const vidzen: EmbedServer = {
+  id: "vidzen",
+  name: "VidZen",
+  priority: 12,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#6366F1",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      return `https://vidzen.fun/tv/${p.tmdbId}/${p.season}/${p.episode}`;
+    }
+    return `https://vidzen.fun/movie/${p.tmdbId}`;
+  },
+};
+
+const vidapi: EmbedServer = {
+  id: "vidapi",
+  name: "VidAPI",
+  priority: 13,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#14B8A6",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      let url = `https://vaplayer.ru/embed/tv/${p.tmdbId}/${p.season}/${p.episode}`;
+      if (p.language) {
+        url += `?ds_lang=${p.language}`;
+      }
+      return url;
+    }
+    let url = `https://vaplayer.ru/embed/movie/${p.tmdbId}`;
+    if (p.language) {
+      url += `?ds_lang=${p.language}`;
+    }
+    return url;
+  },
+};
+
+const vidbinge: EmbedServer = {
+  id: "vidbinge",
+  name: "VidBinge",
+  priority: 14,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#8B5CF6",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      return `https://vidbinge.to/tv/${p.tmdbId}/${p.season}/${p.episode}`;
+    }
+    return `https://vidbinge.to/movie/${p.tmdbId}`;
+  },
+};
+
+const twoembed: EmbedServer = {
+  id: "twoembed",
+  name: "2Embed",
+  priority: 15,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#F59E0B",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      return `https://www.2embed.cc/embedtv/${p.tmdbId}&s=${p.season}&e=${p.episode}&tmdb=1`;
+    }
+    return `https://www.2embed.cc/embed/${p.tmdbId}`;
+  },
+};
+
+const vidsrcto: EmbedServer = {
+  id: "vidsrcto",
+  name: "VidSrc.to",
+  priority: 16,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#22C55E",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      return `https://vidsrc.to/embed/tv/${p.tmdbId}/${p.season}/${p.episode}`;
+    }
+    return `https://vidsrc.to/embed/movie/${p.tmdbId}`;
+  },
+};
+
+const vidsrcio: EmbedServer = {
+  id: "vidsrcio",
+  name: "VidSrc.io",
+  priority: 17,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#10B981",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      return `https://vidsrc-embed.ru/embed/tv?tmdb=${p.tmdbId}&season=${p.season}&episode=${p.episode}`;
+    }
+    return `https://vidsrc-embed.ru/embed/movie?tmdb=${p.tmdbId}`;
+  },
+};
+
+const dropfile: EmbedServer = {
+  id: "dropfile",
+  name: "DropFile",
+  priority: 18,
+  supportsSub: true,
+  supportsDub: true,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#A78BFA",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId && !p.malId) return "";
+    // Prefer MAL ID for anime content if available
+    if (p.malId && p.season && p.season > 0) {
+      const audio = p.translation === "dub" ? "dub" : "sub";
+      const lang = p.language || "en";
+      return `https://dropfile.cc/player/tv/mal-${p.malId}/${p.season}/${p.episode}?audio=${audio}&lang=${lang}`;
+    }
+    if (!p.tmdbId) return "";
+    const audio = p.translation === "dub" ? "dub" : "sub";
+    const lang = p.language || "en";
+    if (p.season && p.season > 0) {
+      return `https://dropfile.cc/player/tv/${p.tmdbId}/${p.season}/${p.episode}?audio=${audio}&lang=${lang}`;
+    }
+    return `https://dropfile.cc/player/movie/${p.tmdbId}?audio=${audio}&lang=${lang}`;
+  },
+};
+
+const superembed: EmbedServer = {
+  id: "superembed",
+  name: "SuperEmbed",
+  priority: 19,
+  supportsSub: true,
+  supportsDub: false,
+  supportsHindi: false,
+  idType: "tmdb",
+  color: "#EC4899",
+  category: "tmdb",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    return `https://www.superembed.stream/play/${p.tmdbId}`;
+  },
+};
+
+// ============================================================
+// Hindi-specific TMDB server — ScreenScape Hindi
+// ============================================================
+
+const screenscapeHindi: EmbedServer = {
+  id: "screenscape-hindi",
+  name: "ScreenScape Hindi",
+  priority: 1,
+  supportsSub: false,
+  supportsDub: false,
+  supportsHindi: true,
+  idType: "tmdb",
+  color: "#FF6B35",
+  category: "hindi",
+  generateUrl: (p) => {
+    if (!p.tmdbId) return "";
+    if (p.season && p.season > 0) {
+      return `https://screenscape.me/embed?tmdb=${p.tmdbId}&type=tv&season=${p.season}&episode=${p.episode}&lan=hindi`;
+    }
+    return `https://screenscape.me/embed?tmdb=${p.tmdbId}&type=movie&lan=hindi`;
+  },
+};
+
+// ============================================================
 // ALL SERVERS — raw definitions
 // ============================================================
 
@@ -474,13 +714,18 @@ const ALL_SERVERS: EmbedServer[] = [
   // AniList-based anime servers (iframe embeds) — Servers 1-7
   vidnestAnime, vidnestAnimepahe, videasyAnime, vidplusAnime,
   tryembedAnime, megaplayAniSub, megaplayAniDub,
-  // Megaplay/Miruro servers — Servers 11-14 (user requested these names)
+  // Megaplay/Miruro servers — Servers 11-14
   megaplayMalSub, megaplayMalDub, megaplayAniSub2, megaplayAniDub2,
-  // Hindi servers (only anixtv)
+  // Hindi servers (anilist-based)
   anixtvHindi,
-  // TMDB-based Movie/TV servers
+  // Hindi servers (tmdb-based)
+  screenscapeHindi,
+  // TMDB-based Movie/TV servers (existing)
   vidcore, vidplays, vidfast, vidnestTv, videasyTv,
   vidplus, peachify, embedmaster, vidlink, vidsrcme,
+  // TMDB-based Movie/TV servers (new)
+  screenscape, vidrock, vidzen, vidapi, vidbinge,
+  twoembed, vidsrcto, vidsrcio, dropfile, superembed,
 ];
 
 /**
@@ -499,13 +744,12 @@ export function getAnimeServers(): EmbedServer[] {
 
 /**
  * Get servers available for Hindi Dub
- * Only anixtv — user requested "in hindi sector only one server that is hindi server 1 anixtv"
+ * Includes both AniList-based and TMDB-based Hindi servers
  */
 export function getHindiServers(): EmbedServer[] {
   const servers = ALL_SERVERS.filter(s => s.category === "hindi");
   return servers.map((s, i) => ({
     ...s,
-    name: i === 0 ? "Hindi Server 1 AnixTV" : `Hindi Server ${i + 1}`,
     priority: i,
   }));
 }
@@ -513,14 +757,24 @@ export function getHindiServers(): EmbedServer[] {
 /**
  * Get servers available for Movie/TV content
  * Includes: TMDB-based servers only
+ * Uses descriptive names: VidCore, VidPlays, VidFast, etc.
  */
 export function getTmdbServers(): EmbedServer[] {
-  const servers = ALL_SERVERS.filter(s => s.idType === "tmdb");
+  const servers = ALL_SERVERS.filter(s => s.idType === "tmdb" && s.category !== "hindi");
   return servers.map((s, i) => ({
     ...s,
-    name: `Server ${i + 1}`,
     priority: i,
   }));
+}
+
+/**
+ * Get servers that support multiple languages
+ * These servers accept a language parameter for different audio/subtitle tracks
+ * Includes: DropFile, VidAPI, ScreenScape
+ */
+export function getMultiLangServers(): EmbedServer[] {
+  const multiLangIds = ["dropfile", "vidapi", "screenscape"];
+  return ALL_SERVERS.filter(s => multiLangIds.includes(s.id));
 }
 
 /**
@@ -538,10 +792,30 @@ export function getEmbedUrl(serverId: string, params: EmbedUrlParams): string {
 }
 
 /**
- * Check if any Hindi Dub server is available for the given AniList ID
+ * Check if any Hindi Dub server is available for the given AniList ID or TMDB ID
  */
-export function hasHindiSupport(anilistId?: number): boolean {
-  if (!anilistId) return false;
+export function hasHindiSupport(anilistId?: number, tmdbId?: number): boolean {
   const hindiServers = getHindiServers();
-  return hindiServers.length > 0;
+  if (hindiServers.length === 0) return false;
+  // Check if any Hindi server supports the provided ID type
+  return hindiServers.some(s => {
+    if (s.idType === "anilist" && anilistId) return true;
+    if (s.idType === "tmdb" && tmdbId) return true;
+    return false;
+  });
+}
+
+/**
+ * Get the SuperEmbed API URL for fetching multiple embed sources
+ * Returns the API endpoint that can be called to get a list of embed links
+ */
+export function getSuperEmbedApiUrl(tmdbId: number): string {
+  return `https://seapi.link/?type=tmdb&id=${tmdbId}&max_results=3`;
+}
+
+/**
+ * Get VidZen anime URL (for anime content with TMDB ID)
+ */
+export function getVidZenAnimeUrl(tmdbId: number, season: number, episode: number): string {
+  return `https://vidzen.fun/anime/${tmdbId}/${season}/${episode}`;
 }

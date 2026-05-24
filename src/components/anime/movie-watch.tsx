@@ -123,7 +123,7 @@ export default function MovieWatchPage({ movieId }: { movieId: number }) {
               className={`server-pill text-[11px] py-1.5 px-3 ${activeServer === server.id ? "active" : ""}`}
             >
               <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: server.color }} />
-              Server {idx + 1}
+              {server.name}
             </button>
           ))}
           {/* Proxy / Direct toggle */}
