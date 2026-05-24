@@ -166,6 +166,70 @@ export default function WatchNowPage() {
         Choose a category and start exploring. Everything is free, no sign-up needed.
       </p>
 
+      {/* ─── Live TV & Sports Banner ─── */}
+      <div className="w-full max-w-2xl mb-8">
+        <button
+          onClick={() => navigate({ page: "live" })}
+          className="lunar-fade-in-up group relative w-full flex items-center gap-5 p-5 sm:p-6 rounded-2xl border transition-all duration-300 hover:scale-[1.02] overflow-hidden"
+          style={{
+            animationDelay: "0.25s",
+            animationFillMode: "both",
+            background: "linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(249,115,22,0.06) 50%, rgba(234,179,8,0.04) 100%)",
+            borderColor: "rgba(239,68,68,0.15)",
+          }}
+        >
+          {/* Animated background pulse */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+            style={{ background: "radial-gradient(ellipse at 20% 50%, rgba(239,68,68,0.1) 0%, transparent 60%)" }}
+          />
+
+          {/* Icon with live pulse */}
+          <div className="relative z-[1] flex items-center justify-center w-14 h-14 rounded-xl border shrink-0"
+            style={{
+              background: "rgba(239,68,68,0.1)",
+              borderColor: "rgba(239,68,68,0.2)",
+            }}
+          >
+            <svg className="w-7 h-7 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            {/* Live pulse dot */}
+            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500" />
+            </span>
+          </div>
+
+          {/* Text */}
+          <div className="relative z-[1] flex-1 text-left">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span
+                className="text-[14px] sm:text-[15px] font-bold text-white group-hover:text-red-300 transition-colors"
+                style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+              >
+                LIVE TV & SPORTS
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/20">
+                LIVE
+              </span>
+            </div>
+            <p
+              className="text-[12px] sm:text-[13px] text-white/40 group-hover:text-white/55 transition-colors"
+              style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+            >
+              Watch live sports, TV channels & real-time streams
+            </p>
+          </div>
+
+          {/* Arrow */}
+          <svg className="relative z-[1] w-5 h-5 text-white/20 group-hover:text-red-400 group-hover:translate-x-1 transition-all shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+
       {/* ─── Category Grid ─── */}
       <div className="w-full max-w-2xl">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

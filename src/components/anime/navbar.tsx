@@ -75,7 +75,6 @@ export default function Navbar() {
   // Default nav links (shown on home, features, contact, watchnow, etc.)
   const defaultNavLinks = [
     { id: "home", label: "Home" },
-    { id: "live", label: "Live" },
     { id: "guide", label: "Guide" },
     { id: "features", label: "Features" },
     { id: "contact", label: "Contact" },
@@ -94,7 +93,6 @@ export default function Navbar() {
     if (id === "guide" && route.page === "guide") return true;
     if (id === "features" && route.page === "features") return true;
     if (id === "contact" && route.page === "contact") return true;
-    if (id === "live" && route.page === "live") return true;
     return false;
   };
 
@@ -117,7 +115,6 @@ export default function Navbar() {
         }
       }
       else if (id === "contact") navigate({ page: "contact" });
-      else if (id === "live") navigate({ page: "live" });
     }
     setMobileMenuOpen(false);
   };
@@ -134,13 +131,6 @@ export default function Navbar() {
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-      </svg>
-    )},
-    { id: "live", label: "Live", icon: () => (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
       </svg>
     )},
     { id: "watchnow", label: "Watch", icon: () => (
@@ -169,7 +159,6 @@ export default function Navbar() {
     if (id === "watchnow" && ["dub", "movies", "tv", "manga", "anime", "watch", "movie-detail", "tv-detail", "movie-watch", "tv-watch", "manga-detail", "manga-read"].includes(route.page)) return true;
     if (id === "features" && route.page === "features") return true;
     if (id === "contact" && route.page === "contact") return true;
-    if (id === "live" && route.page === "live") return true;
     return false;
   };
 
@@ -184,7 +173,6 @@ export default function Navbar() {
       } else navigate({ page: "features" });
     }
     else if (id === "contact") navigate({ page: "contact" });
-    else if (id === "live") navigate({ page: "live" });
   };
 
   return (
