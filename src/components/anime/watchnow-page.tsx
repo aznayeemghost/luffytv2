@@ -51,6 +51,20 @@ const categories = [
     page: "tv" as const,
   },
   {
+    id: "live",
+    title: "Live TV",
+    desc: "Watch live sports and TV channels worldwide",
+    icon: (
+      <svg className="w-7 h-7" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="24" cy="24" r="20" />
+        <circle cx="24" cy="24" r="8" />
+        <circle cx="24" cy="24" r="2" fill="currentColor" />
+      </svg>
+    ),
+    color: "#ef4444",
+    page: "live" as any,
+  },
+  {
     id: "manga",
     title: "Manga",
     desc: "Read your favorite manga chapters online",
@@ -236,7 +250,7 @@ export default function WatchNowPage() {
           {categories.map((cat, i) => (
             <button
               key={cat.id}
-              onClick={() => navigate({ page: cat.page })}
+              onClick={() => navigate(cat.id === "live" ? { page: "live" } as any : { page: cat.page })}
               className="lunar-fade-in-up group relative flex flex-col items-center gap-3 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-300 hover:scale-[1.03]"
               style={{
                 animationDelay: `${0.3 + i * 0.08}s`,
