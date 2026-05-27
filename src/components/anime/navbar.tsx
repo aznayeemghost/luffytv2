@@ -44,6 +44,15 @@ function AnimeIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function LiveTVIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="14" rx="2" ry="2" />
+      <path d="M8 10l4 3 4-3" />
+      <circle cx="17" cy="7" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}
 function MangaIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -110,6 +119,7 @@ export default function Navbar() {
 
   const navItems = [
     { id: "home", label: "Home", icon: HomeIcon },
+    { id: "live", label: "Live TV", icon: LiveTVIcon },
     { id: "schedule", label: "Schedule", icon: ScheduleIcon },
     { id: "movies", label: "Movies", icon: MovieIcon },
     { id: "tv", label: "TV Shows", icon: TVIcon },
@@ -120,6 +130,7 @@ export default function Navbar() {
 
   const isActive = (id: string) => {
     if (id === "home" && route.page === "home") return true;
+    if (id === "live" && (route.page === "live" || route.page === "live-watch")) return true;
     if (id === "schedule" && route.page === "schedule") return true;
     if (id === "movies" && route.page === "movies") return true;
     if (id === "tv" && route.page === "tv") return true;
@@ -131,6 +142,7 @@ export default function Navbar() {
 
   const handleNav = (id: string) => {
     if (id === "home") navigate({ page: "home" });
+    else if (id === "live") navigate({ page: "live" });
     else if (id === "schedule") navigate({ page: "schedule" });
     else if (id === "movies") navigate({ page: "movies" });
     else if (id === "tv") navigate({ page: "tv" });

@@ -42,6 +42,7 @@ interface UnifiedMatch {
   type: "sport" | "channel";
   channelImage?: string;
   countryCode?: string;
+  _relatedIds?: string[];  // IDs of same-game matches from other providers
 }
 
 const SPORT_MAP: Record<string, string> = {
@@ -167,6 +168,8 @@ async function fetchDamiTV(): Promise<UnifiedMatch[]> {
       const catName = category.category || "other";
       for (const stream of category.streams || []) {
         const status = stream.status === "live" ? "live" as const : stream.status === "ended" ? "ended" as const : "upcoming" as const;
+        // Use the embed URL directly from the Dami API response
+        const embedUrl: string | undefined = stream.embed;
         matches.push({
           id: `dami_${stream.id}`,
           title: stream.name || `${stream.teams?.home?.name || "TBD"} vs ${stream.teams?.away?.name || "TBD"}`,
@@ -178,7 +181,12 @@ async function fetchDamiTV(): Promise<UnifiedMatch[]> {
           viewers: stream.viewers || 0,
           homeTeam: stream.teams?.home?.name,
           awayTeam: stream.teams?.away?.name,
-          sources: [{ source: "dami-tv", sourceId: stream.id, streamType: "embed" as const }],
+          sources: [{
+            source: "dami-tv",
+            sourceId: stream.id,
+            streamType: "embed" as const,
+            embeds: embedUrl ? [{ url: embedUrl, source: "DamiTV", quality: "HD", language: "English" }] : [],
+          }],
           type: "sport" as const,
         });
       }
@@ -339,14 +347,112 @@ export async function GET(request: NextRequest) {
     if (sfMatches.status === "fulfilled") allMatches.push(...sfMatches.value);
     if (cdnChannels.status === "fulfilled") allChannels.push(...cdnChannels.value);
 
-    // Deduplicate sports matches by title similarity
-    const seen = new Set<string>();
-    const dedupedMatches = allMatches.filter((m) => {
-      const key = m.title.toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    // Merge sports matches — combine sources from different providers.
+    // Strategy: First try exact title match, then try team-based fuzzy match.
+    // This handles cases like "Man City vs Arsenal" vs "Manchester City vs Arsenal".
+    function normalizeTeamName(name: string): string {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, "")
+        .trim()
+        // Expand common abbreviations
+        .replace(/\bman\b/g, "manchester")
+        .replace(/\bunited\b/g, "utd")
+        .replace(/\bwolverhampton\b/g, "wolves")
+        .replace(/\btottenham\b/g, "spurs")
+        .replace(/\bblackburn\b/g, "rovers")
+        .split(/\s+/)
+        .sort()
+        .join(" ");
+    }
+
+    function matchesAreSame(a: UnifiedMatch, b: UnifiedMatch): boolean {
+      // Exact title match
+      const keyA = a.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const keyB = b.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (keyA === keyB) return true;
+
+      // Team-based fuzzy match — if both matches have teams, check if they refer to the same game
+      if (a.homeTeam && a.awayTeam && b.homeTeam && b.awayTeam) {
+        const aHome = normalizeTeamName(a.homeTeam);
+        const aAway = normalizeTeamName(a.awayTeam);
+        const bHome = normalizeTeamName(b.homeTeam);
+        const bAway = normalizeTeamName(b.awayTeam);
+
+        // Check if the sets of team names overlap significantly
+        // Home vs Home + Away vs Away, OR Home vs Away + Away vs Home
+        const directMatch = (aHome === bHome && aAway === bAway) || (aHome === bAway && aAway === bHome);
+        if (directMatch) return true;
+
+        // Partial match: at least one team name is the same AND same sport
+        if (a.sport === b.sport) {
+          const aTeams = new Set([aHome, aAway]);
+          const bTeams = new Set([bHome, bAway]);
+          let overlap = 0;
+          for (const t of aTeams) {
+            for (const bt of bTeams) {
+              if (t === bt || t.includes(bt) || bt.includes(t)) overlap++;
+            }
+          }
+          if (overlap >= 2) return true;
+          // One team exact match + same category
+          if (overlap >= 1 && a.category === b.category) {
+            // Extra check: titles share significant words
+            const aWords = new Set(a.title.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter(w => w.length > 3));
+            const bWords = new Set(b.title.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter(w => w.length > 3));
+            let wordOverlap = 0;
+            for (const w of aWords) { if (bWords.has(w)) wordOverlap++; }
+            if (wordOverlap >= 2) return true;
+          }
+        }
+      }
+
+      // Title similarity for matches without teams
+      if ((!a.homeTeam || !a.awayTeam) && (!b.homeTeam || !b.awayTeam) && a.sport === b.sport) {
+        const aWords = new Set(keyA.split(/(?=.)/).join("").match(/.{1,4}/g) || []);
+        // Simple: check if 80%+ of shorter title is contained in longer title
+        const shorter = keyA.length < keyB.length ? keyA : keyB;
+        const longer = keyA.length < keyB.length ? keyB : keyA;
+        let matchChars = 0;
+        for (let i = 0; i < shorter.length; i++) {
+          if (longer.includes(shorter.slice(i, i + 4))) matchChars++;
+        }
+        if (matchChars / shorter.length > 0.6) return true;
+      }
+
+      return false;
+    }
+
+    const dedupedMatches: UnifiedMatch[] = [];
+    for (const m of allMatches) {
+      // Find an existing match that represents the same game
+      const existingIdx = dedupedMatches.findIndex(e => matchesAreSame(e, m));
+      if (existingIdx >= 0) {
+        const existing = dedupedMatches[existingIdx];
+        // Merge sources — add any source names we don't already have
+        const existingSourceKeys = new Set(existing.sources.map(s => s.source));
+        for (const src of m.sources) {
+          if (!existingSourceKeys.has(src.source)) {
+            existing.sources.push(src);
+            existingSourceKeys.add(src.source);
+          }
+        }
+        // Keep richer data
+        if (m.poster && !existing.poster) existing.poster = m.poster;
+        if (m.homeTeam && !existing.homeTeam) existing.homeTeam = m.homeTeam;
+        if (m.awayTeam && !existing.awayTeam) existing.awayTeam = m.awayTeam;
+        if (m.homeLogo && !existing.homeLogo) existing.homeLogo = m.homeLogo;
+        if (m.awayLogo && !existing.awayLogo) existing.awayLogo = m.awayLogo;
+        if (m.league && !existing.league) existing.league = m.league;
+        if ((m.viewers || 0) > (existing.viewers || 0)) existing.viewers = m.viewers;
+        // If the merged match now has more sources, also store related IDs
+        // so the watch page can find ALL sources for this game
+        if (!existing._relatedIds) (existing as any)._relatedIds = [existing.id];
+        (existing as any)._relatedIds.push(m.id);
+      } else {
+        dedupedMatches.push({ ...m, sources: [...m.sources] });
+      }
+    }
 
     // Sort: live first, then upcoming, then ended
     dedupedMatches.sort((a, b) => {

@@ -21,6 +21,8 @@ import TVWatchPage from "@/components/anime/tv-watch";
 import MangaPage from "@/components/anime/manga-page";
 import MangaDetailPage from "@/components/anime/manga-detail";
 import MangaReader from "@/components/anime/manga-reader";
+import LivePage from "@/components/anime/live-page";
+import LiveWatchPage from "@/components/anime/live-watch-page";
 
 // Error Boundary — catches client-side crashes gracefully
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
@@ -157,7 +159,7 @@ export default function MainPage() {
     );
   }
 
-  const isWatchPage = route.page === "watch" || route.page === "movie-watch" || route.page === "tv-watch";
+  const isWatchPage = route.page === "watch" || route.page === "movie-watch" || route.page === "tv-watch" || route.page === "live-watch";
   const isMangaReader = route.page === "manga-read";
 
   const renderPage = () => {
@@ -180,6 +182,8 @@ export default function MainPage() {
       case "tv-detail": return <TVDetailPage tvId={route.id} />;
       case "movie-watch": return <MovieWatchPage movieId={route.id} />;
       case "tv-watch": return <TVWatchPage tvId={route.id} season={route.season} episode={route.episode} />;
+      case "live": return <LivePage />;
+      case "live-watch": return <LiveWatchPage matchId={route.matchId} source={route.source} sourceId={route.sourceId} />;
       default: return <HomePage />;
     }
   };

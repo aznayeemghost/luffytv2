@@ -43,7 +43,11 @@ export default function LiveWatchPage({ matchId, source, sourceId }: LiveWatchPr
   const [matchData, setMatchData] = useState<any>(null);
   const [iframeKey, setIframeKey] = useState(0); // Force iframe reload on server switch
 
-  // Fetch match details
+  // ── Fetch match details AND find ALL related matches across providers ──
+  // ROOT CAUSE FIX: When a match comes from WatchFooty (id: wf_123),
+  // we need to ALSO find the StreamedPK version of the same match
+  // (id: streamed_456) and merge their sources together.
+  // Without this, only WatchFooty sources (DamiTV, EmbedSports) show up.
   useEffect(() => {
     let cancelled = false;
     async function loadMatch() {
@@ -51,51 +55,194 @@ export default function LiveWatchPage({ matchId, source, sourceId }: LiveWatchPr
         const res = await fetch("/api/live/matches");
         if (!res.ok) return;
         const data = await res.json();
-        const match = (data.matches || []).find((m: any) => m.id === matchId);
-        const channel = (data.channels || []).find((c: any) => c.id === matchId);
-        const item = match || channel;
-        if (!cancelled && item) {
-          setMatchTitle(item.title || "Live Stream");
-          setMatchData(item);
+        const allItems = [...(data.matches || []), ...(data.channels || [])];
+
+        // Find the clicked match
+        const item = allItems.find((m: any) => m.id === matchId);
+        if (!item) return;
+
+        // ── THE KEY FIX: Find ALL matches for the same game across providers ──
+        // We use team names to match - "Man City vs Arsenal" from WatchFooty
+        // should also find "Manchester City vs Arsenal" from StreamedPK
+        const mergedSources = [...(item.sources || [])];
+
+        if (item.homeTeam && item.awayTeam) {
+          const clickedHome = item.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, "");
+          const clickedAway = item.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+          for (const other of allItems) {
+            if (other.id === matchId) continue; // skip self
+            if (!other.homeTeam || !other.awayTeam) continue;
+            if (other.type === "channel") continue; // channels are different
+
+            const otherHome = other.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, "");
+            const otherAway = other.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+            // Check if this is the same game: same two teams (order may differ)
+            const sameGame =
+              (clickedHome === otherHome && clickedAway === otherAway) ||
+              (clickedHome === otherAway && clickedAway === otherHome) ||
+              // Partial match: one team name contains the other
+              (clickedHome.includes(otherHome) || otherHome.includes(clickedHome)) &&
+              (clickedAway.includes(otherAway) || otherAway.includes(clickedAway));
+
+            if (sameGame) {
+              // Merge sources from this related match!
+              const existingSourceKeys = new Set(mergedSources.map((s: any) => s.source));
+              for (const src of other.sources || []) {
+                if (!existingSourceKeys.has(src.source)) {
+                  mergedSources.push(src);
+                  existingSourceKeys.add(src.source);
+                }
+              }
+              // Also take richer data if available
+              if (other.poster && !item.poster) item.poster = other.poster;
+              if (other.homeLogo && !item.homeLogo) item.homeLogo = other.homeLogo;
+              if (other.awayLogo && !item.awayLogo) item.awayLogo = other.awayLogo;
+              if (other.league && !item.league) item.league = other.league;
+            }
+          }
         }
-      } catch {}
+
+        // Also check _relatedIds from the API merge
+        if (item._relatedIds && item._relatedIds.length > 0) {
+          for (const rid of item._relatedIds) {
+            const related = allItems.find((m: any) => m.id === rid);
+            if (related && related.id !== matchId) {
+              const existingSourceKeys = new Set(mergedSources.map((s: any) => s.source));
+              for (const src of related.sources || []) {
+                if (!existingSourceKeys.has(src.source)) {
+                  mergedSources.push(src);
+                  existingSourceKeys.add(src.source);
+                }
+              }
+            }
+          }
+        }
+
+        if (!cancelled) {
+          setMatchTitle(item.title || "Live Stream");
+          setMatchData({ ...item, sources: mergedSources });
+        }
+      } catch (e) {
+        console.error("[live-watch] loadMatch error:", e);
+      }
     }
     loadMatch();
     return () => { cancelled = true; };
   }, [matchId]);
 
-  // Fetch streams
-  const fetchStreams = useCallback(async () => {
+  // ── Fetch streams from ALL sources in the match ──
+  // Now that matchData.sources includes StreamedPK sources (admin, delta, echo etc.),
+  // we fetch from EACH source independently.
+  const fetchAllStreams = useCallback(async () => {
+    if (!matchData?.sources || matchData.sources.length === 0) return;
+
     setLoading(true);
     setError(null);
-    try {
-      const params = new URLSearchParams({
-        matchId: matchId,
-        source: source,
-      });
-      if (sourceId) {
-        params.set("sourceId", sourceId);
-      }
-      const res = await fetch(`/api/live/stream?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to get streams");
-      const data = await res.json();
-      if (data.success) {
-        const newStreams = data.streams || [];
-        setStreams(newStreams);
-        if (newStreams.length === 0) {
-          setError("No streams available. The match may not have started yet or all servers are down.");
-        }
-      }
-    } catch (e: any) {
-      setError(e.message || "Failed to load streams");
-    } finally {
-      setLoading(false);
-    }
-  }, [matchId, source, sourceId]);
 
+    const allStreams: StreamInfo[] = [];
+    const errors: string[] = [];
+
+    console.log("[live-watch] Fetching streams from", matchData.sources.length, "sources:", matchData.sources.map((s: any) => s.source));
+
+    // Process each source in parallel
+    const promises = matchData.sources.map(async (src: any) => {
+      try {
+        // ── ANY source with direct embed URLs (WatchFooty, DamiTV, etc.) ──
+        if (src.embeds && src.embeds.length > 0) {
+          for (const emb of src.embeds) {
+            allStreams.push({
+              url: emb.url,
+              type: "embed",
+              quality: emb.quality || "720p",
+              language: emb.language || "English",
+              source: emb.source
+                ? (emb.source.charAt(0).toUpperCase() + emb.source.slice(1))
+                : src.source === "dami-tv" ? "DamiTV" : src.source,
+              hd: emb.quality === "HD" || emb.quality === "720p",
+              embedUrl: emb.url,
+              provider: src.source,
+            });
+          }
+          return;
+        }
+
+        // ── StreamedPK sources (admin, alpha, bravo, charlie, delta, echo, foxtrot, golf, hotel, intel) ──
+        if (src.source.startsWith("streamed-")) {
+          const apiSource = src.source.replace("streamed-", "");
+          console.log("[live-watch] Fetching StreamedPK source:", apiSource, "id:", src.sourceId);
+          // Use our server-side proxy to avoid CORS issues
+          const res = await fetch(
+            `/api/live/streamed?source=${encodeURIComponent(apiSource)}&id=${encodeURIComponent(src.sourceId)}`,
+            { signal: AbortSignal.timeout(10000) }
+          );
+          if (!res.ok) {
+            console.warn("[live-watch] StreamedPK proxy returned", res.status, "for", apiSource);
+            return;
+          }
+          const data = await res.json();
+          if (data.success && data.streams && data.streams.length > 0) {
+            console.log("[live-watch] Got", data.streams.length, "streams from", apiSource);
+            allStreams.push(...data.streams);
+          } else {
+            console.warn("[live-watch] No streams from", apiSource, data);
+          }
+          return;
+        }
+
+        // ── Other sources: use the stream API ──
+        const params = new URLSearchParams({
+          matchId: matchId,
+          source: src.source,
+          sourceId: src.sourceId || "",
+        });
+        const res = await fetch(`/api/live/stream?${params.toString()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.streams) {
+          allStreams.push(...data.streams);
+        }
+      } catch (e: any) {
+        console.error("[live-watch] Source fetch error:", src.source, e.message);
+        errors.push(`${src.source}: ${e.message || "failed"}`);
+      }
+    });
+
+    await Promise.allSettled(promises);
+
+    console.log("[live-watch] Total streams fetched:", allStreams.length);
+
+    // Deduplicate by embedUrl
+    const seen = new Set<string>();
+    const deduped = allStreams.filter((s) => {
+      const key = s.embedUrl || s.url;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Sort: StreamedPK sources first (Admin, Alpha, etc.), then others
+    deduped.sort((a, b) => {
+      const aStreamed = a.provider === "streamed" ? 0 : 1;
+      const bStreamed = b.provider === "streamed" ? 0 : 1;
+      return aStreamed - bStreamed;
+    });
+
+    setStreams(deduped);
+    setLoading(false);
+
+    if (deduped.length === 0) {
+      setError("No streams available. The match may not have started yet or all servers are down.");
+    }
+  }, [matchData, matchId]);
+
+  // Fetch streams when matchData is available
   useEffect(() => {
-    fetchStreams();
-  }, [fetchStreams]);
+    if (matchData) {
+      fetchAllStreams();
+    }
+  }, [matchData, fetchAllStreams]);
 
   // Switch stream (iframe reload)
   const switchStream = (idx: number) => {
@@ -183,38 +330,132 @@ export default function LiveWatchPage({ matchId, source, sourceId }: LiveWatchPr
               </div>
             )}
 
-            {/* Error overlay */}
+            {/* No-stream fallback: Show full match stats when no stream available */}
             {error && !loading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20">
-                <div className="text-center space-y-4 max-w-sm px-6">
-                  <div className="w-14 h-14 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto">
-                    <svg className="w-7 h-7 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-[#0b1116] via-[#0f1923] to-[#0b1116] z-20 overflow-auto">
+                <div className="w-full max-w-lg px-6 py-8 space-y-6">
+                  {/* Warning header */}
+                  <div className="text-center space-y-2">
+                    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
+                      <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-white font-bold text-base">No Stream Available</h3>
+                    <p className="text-zinc-500 text-xs">This match may not have started yet or streams are currently down</p>
                   </div>
-                  <p className="text-zinc-300 text-sm">{error}</p>
+
+                  {/* Full Match Stats Card */}
+                  {matchData && (
+                    <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] overflow-hidden">
+                      {/* Teams header */}
+                      {matchData.homeTeam && matchData.awayTeam && (
+                        <div className="p-4 border-b border-white/[0.04]">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              {matchData.homeLogo ? (
+                                <img src={matchData.homeLogo} alt="" className="w-10 h-10 object-contain rounded-lg bg-white/[0.03] p-0.5 shrink-0" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-sm font-bold text-red-400 shrink-0">
+                                  {matchData.homeTeam.slice(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-sm font-semibold text-white truncate">{matchData.homeTeam}</span>
+                            </div>
+                            <span className="text-[9px] font-bold text-zinc-600 bg-white/[0.04] px-2 py-1 rounded shrink-0">VS</span>
+                            <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
+                              <span className="text-sm font-semibold text-white truncate text-right">{matchData.awayTeam}</span>
+                              {matchData.awayLogo ? (
+                                <img src={matchData.awayLogo} alt="" className="w-10 h-10 object-contain rounded-lg bg-white/[0.03] p-0.5 shrink-0" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center text-sm font-bold text-cyan-400 shrink-0">
+                                  {matchData.awayTeam.slice(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Channel image for TV channels */}
+                      {isTVChannel && matchData.channelImage && (
+                        <div className="flex justify-center p-4 border-b border-white/[0.04]">
+                          <img src={matchData.channelImage} alt={matchData.title} className="h-16 object-contain" />
+                        </div>
+                      )}
+
+                      {/* Stats grid */}
+                      <div className="p-4 grid grid-cols-2 gap-3">
+                        {matchData.league && (
+                          <div className="bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.03]">
+                            <span className="text-[9px] text-zinc-600 uppercase font-bold block mb-0.5">League</span>
+                            <span className="text-xs text-zinc-300 font-medium">{matchData.league}</span>
+                          </div>
+                        )}
+                        {matchData.sport && (
+                          <div className="bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.03]">
+                            <span className="text-[9px] text-zinc-600 uppercase font-bold block mb-0.5">Sport</span>
+                            <span className="text-xs text-zinc-300 font-medium">{matchData.sport}</span>
+                          </div>
+                        )}
+                        <div className="bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.03]">
+                          <span className="text-[9px] text-zinc-600 uppercase font-bold block mb-0.5">Status</span>
+                          <div className="flex items-center gap-1.5">
+                            {matchData.status === "live" && <LivePulse />}
+                            <span className={`text-xs font-medium ${
+                              matchData.status === "live" ? "text-red-400" :
+                              matchData.status === "upcoming" ? "text-amber-400" : "text-zinc-400"
+                            }`}>
+                              {matchData.status?.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                        {matchData.viewers ? (
+                          <div className="bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.03]">
+                            <span className="text-[9px] text-zinc-600 uppercase font-bold block mb-0.5">Viewers</span>
+                            <span className="text-xs text-zinc-300 font-medium flex items-center gap-1">
+                              <svg className="w-3 h-3 opacity-50" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
+                              {matchData.viewers > 1000 ? `${(matchData.viewers/1000).toFixed(1)}k` : matchData.viewers}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.03]">
+                            <span className="text-[9px] text-zinc-600 uppercase font-bold block mb-0.5">Sources</span>
+                            <span className="text-xs text-zinc-300 font-medium">{matchData.sources?.length || 0} available</span>
+                          </div>
+                        )}
+                        {matchData.date && (
+                          <div className="bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.03] col-span-2">
+                            <span className="text-[9px] text-zinc-600 uppercase font-bold block mb-0.5">Time</span>
+                            <span className="text-xs text-zinc-300 font-medium">
+                              {new Date(matchData.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
                   <div className="flex items-center justify-center gap-2 flex-wrap">
                     <button
                       onClick={() => {
                         setError(null);
-                        setLoading(true);
-                        fetchStreams();
+                        fetchAllStreams();
                       }}
                       className="pill-btn pill-btn-primary text-xs py-2 px-4"
                     >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
                       Retry
                     </button>
-                    {streams.length > 1 && (
-                      <button
-                        onClick={() => {
-                          const next = (activeStreamIdx + 1) % streams.length;
-                          switchStream(next);
-                        }}
-                        className="pill-btn pill-btn-ghost text-xs py-2 px-4"
-                      >
-                        Next Server
-                      </button>
-                    )}
+                    <button
+                      onClick={() => navigate({ page: "live" })}
+                      className="pill-btn pill-btn-ghost text-xs py-2 px-4"
+                    >
+                      Back to Live
+                    </button>
                   </div>
                 </div>
               </div>
@@ -270,7 +511,9 @@ export default function LiveWatchPage({ matchId, source, sourceId }: LiveWatchPr
                         activeStreamIdx === idx ? "active" : ""
                       }`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-purple-400" />
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        stream.provider === "streamed" ? "bg-emerald-400" : "bg-purple-400"
+                      }`} />
                       {stream.source}
                       {stream.quality && ` (${stream.quality})`}
                       {stream.hd && (
@@ -401,7 +644,9 @@ export default function LiveWatchPage({ matchId, source, sourceId }: LiveWatchPr
                       : "hover:bg-white/[0.02] border border-transparent"
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full shrink-0 bg-purple-400" />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${
+                    stream.provider === "streamed" ? "bg-emerald-400" : "bg-purple-400"
+                  }`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-zinc-300 truncate">{stream.source}</p>
                     <p className="text-[10px] text-zinc-500">

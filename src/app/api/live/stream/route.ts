@@ -24,6 +24,20 @@ interface StreamResult {
 }
 
 // ── streamed.pk: Get embed URLs from API ──
+// Source name mapping for better UX labels
+const STREAMED_SOURCE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  alpha: "Alpha",
+  bravo: "Bravo",
+  charlie: "Charlie",
+  delta: "Delta",
+  echo: "Echo",
+  foxtrot: "Foxtrot",
+  golf: "Golf",
+  hotel: "Hotel",
+  intel: "Intel",
+};
+
 async function getStreamedStreams(sourceName: string, sourceId: string): Promise<StreamResult[]> {
   const results: StreamResult[] = [];
   try {
@@ -38,13 +52,16 @@ async function getStreamedStreams(sourceName: string, sourceId: string): Promise
 
     for (const stream of data) {
       if (stream.embedUrl) {
-        const sourceLabel = apiSource.charAt(0).toUpperCase() + apiSource.slice(1);
+        const sourceLabel = STREAMED_SOURCE_LABELS[apiSource] || apiSource.charAt(0).toUpperCase() + apiSource.slice(1);
+        const streamLabel = stream.streamNo && stream.streamNo > 1
+          ? `${sourceLabel} S${stream.streamNo}`
+          : sourceLabel;
         results.push({
           url: stream.embedUrl,
           type: "embed",
-          quality: stream.hd ? "HD" : "SD",
+          quality: stream.hd ? "720p" : "SD",
           language: stream.language || "English",
-          source: `${sourceLabel} Server`,
+          source: streamLabel,
           hd: stream.hd,
           streamNo: stream.streamNo,
           embedUrl: stream.embedUrl,
@@ -93,8 +110,23 @@ async function getWatchFootyStreams(matchId: string): Promise<StreamResult[]> {
 }
 
 // ── dami-tv.pro: Embed page ──
-async function getDamiStreams(sourceId: string): Promise<StreamResult[]> {
+async function getDamiStreams(sourceId: string, directEmbedUrl?: string): Promise<StreamResult[]> {
   const results: StreamResult[] = [];
+
+  // If we already have the embed URL from the matches API, use it directly
+  if (directEmbedUrl) {
+    results.push({
+      url: directEmbedUrl,
+      type: "embed",
+      quality: "HD",
+      language: "English",
+      source: "DamiTV",
+      embedUrl: directEmbedUrl,
+      provider: "dami-tv",
+    });
+    return results;
+  }
+
   try {
     // Try PPV stream API first (returns embed URLs)
     const res = await fetch(`https://dami-tv.pro/papi/stream/ppv/${encodeURIComponent(sourceId)}`, {
@@ -123,7 +155,7 @@ async function getDamiStreams(sourceId: string): Promise<StreamResult[]> {
     }
   } catch {}
 
-  // Fallback: direct embed URL
+  // Fallback: direct embed URL from dami-tv.pro
   if (results.length === 0) {
     const embedUrl = `https://dami-tv.pro/embed/?id=${encodeURIComponent(sourceId)}`;
     results.push({
@@ -216,8 +248,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If matchId is provided, fetch match data first to get all sources
-    if (matchId && allStreams.length === 0) {
+    // If matchId is provided, always fetch from ALL sources for that match.
+    // This ensures we get streams from every provider (admin, delta, echo, etc.),
+    // not just the first source that returns results.
+    if (matchId) {
       try {
         const matchesRes = await fetch(new URL("/api/live/matches", request.url).href);
         if (matchesRes.ok) {
@@ -227,10 +261,9 @@ export async function GET(request: NextRequest) {
           const item = match || channel;
 
           if (item?.sources) {
-            // Check if the source already has embed URLs (WatchFooty)
+            // First, add any direct embed URLs (WatchFooty provides these)
             for (const src of item.sources) {
               if (src.embeds && src.embeds.length > 0) {
-                // Direct embed URLs from WatchFooty — no resolution needed!
                 for (const emb of src.embeds) {
                   allStreams.push({
                     url: emb.url,
@@ -246,9 +279,13 @@ export async function GET(request: NextRequest) {
               }
             }
 
-            // If no direct embeds, resolve from source APIs
-            if (allStreams.length === 0) {
-              const streamPromises = item.sources.map((src: any) => {
+            // Then resolve ALL source APIs in parallel (StreamedPK, DamiTV, etc.)
+            // Only fetch from sources that don't already have direct embeds
+            const sourcesNeedingResolution = (item.sources as any[]).filter(
+              (src: any) => !src.embeds || src.embeds.length === 0
+            );
+            if (sourcesNeedingResolution.length > 0) {
+              const streamPromises = sourcesNeedingResolution.map((src: any) => {
                 if (src.source === "watchfooty") return getWatchFootyStreams(src.sourceId);
                 if (src.source.startsWith("streamed-")) return getStreamedStreams(src.source, src.sourceId);
                 if (src.source === "dami-tv") return getDamiStreams(src.sourceId);

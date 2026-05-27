@@ -110,7 +110,9 @@ type Route =
   | { page: "movie-detail"; id: number }
   | { page: "tv-detail"; id: number }
   | { page: "movie-watch"; id: number }
-  | { page: "tv-watch"; id: number; season: number; episode: number };
+  | { page: "tv-watch"; id: number; season: number; episode: number }
+  | { page: "live" }
+  | { page: "live-watch"; matchId: string; source: string; sourceId?: string; title?: string };
 
 // ============================================================
 // App Store
@@ -160,6 +162,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         window.location.hash = `watch-movie/${route.id}`;
       else if (route.page === "tv-watch")
         window.location.hash = `watch-tv/${route.id}/${route.season}/${route.episode}`;
+      else if (route.page === "live")
+        window.location.hash = "live";
+      else if (route.page === "live-watch")
+        window.location.hash = `live-watch/${route.matchId}/${route.source}${route.sourceId ? '/' + route.sourceId : ''}`;
       window.scrollTo(0, 0);
     }
   },
@@ -194,6 +200,9 @@ export function parseHash(hash: string): Route {
   if (parts[0] === "watch-movie" && parts[1]) return { page: "movie-watch", id: parseInt(parts[1]) };
   if (parts[0] === "watch-tv" && parts[1] && parts[2] && parts[3])
     return { page: "tv-watch", id: parseInt(parts[1]), season: parseInt(parts[2]), episode: parseInt(parts[3]) };
+  if (parts[0] === "live") return { page: "live" };
+  if (parts[0] === "live-watch" && parts[1] && parts[2])
+    return { page: "live-watch", matchId: parts[1], source: parts[2], sourceId: parts[3] };
   return { page: "home" };
 }
 
