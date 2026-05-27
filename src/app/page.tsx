@@ -25,6 +25,8 @@ import ContactPage from "@/components/anime/contact-page";
 import GuidePage from "@/components/anime/guide-page";
 import LivePage from "@/components/anime/live-page";
 import LiveWatchPage from "@/components/anime/live-watch-page";
+import LiveTVPage from "@/components/anime/live-tv-page";
+import LiveTVWatchPage from "@/components/anime/live-tv-watch-page";
 import NovelPage from "@/components/anime/novel-page";
 import NovelDetailPage from "@/components/anime/novel-detail-page";
 import NovelReaderPage from "@/components/anime/novel-reader-page";
@@ -202,7 +204,7 @@ export default function MainPage() {
     );
   }
 
-  const isWatchPage = route.page === "watch" || route.page === "movie-watch" || route.page === "tv-watch" || route.page === "live-watch";
+  const isWatchPage = route.page === "watch" || route.page === "movie-watch" || route.page === "tv-watch" || route.page === "live-watch" || route.page === "live-tv-watch";
   const isMangaReader = route.page === "manga-read" || route.page === "novel-read";
 
   const renderPage = () => {
@@ -229,6 +231,8 @@ export default function MainPage() {
       case "guide": return <GuidePage />;
       case "live": return <LivePage />;
       case "live-watch": return <LiveWatchPage matchId={route.matchId} matchTitle={route.matchTitle} matchSport={route.matchSport} matchSportName={route.matchSportName} matchHomeTeam={route.matchHomeTeam} matchAwayTeam={route.matchAwayTeam} matchHomeBadge={route.matchHomeBadge} matchAwayBadge={route.matchAwayBadge} matchPoster={route.matchPoster} matchPopular={route.matchPopular} matchSources={route.matchSources} matchDate={route.matchDate} matchStreamKey={(route as any).matchStreamKey} matchStreamCategory={(route as any).matchStreamCategory} matchChannelName={(route as any).matchChannelName} matchChannelCode={(route as any).matchChannelCode} matchDamitvId={(route as any).matchDamitvId} matchWatchfootyId={(route as any).matchWatchfootyId} matchApiSource={(route as any).matchApiSource} matchSportsrcCategory={(route as any).matchSportsrcCategory} matchSportsrcId={(route as any).matchSportsrcId} matchWatchfootyStreams={(route as any).matchWatchfootyStreams} matchLeague={(route as any).matchLeague} matchLeagueLogo={(route as any).matchLeagueLogo} matchHomeScore={(route as any).matchHomeScore} matchAwayScore={(route as any).matchAwayScore} matchCurrentMinute={(route as any).matchCurrentMinute} />;
+      case "live-tv": return <LiveTVPage />;
+      case "live-tv-watch": return <LiveTVWatchPage channelId={(route as any).channelId || ""} channelName={(route as any).channelName || ""} channelCategory={(route as any).channelCategory || "General"} channelCountryCode={(route as any).channelCountryCode} channelCountryName={(route as any).channelCountryName} channelEmbedUrl={(route as any).channelEmbedUrl || ""} />;
       case "novel": return <NovelPage />;
       case "novel-detail": return <NovelDetailPage novelId={route.novelId} novelTitle={route.novelTitle} novelCover={route.novelCover} novelAuthor={route.novelAuthor} novelSource={route.novelSource} />;
       case "novel-read": return <NovelReaderPage novelId={route.novelId} novelTitle={route.novelTitle} chapterId={route.chapterId} chapterNum={route.chapterNum} chapterTitle={route.chapterTitle} totalChapters={route.totalChapters} novelSource={route.novelSource} />;

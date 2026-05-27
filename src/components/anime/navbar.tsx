@@ -145,7 +145,7 @@ export default function Navbar() {
     if (id === "guide" && route.page === "guide") return true;
     if (id === "watchnow" && route.page === "watchnow") return true;
     if (id === "watchnow" && ["dub", "movies", "tv", "manga", "anime", "watch", "movie-detail", "tv-detail", "movie-watch", "tv-watch", "manga-detail", "manga-read"].includes(route.page)) return true;
-    if (id === "live" && ["live", "live-watch"].includes(route.page)) return true;
+    if (id === "live" && ["live", "live-watch", "live-tv-watch"].includes(route.page)) return true;
     return false;
   };
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAppStore } from "./store";
+import LiveTVPage from "./live-tv-page";
 
 // ============================================================
 // LIVE TV & SPORTS — WatchFooty-Style Complete Redesign
@@ -504,6 +505,13 @@ function MatchSection({ title, icon, matches, onWatch, liveCount }: {
 // ═══════════════════════════════════════════════════════════════
 export default function LivePage() {
   const navigate = useAppStore(s => s.navigate);
+  const sectionSubPage = useAppStore(s => s.sectionSubPage);
+  const setSectionSubPage = useAppStore(s => s.setSectionSubPage);
+
+  // ── Tab: If on tv-channels sub-page, render LiveTVPage instead ──
+  if (sectionSubPage === "tv-channels") {
+    return <LiveTVPage />;
+  }
 
   // ── Sports state ──
   const [selectedSport, setSelectedSport] = useState("all");

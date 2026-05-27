@@ -371,13 +371,11 @@ export async function GET(req: Request) {
   const cleanMatchId = matchId.replace(/^(espn|wf|sp|sf|cdn|dami|se|es)-/i, "");
 
   // ── PRIORITY 3: DamiTV ──
-  const damitvIds = new Set<string>();
-  if (damitvId) damitvIds.add(damitvId);
-  if (channelCode) damitvIds.add(channelCode);
-  if (cleanMatchId && cleanMatchId !== matchId) damitvIds.add(cleanMatchId);
-  if (matchId) damitvIds.add(matchId);
-  for (const id of damitvIds) {
-    resolvePromises.push(resolveDamiTV(id));
+  // ONLY resolve DamiTV if we have an explicit damitvId from the API.
+  // DO NOT add DamiTV as a fallback for matches that didn't come from DamiTV.
+  // This prevents DamiTV showing as a source for every match when it doesn't have streams.
+  if (damitvId) {
+    resolvePromises.push(resolveDamiTV(damitvId));
   }
 
   // ── PRIORITY 4: WatchFooty ──
@@ -392,9 +390,9 @@ export async function GET(req: Request) {
     resolvePromises.push(resolveSportsembedSu(sportsrcCategory, sportsrcId));
   }
 
-  // Fallback: if no providers matched at all, try DamiTV and SportsEmbed
+  // Fallback: if no providers matched at all, try SportsEmbed only
+  // DO NOT add DamiTV as fallback — it shows broken streams for matches it doesn't have
   if (resolvePromises.length === 0 && matchId) {
-    resolvePromises.push(resolveDamiTV(cleanMatchId));
     resolvePromises.push(resolveSportsembedSu("sports", cleanMatchId));
   }
 

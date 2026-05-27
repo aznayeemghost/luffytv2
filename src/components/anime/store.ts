@@ -116,6 +116,7 @@ type Route =
   | { page: "features" }
   | { page: "live" }
   | { page: "live-watch"; matchId: string; matchTitle: string; matchSport: string; matchSportName: string; matchHomeTeam: string; matchAwayTeam: string; matchHomeBadge: string; matchAwayBadge: string; matchPoster: string; matchPopular: boolean; matchSources: string; matchDate: number; matchStreamKey?: string; matchStreamCategory?: string; matchChannelName?: string; matchChannelCode?: string; matchDamitvId?: string; matchWatchfootyId?: string; matchApiSource?: string; matchSportsrcCategory?: string; matchSportsrcId?: string; matchWatchfootyStreams?: string; matchLeague?: string; matchLeagueLogo?: string; matchHomeScore?: number; matchAwayScore?: number; matchCurrentMinute?: string }
+  | { page: "live-tv-watch"; channelId: string; channelName: string; channelCategory: string; channelCountryCode?: string; channelCountryName?: string; channelEmbedUrl: string }
   | { page: "novel" }
   | { page: "novel-detail"; novelId: string; novelTitle: string; novelCover: string; novelAuthor: string; novelSource: string }
   | { page: "novel-read"; novelId: string; novelTitle: string; chapterId: string; chapterNum: number; chapterTitle: string; totalChapters: number; novelSource: string };
@@ -145,7 +146,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSectionSubPage: (subPage) => set({ sectionSubPage: subPage }),
   navigate: (route) => {
     // Reset section sub-page when navigating to a new section
-    set({ route, sectionSubPage: "home" });
+    // Default to "tv-channels" when going to live page (Live TV is the primary tab)
+    const subPage = route.page === "live" ? "tv-channels" : "home";
+    set({ route, sectionSubPage: subPage });
     if (typeof window !== "undefined") {
       if (route.page === "home") window.location.hash = "";
       else if (route.page === "search" && route.query)
@@ -180,6 +183,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       else if (route.page === "features") window.location.hash = "features";
       else if (route.page === "live") window.location.hash = "live";
       else if (route.page === "live-watch") window.location.hash = `live-watch/${encodeURIComponent(route.matchId)}/${encodeURIComponent(route.matchSport)}`;
+      else if (route.page === "live-tv-watch") window.location.hash = `live-tv-watch/${encodeURIComponent(route.channelId)}/${encodeURIComponent(route.channelCategory)}`;
       else if (route.page === "novel") window.location.hash = "novel";
       else if (route.page === "novel-detail") window.location.hash = `novel/${encodeURIComponent(route.novelId)}`;
       else if (route.page === "novel-read") window.location.hash = `read-novel/${encodeURIComponent(route.novelId)}/${route.chapterNum}`;
@@ -265,6 +269,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === "features") return { page: "features" };
   if (parts[0] === "live") return { page: "live" };
   if (parts[0] === "live-watch") return { page: "live-watch", matchId: decodeURIComponent(parts[1] || ""), matchTitle: "", matchSport: decodeURIComponent(parts[2] || ""), matchSportName: "", matchHomeTeam: "", matchAwayTeam: "", matchHomeBadge: "", matchAwayBadge: "", matchPoster: "", matchPopular: false, matchSources: "[]", matchDate: 0 };
+  if (parts[0] === "live-tv-watch") return { page: "live-tv-watch", channelId: decodeURIComponent(parts[1] || ""), channelName: "", channelCategory: decodeURIComponent(parts[2] || ""), channelEmbedUrl: `https://daddylive.org/embed/embed.php?id=${decodeURIComponent(parts[1] || "")}&player=1&source=tv.json` };
   if (parts[0] === "novel" && parts[1]) return { page: "novel-detail", novelId: decodeURIComponent(parts[1]), novelTitle: "", novelCover: "", novelAuthor: "", novelSource: "readlightnovel" };
   if (parts[0] === "novel") return { page: "novel" };
   if (parts[0] === "read-novel" && parts[1] && parts[2]) return { page: "novel-read", novelId: decodeURIComponent(parts[1]), novelTitle: "", chapterId: `chapter-${parts[2]}`, chapterNum: parseInt(parts[2]), chapterTitle: "", totalChapters: 0, novelSource: "readlightnovel" };

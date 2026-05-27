@@ -790,9 +790,11 @@ function pickMissing(base: LiveMatch, fill: LiveMatch): Partial<LiveMatch> {
   if (!base.currentMinute && fill.currentMinute) result.currentMinute = fill.currentMinute;
   if (!base.watchfootyId && fill.watchfootyId) result.watchfootyId = fill.watchfootyId;
   // Also pick missing DamiTV and SportsEmbed IDs
-  if (!base.damitvId && fill.damitvId) result.damitvId = fill.damitvId;
-  if (!base.sportsrcCategory && fill.sportsrcCategory) result.sportsrcCategory = fill.sportsrcCategory;
-  if (!base.sportsrcId && fill.sportsrcId) result.sportsrcId = fill.sportsrcId;
+  // IMPORTANT: Only merge damitvId if the match actually came from DamiTV API
+  // This prevents DamiTV showing as a source for every match
+  if (!base.damitvId && fill.damitvId && fill.apiSource === "damitv") result.damitvId = fill.damitvId;
+  if (!base.sportsrcCategory && fill.sportsrcCategory && fill.apiSource === "sportsembed") result.sportsrcCategory = fill.sportsrcCategory;
+  if (!base.sportsrcId && fill.sportsrcId && fill.apiSource === "sportsembed") result.sportsrcId = fill.sportsrcId;
   if (!base.channelCode && fill.channelCode) result.channelCode = fill.channelCode;
   if (!base.channelName && fill.channelName) result.channelName = fill.channelName;
   return result;
@@ -920,7 +922,8 @@ export async function GET(req: Request) {
     // Deduplicate TV channels by name
     const allTVChannels: LiveMatch[] = [];
     const seenChannelNames = new Set<string>();
-    for (const ch of [...sfChannels, ...sfStreamChannels, ...damiTVChannels, ...streamedTVChannels]) {
+    for (const ch of [...sfChannels, ...sfStreamChannels, ...streamedTVChannels]) {
+      // NOTE: DamiTV channels removed from here — they now go to the dedicated Live TV (Daddylive) page
       const name = (ch.channelName || ch.title || "").toLowerCase().trim();
       if (!name || seenChannelNames.has(name)) continue;
       seenChannelNames.add(name);
