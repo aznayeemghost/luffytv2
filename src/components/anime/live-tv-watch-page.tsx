@@ -228,11 +228,11 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
 
   return (
     <div className="min-h-screen flex flex-col -mx-4 lg:-mx-8 -mt-[75px] pt-0">
-      {/* Player Area */}
+      {/* Player Area — full-width big player */}
       <div
         ref={playerContainerRef}
         className="relative w-full bg-black"
-        style={{ aspectRatio: isFullscreen ? "auto" : "16/9", minHeight: isFullscreen ? "100vh" : "280px" }}
+        style={{ height: isFullscreen ? "100vh" : "70vh", minHeight: "500px" }}
       >
         {/* Iframe Player */}
         <iframe

@@ -800,7 +800,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
       <div
         ref={playerContainerRef}
         className="relative w-full bg-black"
-        style={{ aspectRatio: isFullscreen ? "auto" : "16/9", minHeight: isFullscreen ? "100vh" : "280px" }}
+        style={{ height: isFullscreen ? "100vh" : "70vh", minHeight: "500px" }}
       >
         {/* Video element for hls.js (M3U8 streams) */}
         {!isEmbedStream && (
