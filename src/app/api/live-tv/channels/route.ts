@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 300; // Cache for 5 minutes
 
-const TIMEOUT = 15000;
+const TIMEOUT = 8000;
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
 // ── DamiTV sport category mapping ──
@@ -52,6 +52,7 @@ const DAMI_SPORT_NAMES: Record<string, string> = {
 };
 
 // StreamFree category mapping to our categories
+// StreamFree is a Live TV source — map to proper categories, not all to Sports
 const SF_CATEGORY_MAP: Record<string, string> = {
   soccer: "Sports",
   basketball: "Sports",
@@ -62,6 +63,22 @@ const SF_CATEGORY_MAP: Record<string, string> = {
   racing: "Sports",
   tennis: "Sports",
   cricket: "Sports",
+  entertainment: "Entertainment",
+  news: "News",
+  kids: "Kids",
+  music: "Music",
+  movies: "Movies",
+  documentary: "Documentary",
+  lifestyle: "Entertainment",
+  comedy: "Entertainment",
+  reality: "Entertainment",
+  drama: "Entertainment",
+  science: "Documentary",
+  nature: "Documentary",
+  tech: "Documentary",
+  education: "Documentary",
+  religious: "Entertainment",
+  general: "General",
 };
 
 const SF_SPORT_NAMES: Record<string, string> = {
@@ -128,6 +145,7 @@ interface Channel {
   source: "daddylive" | "damitv" | "streamfree";
   poster?: string;
   isLive?: boolean;
+  isAlwaysLive?: boolean;
   status?: string;
   league?: string;
   homeTeam?: string;
@@ -185,14 +203,16 @@ async function fetchDaddyliveChannels(): Promise<Channel[]> {
     return data.map((item: any, idx: number) => {
       const id = String(item.channel_id || `dl-${idx}`);
       const name = String(item.channel_name || item.name || `Channel ${idx + 1}`);
+      const category = detectCategory(name);
       return {
         id: `dl-${id}`,
         name,
-        category: detectCategory(name),
+        category,
         country: detectCountry(name),
         embedUrl: `https://daddylive.org/embed/embed.php?id=${id}&player=1&source=tv.json`,
         source: "daddylive" as const,
         isLive: true,
+        isAlwaysLive: category !== "Sports",
         status: "live",
       };
     });
@@ -250,6 +270,7 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
           source: "damitv",
           poster: s.poster || "",
           isLive,
+          isAlwaysLive: is247 || s.always_live === 1,
           status: s.status || (isLive ? "live" : "upcoming"),
           league: s.league || "",
           homeTeam,
@@ -300,7 +321,7 @@ async function fetchStreamFreeChannels(): Promise<Channel[]> {
         channels.push({
           id: `sf-${s.stream_key}`,
           name: s.name || "Live Stream",
-          category: SF_CATEGORY_MAP[category] || "Sports",
+          category: SF_CATEGORY_MAP[category] || "General",
           sport: SF_SPORT_NAMES[category] || category,
           country: detectCountry(s.name || ""),
           embedUrl,

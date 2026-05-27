@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAppStore } from "./store";
 
 // ============================================================
 // LIVE TV WATCH PAGE — Multi-Source with ElGato-style Server Picker
 // Sources: Daddylive | DamiTV | StreamFree
 // Each source can have multiple servers/qualities
+// Auto-fallback on iframe errors
 // ============================================================
 
 interface LiveTVWatchProps {
@@ -51,42 +52,37 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [activeServer, setActiveServer] = useState<ServerOption | null>(null);
-  const [servers, setServers] = useState<ServerOption[]>([]);
+  const [userSelection, setUserSelection] = useState<{ channelId: string; serverId: string } | null>(null);
   const [sfQualities, setSfQualities] = useState<Record<string, boolean>>({});
+  const [failedServerIds, setFailedServerIds] = useState<string[]>([]);
+  const [fallbackMessage, setFallbackMessage] = useState("");
 
   const categoryColor = CAT_COLORS[props.channelCategory] || CAT_COLORS.General;
 
-  // Build all available server options for this channel
-  useEffect(() => {
+  // Build all available server options for this channel (computed, not in effect)
+  const servers = useMemo<ServerOption[]>(() => {
     const channelId = props.channelId || "";
     const embedUrl = props.channelEmbedUrl || "";
     const availableServers: ServerOption[] = [];
 
-    // Detect current source from the embed URL
     const isDami = embedUrl.includes("dami-tv.pro");
     const isSF = embedUrl.includes("streamfree.app");
     const isDaddy = embedUrl.includes("daddylive.org");
 
-    // Extract StreamFree key and category from URL
     const sfMatch = embedUrl.match(/\/embed\/([^/]+)\/([^?]+)/);
     const sfCategory = sfMatch?.[1] || "";
     const sfStreamKey = sfMatch?.[2] || channelId.replace("sf-", "");
 
-    // Extract DamiTV id from URL
     const damiMatch = embedUrl.match(/[?&]id=([^&]+)/) || embedUrl.match(/\/embed\/\?id=([^&]+)/);
     const damiId = damiMatch?.[1] || channelId.replace("dami-", "");
 
-    // Extract DaddyLive id from URL
     const dlMatch = embedUrl.match(/[?&]id=([^&]+)/);
     const dlId = dlMatch?.[1] || channelId.replace("dl-", "");
 
-    // 1. StreamFree servers (multiple qualities + auto server)
     if (isSF || !isDami) {
       const sfCat = sfCategory || "sports";
       const sfKey = sfStreamKey;
       if (sfKey) {
-        // Auto server with different qualities
         availableServers.push({
           id: `sf-1080p`,
           label: "StreamFree 1080p",
@@ -114,7 +110,6 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
       }
     }
 
-    // 2. DamiTV server
     if (isDami || !isSF) {
       if (damiId) {
         availableServers.push({
@@ -128,7 +123,6 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
       }
     }
 
-    // 3. DaddyLive servers (multiple players)
     if (isDaddy || (!isDami && !isSF)) {
       if (dlId) {
         availableServers.push({
@@ -161,21 +155,52 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
       }
     }
 
-    setServers(availableServers);
-
-    // Auto-select best server: prefer current source, then SF 1080p, then DamiTV, then DaddyLive
-    if (availableServers.length > 0) {
-      const currentSourceFirst = availableServers.find(s =>
-        (isSF && s.source === "streamfree" && s.quality === "1080p") ||
-        (isDami && s.source === "damitv") ||
-        (isDaddy && s.source === "daddylive" && s.serverNum === 1)
-      );
-      const sf1080 = availableServers.find(s => s.id === "sf-1080p");
-      const dami = availableServers.find(s => s.source === "damitv");
-      const daddy1 = availableServers.find(s => s.source === "daddylive" && s.serverNum === 1);
-      setActiveServer(currentSourceFirst || sf1080 || dami || daddy1 || availableServers[0]);
-    }
+    return availableServers;
   }, [props.channelId, props.channelEmbedUrl]);
+
+  // Compute the best initial server (not in effect)
+  const bestInitialServer = useMemo(() => {
+    if (servers.length === 0) return null;
+    const embedUrl = props.channelEmbedUrl || "";
+    const isDami = embedUrl.includes("dami-tv.pro");
+    const isSF = embedUrl.includes("streamfree.app");
+    const isDaddy = embedUrl.includes("daddylive.org");
+
+    const currentSourceFirst = servers.find(s =>
+      (isSF && s.source === "streamfree" && s.quality === "1080p") ||
+      (isDami && s.source === "damitv") ||
+      (isDaddy && s.source === "daddylive" && s.serverNum === 1)
+    );
+    const sf1080 = servers.find(s => s.id === "sf-1080p");
+    const dami = servers.find(s => s.source === "damitv");
+    const daddy1 = servers.find(s => s.source === "daddylive" && s.serverNum === 1);
+
+    return currentSourceFirst || sf1080 || dami || daddy1 || servers[0];
+  }, [servers, props.channelEmbedUrl]);
+
+  // Derive the active server: if user selected one for this channel, use it; otherwise use the best initial
+  const activeServer = useMemo(() => {
+    const currentChannelId = props.channelId || "";
+    if (userSelection && userSelection.channelId === currentChannelId) {
+      const found = servers.find(s => s.id === userSelection.serverId);
+      if (found) return found;
+    }
+    return bestInitialServer;
+  }, [userSelection, servers, bestInitialServer, props.channelId]);
+
+  // failedServers as Set for quick lookup
+  const failedServersSet = useMemo(() => new Set(failedServerIds), [failedServerIds]);
+
+  // Reset failed servers when channel changes
+  const currentChannelId = props.channelId || "";
+  // We use the channelId to detect stale state - if failedServerIds were for a different channel, clear them
+  const [failedForChannel, setFailedForChannel] = useState(currentChannelId);
+  if (failedForChannel !== currentChannelId) {
+    // Channel changed, reset failed servers (this is safe during render as it synchronizes state)
+    setFailedServerIds([]);
+    setFallbackMessage("");
+    setFailedForChannel(currentChannelId);
+  }
 
   // Check StreamFree stream status for quality availability
   useEffect(() => {
@@ -194,8 +219,31 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
 
   const switchServer = useCallback((server: ServerOption) => {
     setIframeLoaded(false);
-    setActiveServer(server);
-  }, []);
+    setUserSelection({ channelId: props.channelId || "", serverId: server.id });
+  }, [props.channelId]);
+
+  // Auto-fallback: when iframe fails, try the next available server
+  const handleIframeError = useCallback(() => {
+    if (!activeServer) return;
+
+    const failedId = activeServer.id;
+    setFailedServerIds(prev => [...prev, failedId]);
+
+    // Find next available server that hasn't failed yet
+    const newFailedSet = new Set([...failedServerIds, failedId]);
+    const nextServer = servers.find(s => !newFailedSet.has(s.id) && s.id !== failedId);
+    if (nextServer) {
+      const failedLabel = SOURCE_CONFIG[activeServer.source]?.label || activeServer.label;
+      const nextLabel = SOURCE_CONFIG[nextServer.source]?.label || nextServer.label;
+      setFallbackMessage(`${failedLabel} failed, trying ${nextLabel}...`);
+      setIframeLoaded(false);
+      setUserSelection({ channelId: props.channelId || "", serverId: nextServer.id });
+
+      setTimeout(() => setFallbackMessage(""), 4000);
+    } else {
+      setFallbackMessage("All servers failed. Try refreshing or open externally.");
+    }
+  }, [activeServer, servers, failedServerIds, props.channelId]);
 
   const toggleFullscreen = async () => {
     if (!playerContainerRef.current) return;
@@ -232,7 +280,11 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
       <div
         ref={playerContainerRef}
         className="relative w-full bg-black"
-        style={{ height: isFullscreen ? "100vh" : "70vh", minHeight: "500px" }}
+        style={{
+          height: isFullscreen ? "100vh" : "80vh",
+          minHeight: "600px",
+          maxHeight: isFullscreen ? "100vh" : "calc(100vh - 75px)",
+        }}
       >
         {/* Iframe Player */}
         <iframe
@@ -248,6 +300,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
           onLoad={() => setIframeLoaded(true)}
+          onError={handleIframeError}
         />
 
         {/* Loading overlay */}
@@ -258,6 +311,13 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
             <p className="text-[10px] text-white/20">
               {props.channelName} via {activeServer ? SOURCE_CONFIG[activeServer.source]?.label : "..."}
             </p>
+          </div>
+        )}
+
+        {/* Fallback message overlay */}
+        {fallbackMessage && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-lg bg-amber-900/80 border border-amber-500/30 text-amber-200 text-[11px] font-bold whitespace-nowrap backdrop-blur-sm">
+            {fallbackMessage}
           </div>
         )}
 
@@ -329,6 +389,11 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                   {SOURCE_CONFIG[activeServer.source]?.label} {activeServer.quality ? `• ${activeServer.quality}` : ""}
                 </span>
               )}
+              {failedServerIds.length > 0 && (
+                <span className="text-[9px] text-amber-400/70 font-bold">
+                  {failedServerIds.length} server{failedServerIds.length > 1 ? "s" : ""} failed
+                </span>
+              )}
             </div>
           </div>
 
@@ -390,10 +455,10 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                     <div className="flex flex-wrap gap-1.5 px-3 pb-2.5">
                       {sourceServers.map(server => {
                         const isActive = activeServer?.id === server.id;
-                        // Check StreamFree quality availability
-                        const isUnavailable = server.source === "streamfree" &&
+                        const hasFailed = failedServersSet.has(server.id);
+                        const isUnavailable = (server.source === "streamfree" &&
                           server.quality &&
-                          sfQualities[server.quality] === false;
+                          sfQualities[server.quality] === false) || hasFailed;
 
                         return (
                           <button
@@ -443,8 +508,11 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                               <span>{server.quality ? `Quality` : config.shortLabel}</span>
                             )}
 
-                            {/* Unavailable marker */}
-                            {isUnavailable && (
+                            {/* Unavailable / Failed marker */}
+                            {hasFailed && (
+                              <span className="text-[7px] text-red-500/70 font-bold">FAIL</span>
+                            )}
+                            {!hasFailed && server.source === "streamfree" && server.quality && sfQualities[server.quality] === false && (
                               <span className="text-[7px] text-red-500/50 font-bold">OFF</span>
                             )}
                           </button>
@@ -462,7 +530,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]">
           <p className="text-[10px] text-white/20">
             {servers.length > 1 ? (
-              <>Switch between sources and quality levels above. If one server doesn't work, try another.</>
+              <>Switch between sources and quality levels above. If one server doesn&apos;t work, try another. Failed servers are automatically skipped.</>
             ) : (
               <>Stream provided by <span className="font-bold" style={{ color: activeServer?.color || "#7c6cf0" }}>{activeServer ? SOURCE_CONFIG[activeServer.source]?.label : "unknown"}</span>. Stream availability depends on source server.</>
             )}

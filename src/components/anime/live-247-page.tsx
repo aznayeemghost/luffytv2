@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useAppStore } from "./store";
 
 // ============================================================
-// LIVE TV CHANNEL BROWSER — Daddylive + DamiTV + StreamFree
-// Big card grid with team logos, source toggle, search, filters
+// 24/7 LIVE CHANNELS PAGE — Always-on streams
+// DamiTV 24/7 + StreamFree + DaddyLive non-sports channels
 // ============================================================
 
 interface TVChannel {
@@ -35,15 +35,6 @@ interface CategoryInfo {
   count: number;
 }
 
-interface CountryInfo {
-  code: string;
-  name: string;
-  flag: string;
-  count: number;
-}
-
-type SourceFilter = "all" | "daddylive" | "damitv" | "streamfree";
-
 // Category colors
 const CAT_COLORS: Record<string, string> = {
   Sports: "#f97316",
@@ -63,105 +54,54 @@ const SOURCE_CONFIG: Record<string, { color: string; label: string; shortLabel: 
   streamfree: { color: "#a855f7", label: "StreamFree", shortLabel: "SF" },
 };
 
-// ── Channel LOGO_MAP for common channels without API-provided logos ──
-// Maps lowercase channel name substrings to known logo URLs
+// Channel LOGO_MAP for common channels
 const LOGO_MAP: Record<string, string> = {
-  // ESPN
   "espn": "https://cdn.espnmedia.com/images/espn_logo.png",
-  "espn 2": "https://cdn.espnmedia.com/images/espn2_logo.png",
-  "espn 3": "https://cdn.espnmedia.com/images/espn3_logo.png",
-  "espn+": "https://cdn.espnmedia.com/images/espnplus_logo.png",
-  "espn news": "https://cdn.espnmedia.com/images/espnews_logo.png",
-  "espn u": "https://cdn.espnmedia.com/images/espnu_logo.png",
-  // Sky Sports
   "sky sports": "https://www.skysports.com/images/sky-sports-logo.png",
-  "sky sports premier": "https://www.skysports.com/images/sky-sports-premier-league.png",
-  "sky sports football": "https://www.skysports.com/images/sky-sports-football.png",
-  "sky sports f1": "https://www.skysports.com/images/sky-sports-f1.png",
-  "sky sports cricket": "https://www.skysports.com/images/sky-sports-cricket.png",
-  "sky sports golf": "https://www.skysports.com/images/sky-sports-golf.png",
-  "sky sports news": "https://www.skysports.com/images/sky-sports-news.png",
-  "sky sports nfl": "https://www.skysports.com/images/sky-sports-nfl.png",
-  "sky sports arena": "https://www.skysports.com/images/sky-sports-arena.png",
-  "sky sports action": "https://www.skysports.com/images/sky-sports-action.png",
-  // BT Sport / TNT Sport
   "bt sport": "https://production.btsport.com/images/bt-sport-logo.png",
   "tnt sport": "https://tntsports.co.uk/images/tnt-sports-logo.png",
-  // BeIN Sports
   "bein": "https://www.beinsports.com/images/bein-sports-logo.png",
-  "bein sports": "https://www.beinsports.com/images/bein-sports-logo.png",
-  // DAZN
   "dazn": "https://www.dazn.com/images/dazn-logo.png",
-  // NBC
   "nbc sport": "https://www.nbcsports.com/images/nbc-sports-logo.png",
-  "nbc sports": "https://www.nbcsports.com/images/nbc-sports-logo.png",
-  // CBS Sports
   "cbs sport": "https://www.cbssports.com/images/cbs-sports-logo.png",
-  "cbs sports": "https://www.cbssports.com/images/cbs-sports-logo.png",
-  // Fox Sports
   "fox sport": "https://www.foxsports.com/images/fox-sports-logo.png",
-  "fox sports": "https://www.foxsports.com/images/fox-sports-logo.png",
-  // Eurosport
-  "euro sport": "https://www.eurosport.com/images/eurosport-logo.png",
   "eurosport": "https://www.eurosport.com/images/eurosport-logo.png",
-  // TSN
-  "tsn": "https://www.tsn.ca/images/tsn-logo.png",
-  // SuperSport
-  "super sport": "https://www.supersport.com/images/supersport-logo.png",
-  "supersport": "https://www.supersport.com/images/supersport-logo.png",
-  // Willow
-  "willow": "https://www.willow.tv/images/willow-logo.png",
-  // CNN
   "cnn": "https://edition.cnn.com/images/cnn-logo.png",
-  // BBC
   "bbc": "https://static.files.bbci.co.uk/orbit/835287017f7c8f5b95e0e8ce7a0f4370/img/bbc-blocks-dark.png",
-  // HBO
   "hbo": "https://www.hbo.com/images/hbo-logo.png",
-  // Discovery
   "discovery": "https://www.discovery.com/images/discovery-logo.png",
-  // National Geographic
   "nat geo": "https://www.nationalgeographic.com/images/nat-geo-logo.png",
-  "national geographic": "https://www.nationalgeographic.com/images/nat-geo-logo.png",
-  // Paramount
   "paramount": "https://www.paramount.com/images/paramount-logo.png",
-  // Peacock
   "peacock": "https://www.peacocktv.com/images/peacock-logo.png",
-  // Star Sports
-  "star sport": "https://www.hotstar.com/images/star-sports-logo.png",
-  "star sports": "https://www.hotstar.com/images/star-sports-logo.png",
-  // Arena Sport
-  "arena sport": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Arena_Sport_logo.svg/200px-Arena_Sport_logo.svg.png",
-  // Sony
-  "sony": "https://www.sonypictures.com/images/sony-logo.png",
-  // F1 TV
-  "f1 tv": "https://www.formula1.com/images/f1-tv-logo.png",
-  // NFL Network
-  "nfl network": "https://www.nfl.com/images/nfl-network-logo.png",
-  // NBA TV
-  "nba tv": "https://www.nba.com/images/nba-tv-logo.png",
-  // MLB Network
-  "mlb network": "https://www.mlb.com/images/mlb-network-logo.png",
-  // UFC
-  "ufc": "https://www.ufc.com/images/ufc-logo.png",
-  // WWE
-  "wwe": "https://www.wwe.com/images/wwe-logo.png",
-  "wwe network": "https://www.wwe.com/images/wwe-network-logo.png",
-  // Golf Channel
-  "golf channel": "https://www.golfchannel.com/images/golf-channel-logo.png",
-  // Tennis Channel
-  "tennis channel": "https://www.tennischannel.com/images/tennis-channel-logo.png",
-  // NHL
-  "nhl": "https://www.nhl.com/images/nhl-logo.png",
-  // NHL Network
-  "nhl network": "https://www.nhl.com/images/nhl-network-logo.png",
+  "mtv": "https://www.mtv.com/images/mtv-logo.png",
+  "comedy": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Comedy_Central_2018_logo.svg/200px-Comedy_Central_2018_logo.svg.png",
+  "nickelodeon": "https://www.nickelodeon.com/images/nick-logo.png",
+  "nick": "https://www.nickelodeon.com/images/nick-logo.png",
+  "disney": "https://www.disney.com/images/disney-logo.png",
+  "cartoon": "https://www.cartoonnetwork.com/images/cn-logo.png",
+  "history": "https://www.history.com/images/history-logo.png",
+  "animal planet": "https://www.animalplanet.com/images/animal-planet-logo.png",
+  "science": "https://www.sciencechannel.com/images/science-logo.png",
+  "smithsonian": "https://www.smithsonianchannel.com/images/smithsonian-logo.png",
+  "lifetime": "https://www.mylifetime.com/images/lifetime-logo.png",
+  "bravo": "https://www.bravotv.com/images/bravo-logo.png",
+  "fx": "https://www.fxnetworks.com/images/fx-logo.png",
+  "amc": "https://www.amc.com/images/amc-logo.png",
+  "tbs": "https://www.tbs.com/images/tbs-logo.png",
+  "tnt": "https://www.tntdrama.com/images/tnt-logo.png",
+  "starz": "https://www.starz.com/images/starz-logo.png",
+  "showtime": "https://www.showtime.com/images/showtime-logo.png",
+  "bloomberg": "https://www.bloomberg.com/images/bloomberg-logo.png",
+  "cnbc": "https://www.cnbc.com/images/cnbc-logo.png",
+  "al jazeera": "https://www.aljazeera.com/images/aljazeera-logo.png",
+  "dw": "https://www.dw.com/images/dw-logo.png",
+  "france 24": "https://www.france24.com/images/france24-logo.png",
+  "euronews": "https://www.euronews.com/images/euronews-logo.png",
 };
 
-// Lookup logo from LOGO_MAP by matching channel name
 function getChannelLogo(name: string): string | null {
   const lower = name.toLowerCase();
-  // Try exact match first
   if (LOGO_MAP[lower]) return LOGO_MAP[lower];
-  // Try substring match (longest key first for best match)
   const keys = Object.keys(LOGO_MAP).sort((a, b) => b.length - a.length);
   for (const key of keys) {
     if (lower.includes(key)) return LOGO_MAP[key];
@@ -169,16 +109,12 @@ function getChannelLogo(name: string): string | null {
   return null;
 }
 
-export default function LiveTVPage() {
+export default function Live247Page() {
   const navigate = useAppStore(s => s.navigate);
 
   const [channels, setChannels] = useState<TVChannel[]>([]);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
-  const [countries, setCountries] = useState<CountryInfo[]>([]);
   const [totalAll, setTotalAll] = useState(0);
-  const [daddyCount, setDaddyCount] = useState(0);
-  const [damiCount, setDamiCount] = useState(0);
-  const [sfCount, setSfCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -186,7 +122,6 @@ export default function LiveTVPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
 
   // Debounced search
   useEffect(() => {
@@ -194,33 +129,49 @@ export default function LiveTVPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Fetch channels
+  // Fetch channels — get all and filter for 24/7
   const fetchChannels = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.set("search", searchQuery);
-      if (selectedCategory !== "all") params.set("category", selectedCategory);
-      if (sourceFilter !== "all") params.set("source", sourceFilter);
 
       const res = await fetch(`/api/live-tv/channels?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load channels");
       const data = await res.json();
 
-      setChannels(data.channels || []);
-      setCategories(data.categories || []);
-      setCountries(data.countries || []);
-      setTotalAll(data.totalAll || 0);
-      setDaddyCount(data.daddyCount || 0);
-      setDamiCount(data.damiCount || 0);
-      setSfCount(data.sfCount || 0);
+      // Filter to 24/7 channels only
+      const allChannels: TVChannel[] = data.channels || [];
+      const live247Channels = allChannels.filter(ch =>
+        ch.isAlwaysLive ||
+        ch.category === "Entertainment" ||
+        ch.category === "News" ||
+        ch.category === "Kids" ||
+        ch.category === "Music" ||
+        ch.category === "Documentary" ||
+        ch.category === "Movies"
+      );
+
+      setChannels(live247Channels);
+      setTotalAll(live247Channels.length);
+
+      // Compute category counts from 24/7 channels
+      const catCounts: Record<string, number> = {};
+      for (const ch of live247Channels) {
+        catCounts[ch.category] = (catCounts[ch.category] || 0) + 1;
+      }
+      setCategories(
+        Object.entries(catCounts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+      );
     } catch (err: any) {
       setError(err.message || "Failed to load channels");
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCategory, sourceFilter]);
+  }, [searchQuery]);
 
   useEffect(() => { fetchChannels(); }, [fetchChannels]);
 
@@ -237,51 +188,30 @@ export default function LiveTVPage() {
     } as any);
   };
 
+  // Filtered channels by category
+  const filteredChannels = selectedCategory === "all"
+    ? channels
+    : channels.filter(ch => ch.category === selectedCategory);
+
   return (
     <div className="min-h-screen pb-8 -mx-4 lg:-mx-8">
-      {/* Header + Source Toggle */}
+      {/* Header */}
       <div className="px-4 lg:px-8 pt-4 pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1
-              className="text-2xl font-black text-white"
+              className="text-2xl font-black text-white flex items-center gap-2"
               style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
             >
-              Live TV
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-600/20 text-green-400 text-[10px] font-black uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                24/7
+              </span>
+              Live Channels
             </h1>
             <p className="text-white/30 text-xs mt-0.5">
-              {totalAll > 0 ? `${totalAll} channels available` : "Loading..."}
+              {totalAll > 0 ? `${totalAll} always-on channels` : "Loading..."}
             </p>
-          </div>
-
-          {/* SOURCE TOGGLE — 4 options */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-            {([
-              { id: "all" as SourceFilter, label: "All", count: totalAll, color: "#7c6cf0" },
-              { id: "streamfree" as SourceFilter, label: "StreamFree", count: sfCount, color: "#a855f7" },
-              { id: "damitv" as SourceFilter, label: "DamiTV", count: damiCount, color: "#22c55e" },
-              { id: "daddylive" as SourceFilter, label: "DaddyLive", count: daddyCount, color: "#3b82f6" },
-            ]).map(src => (
-              <button
-                key={src.id}
-                onClick={() => setSourceFilter(src.id)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                  sourceFilter === src.id
-                    ? "text-white"
-                    : "text-white/35 hover:text-white/60 hover:bg-white/[0.04]"
-                }`}
-                style={{
-                  ...(sourceFilter === src.id ? {
-                    background: `linear-gradient(135deg, ${src.color}25, ${src.color}10)`,
-                    border: `1px solid ${src.color}40`,
-                  } : {}),
-                  fontFamily: "var(--font-space-mono), 'Space Mono', monospace",
-                }}
-              >
-                {src.label}
-                <span className="ml-1 text-[9px] opacity-60">({src.count})</span>
-              </button>
-            ))}
           </div>
         </div>
       </div>
@@ -297,20 +227,10 @@ export default function LiveTVPage() {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search channels, matches, teams..."
+            placeholder="Search 24/7 channels..."
             className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-[#7c6cf0]/40 focus:bg-white/[0.06] transition-all"
             style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
           />
-          {searchInput && (
-            <button
-              onClick={() => setSearchInput("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
         </div>
       </div>
 
@@ -321,7 +241,7 @@ export default function LiveTVPage() {
             onClick={() => setSelectedCategory("all")}
             className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
               selectedCategory === "all"
-                ? "bg-[#7c6cf0] text-white"
+                ? "bg-green-600/20 text-green-400 border border-green-500/30"
                 : "bg-white/[0.03] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
             }`}
             style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
@@ -358,24 +278,15 @@ export default function LiveTVPage() {
       {/* Channel count */}
       <div className="px-4 lg:px-8 mb-3">
         <p className="text-white/20 text-[10px] font-bold" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
-          Showing {channels.length} channels
-          {sourceFilter !== "all" && (
-            <span className="ml-1">from {SOURCE_CONFIG[sourceFilter]?.label || sourceFilter}</span>
-          )}
+          Showing {filteredChannels.length} channels
         </p>
       </div>
 
       {/* Loading State */}
-      {loading && channels.length === 0 && (
+      {loading && filteredChannels.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <div className="w-12 h-12 rounded-full border-2 border-[#7c6cf0]/30 border-t-[#7c6cf0] animate-spin" />
-          <p className="text-sm text-white/30">Loading channels...</p>
-          <p className="text-[10px] text-white/15">
-            {sourceFilter === "damitv" ? "Fetching from DamiTV" :
-             sourceFilter === "daddylive" ? "Fetching from DaddyLive" :
-             sourceFilter === "streamfree" ? "Fetching from StreamFree" :
-             "Fetching from all sources"}
-          </p>
+          <div className="w-12 h-12 rounded-full border-2 border-green-500/30 border-t-green-500 animate-spin" />
+          <p className="text-sm text-white/30">Loading 24/7 channels...</p>
         </div>
       )}
 
@@ -397,12 +308,9 @@ export default function LiveTVPage() {
       {!loading && !error && (
         <div className="px-4 lg:px-8">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            {channels.map(channel => {
+            {filteredChannels.map(channel => {
               const color = CAT_COLORS[channel.category] || CAT_COLORS.General;
               const srcConfig = SOURCE_CONFIG[channel.source];
-              const isLive = channel.isLive;
-              const hasTeams = channel.homeTeam && channel.awayTeam;
-              const hasBadges = channel.homeBadge || channel.awayBadge;
               const channelLogo = getChannelLogo(channel.name);
 
               return (
@@ -414,9 +322,8 @@ export default function LiveTVPage() {
                     background: `linear-gradient(145deg, ${color}15, ${color}06, #0d0d12)`,
                   }}
                 >
-                  {/* Top section — poster / team badges / logo area */}
+                  {/* Top section — logo area */}
                   <div className="relative h-[110px] sm:h-[120px] flex items-center justify-center overflow-hidden">
-                    {/* Background image */}
                     {channel.poster && (
                       <img
                         src={channel.poster}
@@ -427,18 +334,12 @@ export default function LiveTVPage() {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                    {/* Live badge top-left */}
+                    {/* 24/7 badge top-left */}
                     <div className="absolute top-2 left-2 z-10">
-                      {isLive ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-600 text-white text-[8px] font-black uppercase tracking-wider shadow-lg">
-                          <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
-                          LIVE
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-md bg-black/60 text-white/50 text-[8px] font-bold">
-                          {channel.status === "upcoming" ? "UPCOMING" : "OFFLINE"}
-                        </span>
-                      )}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-600/80 text-white text-[8px] font-black uppercase tracking-wider shadow-lg">
+                        <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+                        24/7
+                      </span>
                     </div>
 
                     {/* Source badge top-right */}
@@ -454,29 +355,8 @@ export default function LiveTVPage() {
                       </span>
                     </div>
 
-                    {/* Center — Channel logo, Team badges, or letter avatar */}
-                    {hasBadges ? (
-                      <div className="relative z-10 flex items-center gap-3">
-                        {channel.homeBadge && (
-                          <img
-                            src={channel.homeBadge}
-                            alt={channel.homeTeam || ""}
-                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-lg"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
-                        )}
-                        <span className="text-[10px] text-white/30 font-bold">VS</span>
-                        {channel.awayBadge && (
-                          <img
-                            src={channel.awayBadge}
-                            alt={channel.awayTeam || ""}
-                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-lg"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
-                        )}
-                      </div>
-                    ) : channelLogo ? (
-                      /* Channel logo from LOGO_MAP */
+                    {/* Center — Channel logo or letter avatar */}
+                    {channelLogo ? (
                       <div className="relative z-10 flex items-center justify-center">
                         <img
                           src={channelLogo}
@@ -485,14 +365,7 @@ export default function LiveTVPage() {
                           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                         />
                       </div>
-                    ) : hasTeams ? (
-                      <div className="relative z-10 flex flex-col items-center gap-0.5 text-center px-2">
-                        <span className="text-[10px] font-bold text-white/70 truncate max-w-full">{channel.homeTeam}</span>
-                        <span className="text-[9px] text-white/30 font-bold">VS</span>
-                        <span className="text-[10px] font-bold text-white/70 truncate max-w-full">{channel.awayTeam}</span>
-                      </div>
                     ) : (
-                      /* Bigger letter avatar for channels without logos */
                       <div
                         className="relative z-10 w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black"
                         style={{
@@ -512,16 +385,14 @@ export default function LiveTVPage() {
                       {channel.name}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      {channel.league && (
-                        <span className="text-[8px] text-white/25 font-medium truncate max-w-[80%]">{channel.league}</span>
-                      )}
-                      {channel.sport && !channel.league && (
-                        <span className="text-[8px] text-white/20 font-medium">{channel.sport}</span>
-                      )}
-                      {channel.viewers !== undefined && channel.viewers > 0 && (
-                        <span className="text-[7px] text-white/15 font-bold ml-auto flex-shrink-0">
-                          {channel.viewers} watching
-                        </span>
+                      <span
+                        className="text-[8px] font-bold px-1.5 py-0.5 rounded"
+                        style={{ background: `${color}15`, color: `${color}aa` }}
+                      >
+                        {channel.category}
+                      </span>
+                      {channel.country && channel.country.code !== "INT" && (
+                        <span className="text-[8px] text-white/20">{channel.country.flag}</span>
                       )}
                     </div>
                   </div>
@@ -530,11 +401,11 @@ export default function LiveTVPage() {
             })}
           </div>
 
-          {channels.length === 0 && !loading && (
+          {filteredChannels.length === 0 && !loading && (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <div className="text-5xl">🔍</div>
-              <p className="text-sm text-white/40">No channels found</p>
-              <p className="text-[10px] text-white/20">Try adjusting your filters or source</p>
+              <div className="text-5xl">📺</div>
+              <p className="text-sm text-white/40">No 24/7 channels found</p>
+              <p className="text-[10px] text-white/20">Try adjusting your search</p>
             </div>
           )}
         </div>

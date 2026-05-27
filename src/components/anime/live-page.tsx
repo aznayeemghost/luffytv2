@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAppStore } from "./store";
 import LiveTVPage from "./live-tv-page";
+import Live247Page from "./live-247-page";
 
 // ============================================================
 // LIVE TV & SPORTS — WatchFooty-Style Complete Redesign
@@ -736,6 +737,11 @@ export default function LivePage() {
   // This MUST be after all hooks to avoid React error #300
   if (sectionSubPage === "tv-channels") {
     return <LiveTVPage />;
+  }
+
+  // ── Tab: If on 247-live sub-page, render Live247Page instead ──
+  if (sectionSubPage === "247-live") {
+    return <Live247Page />;
   }
 
   return (
