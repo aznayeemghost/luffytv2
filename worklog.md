@@ -158,3 +158,28 @@ Stage Summary:
 - Dami API now uses direct embed URLs from API response
 - Successfully pushed to both GitHub remotes
 - Commit: 0589d00 "fix: React error #310 + rebuild Live TV page with Dami API embed URLs and great GUI"
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix DamiTV false positives + navbar navigation for Live TV/Sports
+
+Work Log:
+- Analyzed uploaded screenshots showing Live TV channel browser and watch page
+- Tested DaddyLive API (https://daddylive.org/api/channels) - confirmed 1080 channels with 3 fields: channel_name, channel_id, url
+- Verified existing LiveTVPage, LiveTVWatchPage, API route all already use DaddyLive API correctly
+- Fixed DamiTV showing everywhere without streams: Added apiSource check in live-watch-page.tsx cross-provider fallback (lines 367-375)
+  - Only merge damitvId when apiSource === "damitv"
+  - Only merge streamKey when apiSource === "streamfree"  
+  - Only merge watchfootyId when apiSource === "watchfooty"
+  - Only merge sportsrcId when apiSource === "sportsembed"
+- Fixed Live TV watch page back button to navigate to tv-channels sub-page
+- Fixed Sports watch page back button to navigate to sports sub-page
+- Verified both navbars (top pill + bottom mobile) work correctly for Live TV navigation
+- Build succeeded, pushed to luffytv-tasin remote
+
+Stage Summary:
+- DamiTV no longer shows as a stream source for matches it doesn't actually have
+- Live TV channel listing works with DaddyLive API (1080 channels, category/country filters)
+- Clicking a channel opens iframe player with embed URL format: https://daddylive.org/embed/embed.php?id=CHANNEL_ID&player=1&source=tv.json
+- Back buttons navigate to correct sub-pages (TV channels vs Sports)
+- Pushed commit 1ad86e9 to luffytv-tasin remote
