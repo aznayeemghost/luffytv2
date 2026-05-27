@@ -364,14 +364,15 @@ export default function LiveWatchPage(props: LiveWatchProps) {
                   if (m.sources && m.sources.length > 0) {
                     effectiveSources = JSON.stringify(m.sources);
                   }
-                  // Also fill in other missing IDs
-                  if (!effectiveWatchfootyId && m.watchfootyId) effectiveWatchfootyId = String(m.watchfootyId);
-                  if (!effectiveDamitvId && m.damitvId) effectiveDamitvId = m.damitvId;
-                  if (!effectiveStreamKey && m.streamKey) effectiveStreamKey = m.streamKey;
-                  if (!effectiveStreamCategory && m.streamCategory) effectiveStreamCategory = m.streamCategory;
+                  // Also fill in other missing IDs — BUT only merge provider-specific IDs
+                  // from their own source to prevent DamiTV/StreamFree showing everywhere
+                  if (!effectiveWatchfootyId && m.watchfootyId && m.apiSource === "watchfooty") effectiveWatchfootyId = String(m.watchfootyId);
+                  if (!effectiveDamitvId && m.damitvId && m.apiSource === "damitv") effectiveDamitvId = m.damitvId;
+                  if (!effectiveStreamKey && m.streamKey && m.apiSource === "streamfree") effectiveStreamKey = m.streamKey;
+                  if (!effectiveStreamCategory && m.streamCategory && m.apiSource === "streamfree") effectiveStreamCategory = m.streamCategory;
                   if (!effectiveChannelCode && m.channelCode) effectiveChannelCode = m.channelCode;
-                  if (!effectiveSportsrcCategory && m.sportsrcCategory) effectiveSportsrcCategory = m.sportsrcCategory;
-                  if (!effectiveSportsrcId && m.sportsrcId) effectiveSportsrcId = m.sportsrcId;
+                  if (!effectiveSportsrcCategory && m.sportsrcCategory && m.apiSource === "sportsembed") effectiveSportsrcCategory = m.sportsrcCategory;
+                  if (!effectiveSportsrcId && m.sportsrcId && m.apiSource === "sportsembed") effectiveSportsrcId = m.sportsrcId;
                   break; // Use first matching match
                 }
               }
@@ -1227,9 +1228,9 @@ export default function LiveWatchPage(props: LiveWatchProps) {
       <div className="px-4 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
           {/* Back */}
-          <button onClick={() => navigate({ page: "live" } as any)} className="flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-5">
+          <button onClick={() => { navigate({ page: "live" } as any); useAppStore.getState().setSectionSubPage("sports"); }} className="flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-5">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
-            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>Back to Live</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>Back to Sports</span>
           </button>
 
           {/* Match info card */}
@@ -1562,7 +1563,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button onClick={() => navigate({ page: "live" } as any)} className="py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-[11px] font-bold text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-all">Browse More</button>
+            <button onClick={() => { navigate({ page: "live" } as any); useAppStore.getState().setSectionSubPage("sports"); }} className="py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-[11px] font-bold text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-all">Browse More</button>
             {newTabUrl ? (
               <a href={newTabUrl} target="_blank" rel="noopener noreferrer" className="py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/15 text-[11px] font-bold text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/15 transition-all text-center">Watch in Tab</a>
             ) : (

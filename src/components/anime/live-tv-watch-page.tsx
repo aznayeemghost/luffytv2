@@ -106,7 +106,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
 
         {/* Back Button */}
         <button
-          onClick={() => navigate({ page: "live" })}
+          onClick={() => { navigate({ page: "live" }); useAppStore.getState().setSectionSubPage("tv-channels"); }}
           className="absolute top-3 left-3 z-30 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 text-white/70 hover:text-white hover:bg-black/80 transition-all"
           style={{ zIndex: 30 }}
         >
