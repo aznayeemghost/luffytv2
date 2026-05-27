@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAppStore } from "./store";
 
 // ============================================================
-// LIVE TV CHANNEL BROWSER — Daddylive + DamiTV
-// Compact card grid, source toggle, search, category filters
+// LIVE TV CHANNEL BROWSER — Daddylive + DamiTV + StreamFree
+// Big card grid with team logos, source toggle, search, filters
 // ============================================================
 
 interface TVChannel {
@@ -15,13 +15,18 @@ interface TVChannel {
   sport?: string;
   country: { code: string; name: string; flag: string };
   embedUrl: string;
-  source: "daddylive" | "damitv";
+  source: "daddylive" | "damitv" | "streamfree";
   poster?: string;
   isLive?: boolean;
   status?: string;
   league?: string;
   homeTeam?: string;
   awayTeam?: string;
+  homeBadge?: string;
+  awayBadge?: string;
+  streamKey?: string;
+  streamCategory?: string;
+  viewers?: number;
 }
 
 interface CategoryInfo {
@@ -36,9 +41,9 @@ interface CountryInfo {
   count: number;
 }
 
-type SourceFilter = "all" | "daddylive" | "damitv";
+type SourceFilter = "all" | "daddylive" | "damitv" | "streamfree";
 
-// Category colors (compact)
+// Category colors
 const CAT_COLORS: Record<string, string> = {
   Sports: "#f97316",
   News: "#3b82f6",
@@ -50,15 +55,11 @@ const CAT_COLORS: Record<string, string> = {
   General: "#6b7280",
 };
 
-const CAT_ICONS: Record<string, string> = {
-  Sports: "⚽",
-  News: "📰",
-  Entertainment: "🎬",
-  Kids: "🧸",
-  Music: "🎵",
-  Documentary: "🔬",
-  Movies: "🎥",
-  General: "📺",
+// Source colors and labels
+const SOURCE_CONFIG: Record<string, { color: string; label: string; shortLabel: string }> = {
+  daddylive: { color: "#3b82f6", label: "DaddyLive", shortLabel: "DADDY" },
+  damitv: { color: "#22c55e", label: "DamiTV", shortLabel: "DAMI" },
+  streamfree: { color: "#a855f7", label: "StreamFree", shortLabel: "SF" },
 };
 
 export default function LiveTVPage() {
@@ -70,6 +71,7 @@ export default function LiveTVPage() {
   const [totalAll, setTotalAll] = useState(0);
   const [daddyCount, setDaddyCount] = useState(0);
   const [damiCount, setDamiCount] = useState(0);
+  const [sfCount, setSfCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -77,7 +79,6 @@ export default function LiveTVPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedCountry, setSelectedCountry] = useState("all");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
 
   // Debounced search
@@ -94,7 +95,6 @@ export default function LiveTVPage() {
       const params = new URLSearchParams();
       if (searchQuery) params.set("search", searchQuery);
       if (selectedCategory !== "all") params.set("category", selectedCategory);
-      if (selectedCountry !== "all") params.set("country", selectedCountry);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
 
       const res = await fetch(`/api/live-tv/channels?${params.toString()}`);
@@ -107,12 +107,13 @@ export default function LiveTVPage() {
       setTotalAll(data.totalAll || 0);
       setDaddyCount(data.daddyCount || 0);
       setDamiCount(data.damiCount || 0);
+      setSfCount(data.sfCount || 0);
     } catch (err: any) {
       setError(err.message || "Failed to load channels");
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCategory, selectedCountry, sourceFilter]);
+  }, [searchQuery, selectedCategory, sourceFilter]);
 
   useEffect(() => { fetchChannels(); }, [fetchChannels]);
 
@@ -142,30 +143,33 @@ export default function LiveTVPage() {
               Live TV
             </h1>
             <p className="text-white/30 text-xs mt-0.5">
-              {totalAll > 0 ? `${totalAll} channels` : "Loading..."}
+              {totalAll > 0 ? `${totalAll} channels available` : "Loading..."}
             </p>
           </div>
 
-          {/* SOURCE TOGGLE — Daddylive / DamiTV / All */}
+          {/* SOURCE TOGGLE — 4 options */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
             {([
-              { id: "all" as SourceFilter, label: "All", count: totalAll },
-              { id: "daddylive" as SourceFilter, label: "DaddyLive", count: daddyCount },
-              { id: "damitv" as SourceFilter, label: "DamiTV", count: damiCount },
+              { id: "all" as SourceFilter, label: "All", count: totalAll, color: "#7c6cf0" },
+              { id: "streamfree" as SourceFilter, label: "StreamFree", count: sfCount, color: "#a855f7" },
+              { id: "damitv" as SourceFilter, label: "DamiTV", count: damiCount, color: "#22c55e" },
+              { id: "daddylive" as SourceFilter, label: "DaddyLive", count: daddyCount, color: "#3b82f6" },
             ]).map(src => (
               <button
                 key={src.id}
                 onClick={() => setSourceFilter(src.id)}
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                   sourceFilter === src.id
-                    ? src.id === "damitv"
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                      : src.id === "daddylive"
-                      ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                      : "bg-[#7c6cf0]/20 text-[#7c6cf0] border border-[#7c6cf0]/30"
+                    ? "text-white"
                     : "text-white/35 hover:text-white/60 hover:bg-white/[0.04]"
                 }`}
-                style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+                style={{
+                  ...(sourceFilter === src.id ? {
+                    background: `linear-gradient(135deg, ${src.color}25, ${src.color}10)`,
+                    border: `1px solid ${src.color}40`,
+                  } : {}),
+                  fontFamily: "var(--font-space-mono), 'Space Mono', monospace",
+                }}
               >
                 {src.label}
                 <span className="ml-1 text-[9px] opacity-60">({src.count})</span>
@@ -186,7 +190,7 @@ export default function LiveTVPage() {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search channels, matches..."
+            placeholder="Search channels, matches, teams..."
             className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-[#7c6cf0]/40 focus:bg-white/[0.06] transition-all"
             style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
           />
@@ -203,12 +207,12 @@ export default function LiveTVPage() {
         </div>
       </div>
 
-      {/* Category Filters — compact pills */}
+      {/* Category Filters */}
       <div className="px-4 lg:px-8 mb-2">
         <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
               selectedCategory === "all"
                 ? "bg-[#7c6cf0] text-white"
                 : "bg-white/[0.03] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
@@ -219,13 +223,12 @@ export default function LiveTVPage() {
           </button>
           {categories.map(cat => {
             const color = CAT_COLORS[cat.name] || CAT_COLORS.General;
-            const icon = CAT_ICONS[cat.name] || "📺";
             const isActive = selectedCategory === cat.name;
             return (
               <button
                 key={cat.name}
                 onClick={() => setSelectedCategory(isActive ? "all" : cat.name)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
                   isActive
                     ? "text-white"
                     : "bg-white/[0.03] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
@@ -238,7 +241,6 @@ export default function LiveTVPage() {
                   fontFamily: "var(--font-space-mono), 'Space Mono', monospace",
                 }}
               >
-                <span className="text-xs">{icon}</span>
                 {cat.name} ({cat.count})
               </button>
             );
@@ -246,145 +248,176 @@ export default function LiveTVPage() {
         </div>
       </div>
 
-      {/* Country Filters — compact row */}
-      <div className="px-4 lg:px-8 mb-4">
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-          <button
-            onClick={() => setSelectedCountry("all")}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${
-              selectedCountry === "all"
-                ? "bg-[#7c6cf0] text-white"
-                : "bg-white/[0.03] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
-            }`}
-            style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-          >
-            🌍 All
-          </button>
-          {countries.slice(0, 30).map(country => {
-            const isActive = selectedCountry === country.code;
-            return (
-              <button
-                key={country.code}
-                onClick={() => setSelectedCountry(isActive ? "all" : country.code)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${
-                  isActive
-                    ? "bg-white/[0.10] text-white border border-white/15"
-                    : "bg-white/[0.03] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
-                }`}
-                style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-              >
-                {country.flag} {country.name}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Channel count */}
-      <div className="px-4 lg:px-8 mb-2">
+      <div className="px-4 lg:px-8 mb-3">
         <p className="text-white/20 text-[10px] font-bold" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
-          {channels.length} channels
+          Showing {channels.length} channels
           {sourceFilter !== "all" && (
-            <span className="ml-1">• {sourceFilter === "damitv" ? "DamiTV" : "DaddyLive"} only</span>
+            <span className="ml-1">from {SOURCE_CONFIG[sourceFilter]?.label || sourceFilter}</span>
           )}
         </p>
       </div>
 
       {/* Loading State */}
       {loading && channels.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <div className="w-10 h-10 rounded-full border-2 border-[#7c6cf0]/30 border-t-[#7c6cf0] animate-spin" />
-          <p className="text-xs text-white/30">Loading channels...</p>
-          <p className="text-[9px] text-white/15">
-            {sourceFilter === "damitv" ? "Fetching from DamiTV" : sourceFilter === "daddylive" ? "Fetching from DaddyLive" : "Fetching from all sources"}
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <div className="w-12 h-12 rounded-full border-2 border-[#7c6cf0]/30 border-t-[#7c6cf0] animate-spin" />
+          <p className="text-sm text-white/30">Loading channels...</p>
+          <p className="text-[10px] text-white/15">
+            {sourceFilter === "damitv" ? "Fetching from DamiTV" :
+             sourceFilter === "daddylive" ? "Fetching from DaddyLive" :
+             sourceFilter === "streamfree" ? "Fetching from StreamFree" :
+             "Fetching from all sources"}
           </p>
         </div>
       )}
 
       {/* Error State */}
       {error && !loading && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <div className="text-4xl">📺</div>
-          <p className="text-xs text-white/40">{error}</p>
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <div className="text-5xl">📺</div>
+          <p className="text-sm text-white/40">{error}</p>
           <button
             onClick={fetchChannels}
-            className="px-3 py-1.5 rounded-lg bg-white/[0.06] text-white/50 text-[10px] font-bold hover:bg-white/[0.08]"
+            className="px-4 py-2 rounded-lg bg-white/[0.06] text-white/50 text-[11px] font-bold hover:bg-white/[0.08]"
           >
             Retry
           </button>
         </div>
       )}
 
-      {/* ── COMPACT CHANNEL LIST ── */}
+      {/* ── CHANNEL CARDS ── */}
       {!loading && !error && (
         <div className="px-4 lg:px-8">
-          {/* Grid for larger screens, list-like on mobile */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {channels.map(channel => {
               const color = CAT_COLORS[channel.category] || CAT_COLORS.General;
-              const isDami = channel.source === "damitv";
+              const srcConfig = SOURCE_CONFIG[channel.source];
               const isLive = channel.isLive;
+              const hasTeams = channel.homeTeam && channel.awayTeam;
+              const hasBadges = channel.homeBadge || channel.awayBadge;
+              const isDami = channel.source === "damitv";
+              const isSF = channel.source === "streamfree";
 
               return (
                 <button
                   key={channel.id}
                   onClick={() => handleWatch(channel)}
-                  className="group flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-150 cursor-pointer text-left"
+                  className="group relative flex flex-col rounded-xl overflow-hidden transition-all duration-200 hover:scale-[1.02] hover:shadow-xl cursor-pointer border border-white/[0.06] hover:border-white/[0.15] text-left"
+                  style={{
+                    background: `linear-gradient(145deg, ${color}15, ${color}06, #0d0d12)`,
+                  }}
                 >
-                  {/* Left: letter avatar */}
-                  <div
-                    className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
-                    style={{
-                      background: `linear-gradient(135deg, ${color}30, ${color}12)`,
-                      border: `1px solid ${color}20`,
-                      color,
-                    }}
-                  >
-                    {channel.name.charAt(0).toUpperCase()}
-                  </div>
+                  {/* Top section — poster / team badges area */}
+                  <div className="relative h-[110px] sm:h-[120px] flex items-center justify-center overflow-hidden">
+                    {/* Background image */}
+                    {channel.poster && (
+                      <img
+                        src={channel.poster}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover opacity-30"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                  {/* Middle: name + meta */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold text-white/80 group-hover:text-white truncate">
-                      {channel.name}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {/* Source badge */}
+                    {/* Live badge top-left */}
+                    <div className="absolute top-2 left-2 z-10">
+                      {isLive ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-600 text-white text-[8px] font-black uppercase tracking-wider shadow-lg">
+                          <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+                          LIVE
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md bg-black/60 text-white/50 text-[8px] font-bold">
+                          {channel.status === "upcoming" ? "UPCOMING" : "OFFLINE"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Source badge top-right */}
+                    <div className="absolute top-2 right-2 z-10">
                       <span
-                        className="text-[7px] font-black px-1 py-0.5 rounded"
+                        className="text-[7px] font-black px-1.5 py-0.5 rounded"
                         style={{
-                          background: isDami ? "#22c55e15" : "#3b82f615",
-                          color: isDami ? "#22c55e" : "#3b82f6",
+                          background: `${srcConfig.color}20`,
+                          color: srcConfig.color,
                         }}
                       >
-                        {isDami ? "DAMI" : "DADDY"}
+                        {srcConfig.shortLabel}
                       </span>
-                      {/* Category */}
-                      <span className="text-[7px] font-bold text-white/20">{channel.category}</span>
-                      {/* Live dot */}
-                      {isLive && (
-                        <span className="inline-flex items-center gap-0.5">
-                          <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-[7px] font-bold text-red-400">LIVE</span>
+                    </div>
+
+                    {/* Center — Team badges or channel icon */}
+                    {hasBadges ? (
+                      <div className="relative z-10 flex items-center gap-3">
+                        {channel.homeBadge && (
+                          <img
+                            src={channel.homeBadge}
+                            alt={channel.homeTeam || ""}
+                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-lg"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        )}
+                        <span className="text-[10px] text-white/30 font-bold">VS</span>
+                        {channel.awayBadge && (
+                          <img
+                            src={channel.awayBadge}
+                            alt={channel.awayTeam || ""}
+                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-lg"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        )}
+                      </div>
+                    ) : hasTeams ? (
+                      <div className="relative z-10 flex flex-col items-center gap-0.5 text-center px-2">
+                        <span className="text-[10px] font-bold text-white/70 truncate max-w-full">{channel.homeTeam}</span>
+                        <span className="text-[9px] text-white/30 font-bold">VS</span>
+                        <span className="text-[10px] font-bold text-white/70 truncate max-w-full">{channel.awayTeam}</span>
+                      </div>
+                    ) : (
+                      <div
+                        className="relative z-10 w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black"
+                        style={{
+                          background: `linear-gradient(135deg, ${color}30, ${color}12)`,
+                          border: `1px solid ${color}25`,
+                          color,
+                        }}
+                      >
+                        {channel.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom section — name + meta */}
+                  <div className="p-2.5 pt-1.5">
+                    <p className="text-[11px] font-bold text-white/85 group-hover:text-white truncate leading-tight">
+                      {channel.name}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {channel.league && (
+                        <span className="text-[8px] text-white/25 font-medium truncate max-w-[80%]">{channel.league}</span>
+                      )}
+                      {channel.sport && !channel.league && (
+                        <span className="text-[8px] text-white/20 font-medium">{channel.sport}</span>
+                      )}
+                      {channel.viewers !== undefined && channel.viewers > 0 && (
+                        <span className="text-[7px] text-white/15 font-bold ml-auto flex-shrink-0">
+                          {channel.viewers} watching
                         </span>
                       )}
                     </div>
                   </div>
-
-                  {/* Right: play icon */}
-                  <svg className="w-3.5 h-3.5 text-white/15 group-hover:text-white/40 transition-colors flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
                 </button>
               );
             })}
           </div>
 
           {channels.length === 0 && !loading && (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="text-4xl">🔍</div>
-              <p className="text-xs text-white/40">No channels found</p>
-              <p className="text-[9px] text-white/20">Try adjusting your filters</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <div className="text-5xl">🔍</div>
+              <p className="text-sm text-white/40">No channels found</p>
+              <p className="text-[10px] text-white/20">Try adjusting your filters or source</p>
             </div>
           )}
         </div>

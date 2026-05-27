@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 // ============================================================
 // LIVE TV CHANNELS API — Multi-Source
-// Sources: Daddylive (TV channels) + DamiTV (live sports streams)
-// ?source=daddylive|damitv|all (default: all)
+// Sources: Daddylive + DamiTV + StreamFree
+// ?source=daddylive|damitv|streamfree|all (default: all)
 // ============================================================
 
 export const dynamic = "force-dynamic";
@@ -49,6 +49,31 @@ const DAMI_SPORT_NAMES: Record<string, string> = {
   "ice-hockey": "Ice Hockey",
   wrestling: "WWE",
   wwe: "WWE",
+};
+
+// StreamFree category mapping to our categories
+const SF_CATEGORY_MAP: Record<string, string> = {
+  soccer: "Sports",
+  basketball: "Sports",
+  hockey: "Sports",
+  combat: "Sports",
+  baseball: "Sports",
+  football: "Sports",
+  racing: "Sports",
+  tennis: "Sports",
+  cricket: "Sports",
+};
+
+const SF_SPORT_NAMES: Record<string, string> = {
+  soccer: "Football",
+  basketball: "Basketball",
+  hockey: "Ice Hockey",
+  combat: "UFC / Boxing",
+  baseball: "MLB",
+  football: "NFL",
+  racing: "F1 / Motorsport",
+  tennis: "Tennis",
+  cricket: "Cricket",
 };
 
 // Country detection from channel name
@@ -100,13 +125,18 @@ interface Channel {
   sport?: string;
   country: { code: string; name: string; flag: string };
   embedUrl: string;
-  source: "daddylive" | "damitv";
+  source: "daddylive" | "damitv" | "streamfree";
   poster?: string;
   isLive?: boolean;
   status?: string;
   league?: string;
   homeTeam?: string;
   awayTeam?: string;
+  homeBadge?: string;
+  awayBadge?: string;
+  streamKey?: string;
+  streamCategory?: string;
+  viewers?: number;
 }
 
 function detectCountry(name: string): { code: string; name: string; flag: string } {
@@ -162,6 +192,8 @@ async function fetchDaddyliveChannels(): Promise<Channel[]> {
         country: detectCountry(name),
         embedUrl: `https://daddylive.org/embed/embed.php?id=${id}&player=1&source=tv.json`,
         source: "daddylive" as const,
+        isLive: true,
+        status: "live",
       };
     });
   } catch {
@@ -204,6 +236,8 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
         const sport = (s.category_name || category.category || "").toLowerCase();
         const homeTeam = s.teams?.home?.name || "";
         const awayTeam = s.teams?.away?.name || "";
+        const homeBadge = s.teams?.home?.badge || s.teams?.home?.logo || "";
+        const awayBadge = s.teams?.away?.badge || s.teams?.away?.logo || "";
         const isLive = s.status === "live" || s.is_live === true || s.always_live === 1;
 
         channels.push({
@@ -220,6 +254,68 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
           league: s.league || "",
           homeTeam,
           awayTeam,
+          homeBadge,
+          awayBadge,
+        });
+      }
+    }
+    return channels;
+  } catch {
+    return [];
+  }
+}
+
+// ── Fetch StreamFree streams (live sports with team logos) ──
+async function fetchStreamFreeChannels(): Promise<Channel[]> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT);
+
+    const res = await fetch("https://streamfree.app/streams", {
+      signal: controller.signal,
+      headers: { Accept: "application/json", "User-Agent": UA },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data.streams || typeof data.streams !== "object") return [];
+
+    const channels: Channel[] = [];
+    for (const [category, streams] of Object.entries(data.streams)) {
+      if (!Array.isArray(streams)) continue;
+
+      for (const s of streams as any[]) {
+        if (!s.stream_key || !s.name) continue;
+
+        const homeTeam = s.team1?.name || "";
+        const awayTeam = s.team2?.name || "";
+        const homeBadge = s.team1?.logo || "";
+        const awayBadge = s.team2?.logo || "";
+        const isLive = s.match_timestamp ? (s.match_timestamp * 1000) <= Date.now() : true;
+
+        // Build embed URL for StreamFree player
+        const embedUrl = `https://streamfree.app/embed/${encodeURIComponent(s.category || category)}/${encodeURIComponent(s.stream_key)}?quality=1080p&category=${encodeURIComponent(s.category || category)}&server=auto`;
+
+        channels.push({
+          id: `sf-${s.stream_key}`,
+          name: s.name || "Live Stream",
+          category: SF_CATEGORY_MAP[category] || "Sports",
+          sport: SF_SPORT_NAMES[category] || category,
+          country: detectCountry(s.name || ""),
+          embedUrl,
+          source: "streamfree",
+          poster: s.thumbnail_url ? `https://streamfree.app${s.thumbnail_url}` : "",
+          isLive,
+          status: isLive ? "live" : "upcoming",
+          league: s.league || "",
+          homeTeam,
+          awayTeam,
+          homeBadge,
+          awayBadge,
+          streamKey: s.stream_key,
+          streamCategory: s.category || category,
+          viewers: s.viewers || 0,
         });
       }
     }
@@ -239,14 +335,17 @@ export async function GET(req: Request) {
 
     let allChannels: Channel[] = [];
 
-    // Fetch from selected source(s)
-    if (sourceParam === "daddylive" || sourceParam === "all") {
-      const dlChannels = await fetchDaddyliveChannels();
-      allChannels.push(...dlChannels);
-    }
-    if (sourceParam === "damitv" || sourceParam === "all") {
-      const damiChannels = await fetchDamiTVChannels();
-      allChannels.push(...damiChannels);
+    // Fetch from selected source(s) in parallel
+    const fetchPromises: Promise<Channel[]>[] = [];
+    if (sourceParam === "daddylive" || sourceParam === "all") fetchPromises.push(fetchDaddyliveChannels());
+    if (sourceParam === "damitv" || sourceParam === "all") fetchPromises.push(fetchDamiTVChannels());
+    if (sourceParam === "streamfree" || sourceParam === "all") fetchPromises.push(fetchStreamFreeChannels());
+
+    const results = await Promise.allSettled(fetchPromises);
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        allChannels.push(...result.value);
+      }
     }
 
     // Sort: live first, then alphabetically
@@ -260,7 +359,12 @@ export async function GET(req: Request) {
     let filtered = allChannels;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(ch => ch.name.toLowerCase().includes(q));
+      filtered = filtered.filter(ch =>
+        ch.name.toLowerCase().includes(q) ||
+        (ch.league && ch.league.toLowerCase().includes(q)) ||
+        (ch.homeTeam && ch.homeTeam.toLowerCase().includes(q)) ||
+        (ch.awayTeam && ch.awayTeam.toLowerCase().includes(q))
+      );
     }
     if (categoryFilter !== "all") {
       filtered = filtered.filter(ch => ch.category.toLowerCase() === categoryFilter.toLowerCase());
@@ -290,6 +394,7 @@ export async function GET(req: Request) {
     // Source counts
     const daddyCount = allChannels.filter(c => c.source === "daddylive").length;
     const damiCount = allChannels.filter(c => c.source === "damitv").length;
+    const sfCount = allChannels.filter(c => c.source === "streamfree").length;
 
     return NextResponse.json({
       success: true,
@@ -297,6 +402,7 @@ export async function GET(req: Request) {
       totalAll: allChannels.length,
       daddyCount,
       damiCount,
+      sfCount,
       categories: Object.entries(categoryCounts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count),
@@ -306,7 +412,7 @@ export async function GET(req: Request) {
   } catch (error: any) {
     console.error("Live TV channels API error:", error.message);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch channels", channels: [], categories: [], countries: [], total: 0, totalAll: 0, daddyCount: 0, damiCount: 0 },
+      { success: false, error: error.message || "Failed to fetch channels", channels: [], categories: [], countries: [], total: 0, totalAll: 0, daddyCount: 0, damiCount: 0, sfCount: 0 },
       { status: 500 }
     );
   }
