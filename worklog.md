@@ -183,3 +183,22 @@ Stage Summary:
 - Clicking a channel opens iframe player with embed URL format: https://daddylive.org/embed/embed.php?id=CHANNEL_ID&player=1&source=tv.json
 - Back buttons navigate to correct sub-pages (TV channels vs Sports)
 - Pushed commit 1ad86e9 to luffytv-tasin remote
+---
+Task ID: 1
+Agent: Main
+Task: Fix React error #300 when switching between navbars
+
+Work Log:
+- Identified root cause: conditional early return in live-page.tsx BEFORE hooks were declared (violates React Rules of Hooks)
+- When sectionSubPage was "tv-channels", component returned <LiveTVPage /> early, skipping all useState/useEffect calls
+- When switching to "sports" tab, hooks were called for the first time, causing React error #300
+- Moved the conditional return AFTER all hooks are declared
+- Also fixed: live-tv-watch page wasn't included in getSectionNavLinks(), so navbar didn't show "Live TV | Sports" tabs on TV watch page
+- Added live-tv-watch to the section nav condition
+- Build verified successful
+- Pushed to luffytv-tasin remote
+
+Stage Summary:
+- React error #300 fixed by moving conditional return after all hooks
+- Both navbars now work correctly on all live pages (live, live-watch, live-tv-watch)
+- Commit: d52d14c pushed to tasin/main
