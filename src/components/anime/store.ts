@@ -229,7 +229,7 @@ export function getSectionNavLinks(route: Route): { id: SectionSubPage; label: s
   }
   
   // Live TV section — 2 sub-tabs
-  if (page === "live" || page === "live-watch") {
+  if (page === "live" || page === "live-watch" || page === "live-tv-watch") {
     return [
       { id: "tv-channels", label: "Live TV" },
       { id: "sports", label: "Sports" },

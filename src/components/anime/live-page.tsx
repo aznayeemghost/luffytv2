@@ -508,12 +508,9 @@ export default function LivePage() {
   const sectionSubPage = useAppStore(s => s.sectionSubPage);
   const setSectionSubPage = useAppStore(s => s.setSectionSubPage);
 
-  // ── Tab: If on tv-channels sub-page, render LiveTVPage instead ──
-  if (sectionSubPage === "tv-channels") {
-    return <LiveTVPage />;
-  }
-
   // ── Sports state ──
+  // NOTE: ALL hooks must be called before any conditional returns.
+  // Violating this causes React error #300 when switching between navbar tabs.
   const [selectedSport, setSelectedSport] = useState("all");
   const [liveOnly, setLiveOnly] = useState(false);
   const [matches, setMatches] = useState<LiveMatch[]>([]);
@@ -734,6 +731,13 @@ export default function LivePage() {
   // ═══════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════
+
+  // ── Tab: If on tv-channels sub-page, render LiveTVPage instead ──
+  // This MUST be after all hooks to avoid React error #300
+  if (sectionSubPage === "tv-channels") {
+    return <LiveTVPage />;
+  }
+
   return (
     <div className="min-h-screen pb-8 -mx-4 lg:-mx-8">
 
