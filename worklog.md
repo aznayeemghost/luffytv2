@@ -202,3 +202,28 @@ Stage Summary:
 - React error #300 fixed by moving conditional return after all hooks
 - Both navbars now work correctly on all live pages (live, live-watch, live-tv-watch)
 - Commit: d52d14c pushed to tasin/main
+---
+Task ID: 1-2
+Agent: Main
+Task: Add DamiTV integration + compact channel cards + source toggle
+
+Work Log:
+- Rewrote /api/live-tv/channels/route.ts to support both Daddylive and DamiTV
+  - DamiTV API: https://dami-tv.pro/papi/api/streams — auto-selects best server
+  - Source filter param: ?source=all|daddylive|damitv
+  - Returns source counts (daddyCount, damiCount)
+- Redesigned live-tv-page.tsx with compact list-style channel cards
+  - Source toggle buttons: All / DaddyLive / DamiTV with live counts
+  - Compact cards with letter avatar, source badge (DAMI/DADDY), play icon
+  - Much smaller layout vs old oversized grid cards
+- Updated live-tv-watch-page.tsx to support both sources
+  - DamiTV embed auto-selects best server
+  - Source badge on watch page (green for DamiTV, blue for DaddyLive)
+  - "Auto-selects best server" indicator for DamiTV streams
+- Build verified successful
+- Pushed to tasin/main (commit: 87c90a0)
+
+Stage Summary:
+- Both DamiTV and Daddylive integrated as source options
+- Compact card design replaces oversized cards
+- DamiTV embeds auto-select best server (like ElGato)
