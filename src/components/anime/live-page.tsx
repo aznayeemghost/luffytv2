@@ -1,812 +1,1012 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAppStore } from "./store";
 
-// ─── Types ───
-interface StreamEmbed {
-  url: string;
-  source: string;
-  quality: string;
-  language: string;
-}
+// ============================================================
+// LIVE TV & SPORTS — WatchFooty-Style Complete Redesign
+// Single scroll page with:
+// A. News Ticker Bar (marquee, top)
+// B. Sport Navigation Bar (sticky)
+// C. Sports Category Cards (horizontal scroll)
+// D. Popular Live Section (landscape poster cards)
+// E. All Matches Section (grouped by sport/time, vertical list)
+// F. News Section (grid at bottom)
+// ============================================================
 
-interface MatchSource {
-  source: string;
-  sourceId: string;
-  streamType: "m3u8" | "embed" | "channel";
-  embeds?: StreamEmbed[];
-}
+const WF_BASE = "https://api.watchfooty.st";
+
+const defaultSportCategories = [
+  { id: "all", label: "All Sports", icon: "🏟️", color: "#7c6cf0" },
+  { id: "football", label: "Football", icon: "⚽", color: "#22c55e" },
+  { id: "basketball", label: "Basketball", icon: "🏀", color: "#ef4444" },
+  { id: "american-football", label: "NFL", icon: "🏈", color: "#dc2626" },
+  { id: "hockey", label: "Hockey", icon: "🏒", color: "#06b6d4" },
+  { id: "baseball", label: "Baseball", icon: "⚾", color: "#3b82f6" },
+  { id: "tennis", label: "Tennis", icon: "🎾", color: "#a855f7" },
+  { id: "fight", label: "MMA/Boxing", icon: "🥊", color: "#f97316" },
+  { id: "motor-sports", label: "Motorsport", icon: "🏎️", color: "#eab308" },
+  { id: "rugby", label: "Rugby", icon: "🏉", color: "#10b981" },
+  { id: "golf", label: "Golf", icon: "⛳", color: "#84cc16" },
+  { id: "cricket", label: "Cricket", icon: "🏏", color: "#f59e0b" },
+  { id: "billiards", label: "Billiards", icon: "🎱", color: "#8b5cf6" },
+  { id: "afl", label: "AFL", icon: "🏈", color: "#14b8a6" },
+  { id: "darts", label: "Darts", icon: "🎯", color: "#f43f5e" },
+  { id: "other", label: "Other", icon: "📺", color: "#6b7280" },
+];
+
+// Sport-specific gradient pairs for cards
+const SPORT_GRADIENTS: Record<string, [string, string]> = {
+  football: ["#1a472a", "#0d2818"],
+  basketball: ["#8B0000", "#4a0000"],
+  "american-football": ["#8B0000", "#3d0c02"],
+  hockey: ["#003366", "#001a33"],
+  baseball: ["#003087", "#001a4d"],
+  tennis: ["#5b2c6f", "#2d1637"],
+  fight: ["#b35900", "#5c2d00"],
+  "motor-sports": ["#8b8000", "#454000"],
+  rugby: ["#0b5345", "#052e28"],
+  golf: ["#3d6b33", "#1e3519"],
+  cricket: ["#7d6608", "#3e3304"],
+  other: ["#2c2c2c", "#1a1a1a"],
+};
+
+interface MatchSource { source: string; id: string; }
 
 interface LiveMatch {
   id: string;
   title: string;
-  category: string;
   sport: string;
-  league?: string;
-  status: "live" | "upcoming" | "ended";
-  date?: number | string;
-  poster?: string;
-  viewers?: number | string;
-  homeTeam?: string;
-  awayTeam?: string;
-  homeLogo?: string;
-  awayLogo?: string;
+  sportName: string;
+  date: number;
+  poster: string;
+  popular: boolean;
+  homeTeam: string;
+  awayTeam: string;
+  homeBadge: string;
+  awayBadge: string;
   sources: MatchSource[];
-  type: "sport" | "channel";
-  channelImage?: string;
-  countryCode?: string;
+  isLive: boolean;
+  apiSource?: string;
+  streamKey?: string;
+  streamCategory?: string;
+  channelCode?: string;
+  channelName?: string;
+  damitvId?: string;
+  watchfootyId?: number;
+  sportsrcCategory?: string;
+  sportsrcId?: string;
+  watchfootyStreams?: { id: string; url: string; quality: string; language: string; isRedirect: boolean; nsfw: boolean; ads: boolean }[];
+  league?: string;
+  leagueLogo?: string;
+  homeScore?: number;
+  awayScore?: number;
+  currentMinute?: string;
 }
 
-type TabType = "sports" | "channels" | "all";
+interface SportCategory { id: string; name: string; displayName?: string; liveCount?: number; }
 
-// ─── Safe value helpers (Fix React #310: Objects as React children) ───
-function safeStr(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  if (v instanceof Date) return v.toISOString();
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
+interface NewsArticle {
+  id: string;
+  headline: string;
+  description: string;
+  url: string;
+  imageUrl: string;
+  publishedAt: string;
+  editedAt: string | null;
+  sport: string;
+  author: string;
 }
 
-function safeNum(v: unknown): number {
-  if (typeof v === "number") return v;
-  if (typeof v === "string") {
-    const n = Number(v);
-    return isNaN(n) ? 0 : n;
-  }
-  return 0;
+function getSportColor(sport: string): string {
+  const cat = defaultSportCategories.find(c => c.id === sport);
+  return cat?.color || "#6b7280";
 }
 
-function safeDate(v: unknown): number | undefined {
-  if (v == null) return undefined;
-  if (typeof v === "number") return v;
-  if (typeof v === "string") {
-    const d = new Date(v).getTime();
-    return isNaN(d) ? undefined : d;
-  }
-  if (v instanceof Date) return v.getTime();
-  // Object dates (e.g. { $date: "..." })
+function getSportIcon(sport: string): string {
+  const cat = defaultSportCategories.find(c => c.id === sport);
+  return cat?.icon || "📺";
+}
+
+function getSportGradient(sport: string): [string, string] {
+  return SPORT_GRADIENTS[sport] || SPORT_GRADIENTS.other;
+}
+
+// ── Format helpers ──
+function formatMatchTime(timestamp: number): string {
+  if (!timestamp) return "";
+  const d = new Date(timestamp);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const isTomorrow = new Date(now.getTime() + 86400000).toDateString() === d.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (isToday) return `Today, ${time}`;
+  if (isTomorrow) return `Tomorrow, ${time}`;
+  return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) + `, ${time}`;
+}
+
+function formatTimeOnly(timestamp: number): string {
+  if (!timestamp) return "";
+  return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function timeAgo(dateStr: string): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+function capitalize(s: string) { return s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, " ") : ""; }
+// Safe primitive extraction: handles WatchFooty {value, displayValue} objects
+// NOTE: Do NOT restrict by key count — WatchFooty objects can have extra keys
+function toPrimitive(v: any): any {
+  if (v === null || v === undefined) return v;
   if (typeof v === "object") {
-    try {
-      const d = new Date(JSON.stringify(v)).getTime();
-      return isNaN(d) ? undefined : d;
-    } catch {
-      return undefined;
-    }
+    if ("value" in v) return toPrimitive(v.value);
+    if ("displayValue" in v) return toPrimitive(v.displayValue);
+    return undefined;
   }
-  return undefined;
+  return v;
 }
+function safeStr(v: any): string { const p = toPrimitive(v); if (p === null || p === undefined) return ""; if (typeof p === "object") return ""; return String(p); }
 
-// ─── Live Pulse Dot ───
-function LivePulse({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
-  const s = size === "lg" ? "h-3.5 w-3.5" : size === "md" ? "h-2.5 w-2.5" : "h-2 w-2";
-  const ps = size === "lg" ? "h-3.5 w-3.5" : size === "md" ? "h-2.5 w-2.5" : "h-2 w-2";
-  return (
-    <span className="relative flex items-center justify-center">
-      <span className={`animate-ping absolute inline-flex ${ps} rounded-full bg-red-400 opacity-75`} />
-      <span className={`relative inline-flex rounded-full ${s} bg-red-500`} />
-    </span>
-  );
-}
-
-// ─── Category Filter Config ───
-const SPORT_FILTERS = [
-  { id: "all", label: "All Sports", icon: "🏟️" },
-  { id: "soccer", label: "Soccer", icon: "⚽" },
-  { id: "basketball", label: "Basketball", icon: "🏀" },
-  { id: "baseball", label: "Baseball", icon: "⚾" },
-  { id: "hockey", label: "Hockey", icon: "🏒" },
-  { id: "football", label: "Football", icon: "🏈" },
-  { id: "tennis", label: "Tennis", icon: "🎾" },
-  { id: "fighting", label: "Fighting", icon: "🥊" },
-  { id: "cricket", label: "Cricket", icon: "🏏" },
-  { id: "other", label: "Other", icon: "🎯" },
-];
-
-const CHANNEL_CATEGORIES = [
-  { id: "all", label: "All Channels" },
-  { id: "us", label: "🇺🇸 USA" },
-  { id: "uk", label: "🇬🇧 UK" },
-  { id: "de", label: "🇩🇪 Germany" },
-  { id: "fr", label: "🇫🇷 France" },
-  { id: "es", label: "🇪🇸 Spain" },
-  { id: "it", label: "🇮🇹 Italy" },
-  { id: "in", label: "🇮🇳 India" },
-  { id: "br", label: "🇧🇷 Brazil" },
-  { id: "pk", label: "🇵🇰 Pakistan" },
-  { id: "other", label: "🌍 Other" },
-];
-
-// ─── Sport icon map for badges ───
-const SPORT_ICONS: Record<string, string> = {
-  soccer: "⚽", basketball: "🏀", baseball: "⚾", hockey: "🏒",
-  football: "🏈", tennis: "🎾", fighting: "🥊", mma: "🥋",
-  boxing: "🥊", rugby: "🏉", golf: "⛳", racing: "🏎️",
-  cricket: "🏏", darts: "🎯", volleyball: "🏐", other: "🏟️",
+const sportTagColors: Record<string, string> = {
+  football: "bg-emerald-600",
+  basketball: "bg-red-700",
+  hockey: "bg-cyan-700",
+  baseball: "bg-blue-700",
+  tennis: "bg-purple-700",
+  fight: "bg-orange-700",
+  "motor-sports": "bg-yellow-700",
+  rugby: "bg-emerald-800",
+  cricket: "bg-amber-700",
+  other: "bg-gray-700",
+  news: "bg-blue-900",
 };
 
-// ─── Source label helper ───
-function sourceLabel(s: string): string {
-  if (s === "watchfooty") return "WF";
-  if (s.startsWith("streamed-")) return s.replace("streamed-", "").slice(0, 4).toUpperCase();
-  if (s === "dami-tv") return "DAMI";
-  if (s === "cdnlivetv") return "CDN";
-  if (s === "streamfree") return "SF";
-  if (s === "cdnlivetv-channel") return "TV";
-  return s.slice(0, 3).toUpperCase();
-}
+// ═══════════════════════════════════════════════════════════════
+// NEWS TICKER BAR — Scrolling marquee at top
+// ═══════════════════════════════════════════════════════════════
+function NewsTicker({ articles }: { articles: NewsArticle[] }) {
+  if (articles.length === 0) return null;
 
-// ─── Format viewers count ───
-function formatViewers(v: unknown): string {
-  const n = safeNum(v);
-  if (n <= 0) return "";
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
-}
+  const items = articles.slice(0, 20);
+  const content = items.map((a, i) => (
+    <span key={a.id} className="inline-flex items-center gap-2 whitespace-nowrap">
+      <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider text-white ${sportTagColors[a.sport] || "bg-gray-700"}`}>
+        {a.sport || "NEWS"}
+      </span>
+      <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-white text-[11px] font-medium transition-colors">
+        {a.headline}
+      </a>
+      {i < items.length - 1 && <span className="text-white/20 mx-2">/</span>}
+    </span>
+  ));
 
-// ─── Format time from timestamp ───
-function formatTime(v: unknown): string {
-  const ts = safeDate(v);
-  if (!ts) return "";
-  try {
-    return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return "";
-  }
-}
-
-// ─── Skeleton Card ───
-function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#111820] overflow-hidden">
-      <div className="p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="h-4 w-16 rounded bg-white/[0.06] animate-pulse" />
-          <div className="h-4 w-10 rounded bg-white/[0.06] animate-pulse" />
+    <div className="w-full bg-black border-b border-white/[0.06] overflow-hidden">
+      <div className="flex items-center h-8">
+        <div className="flex-shrink-0 px-3 bg-red-600 h-full flex items-center">
+          <span className="text-white text-[9px] font-black uppercase tracking-widest">LIVE</span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-white/[0.06] animate-pulse" />
-          <div className="h-5 w-12 rounded bg-white/[0.06] animate-pulse" />
-          <div className="h-4 w-8 rounded bg-white/[0.06] animate-pulse" />
-          <div className="h-5 w-16 rounded bg-white/[0.06] animate-pulse ml-auto" />
-          <div className="h-8 w-8 rounded-lg bg-white/[0.06] animate-pulse" />
-        </div>
-        <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
-          <div className="h-3 w-20 rounded bg-white/[0.06] animate-pulse" />
-          <div className="h-3 w-12 rounded bg-white/[0.06] animate-pulse" />
+        <div className="overflow-hidden flex-1 relative">
+          <div className="flex animate-marquee whitespace-nowrap">
+            <div className="flex items-center gap-0 px-4">{content}</div>
+            <div className="flex items-center gap-0 px-4">{content}</div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function SkeletonChannelCard() {
-  return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#111820] overflow-hidden">
-      <div className="p-4 flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-white/[0.06] animate-pulse" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-24 rounded bg-white/[0.06] animate-pulse" />
-          <div className="h-3 w-16 rounded bg-white/[0.06] animate-pulse" />
-        </div>
-      </div>
-    </div>
-  );
-}
+// ═══════════════════════════════════════════════════════════════
+// HORIZONTAL ROW MATCH CARD (compact variant)
+// Full-width horizontal row, ~85px tall
+// Left: sport icon circle | Middle: match info | Right: score/watch
+// ═══════════════════════════════════════════════════════════════
+function MatchCard({ match, onWatch, variant }: { match: LiveMatch; onWatch: (m: LiveMatch) => void; variant: "poster" | "compact" }) {
+  const sportColor = getSportColor(match.sport);
+  const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
 
-// ─── Sport Match Card ───
-function MatchCard({ match, onWatch, featured = false }: { match: LiveMatch; onWatch: (m: LiveMatch) => void; featured?: boolean }) {
-  const isLive = match.status === "live";
-  const isUpcoming = match.status === "upcoming";
-  const primarySource = match.sources[0];
-  const sportIcon = SPORT_ICONS[match.category?.toLowerCase()] || SPORT_ICONS["other"];
-
-  return (
-    <button
-      onClick={() => primarySource && onWatch(match)}
-      disabled={!primarySource}
-      className={`group relative w-full text-left rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] border
-        ${featured
-          ? "border-red-500/20 hover:border-red-500/40 bg-gradient-to-br from-red-500/[0.08] via-[#111820] to-[#111820]"
-          : "border-white/[0.06] hover:border-cyan-500/20 bg-[#111820] hover:bg-[#141d28]"
-        }
-      `}
-    >
-      {/* Live accent glow */}
-      {isLive && (
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-red-500 via-red-400 to-transparent" />
-      )}
-
-      <div className="relative p-4">
-        {/* Header: Sport badge + Status + Sources */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 bg-white/[0.05] px-2.5 py-1 rounded-lg border border-white/[0.04]">
-              <span className="text-xs">{sportIcon}</span>
-              {safeStr(match.sport) || "Sports"}
-            </span>
-            {isLive ? (
-              <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/15">
-                <LivePulse />
-                LIVE
-              </span>
-            ) : isUpcoming ? (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400/80 bg-amber-500/8 px-2 py-1 rounded-lg border border-amber-500/10">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400/60" />
-                SOON
-              </span>
-            ) : (
-              <span className="text-[10px] font-bold text-zinc-600 bg-white/[0.03] px-2 py-1 rounded-lg">ENDED</span>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            {match.sources.slice(0, 3).map((s, i) => (
-              <span key={i} className={`text-[8px] font-bold px-1.5 py-[2px] rounded ${
-                s.source === "dami-tv" ? "bg-violet-500/15 text-violet-400/80" :
-                s.source.startsWith("streamed-") ? "bg-emerald-500/10 text-emerald-400/70" :
-                "bg-white/[0.04] text-zinc-500"
-              }`}>
-                {sourceLabel(s.source)}
-              </span>
-            ))}
-            {match.sources.length > 3 && (
-              <span className="text-[8px] font-bold px-1.5 py-[2px] rounded bg-white/[0.03] text-zinc-600">
-                +{match.sources.length - 3}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Teams / Title */}
-        {match.homeTeam && match.awayTeam ? (
-          <div className="flex items-center gap-3 mb-3">
-            {/* Home team */}
-            <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-              {match.homeLogo ? (
-                <img src={match.homeLogo} alt="" className="w-10 h-10 object-contain rounded-xl bg-white/[0.03] p-1 border border-white/[0.04]" />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500/10 to-red-500/5 flex items-center justify-center text-[11px] font-bold text-red-400/70 border border-red-500/10">
-                  {safeStr(match.homeTeam).slice(0, 2).toUpperCase()}
-                </div>
-              )}
-              <span className="text-[12px] font-semibold text-white truncate w-full text-center">{safeStr(match.homeTeam)}</span>
-            </div>
-            {/* VS divider */}
-            <div className="flex flex-col items-center gap-1 shrink-0">
-              <span className="text-[10px] font-black text-zinc-500 bg-white/[0.04] px-3 py-1.5 rounded-lg border border-white/[0.04]">VS</span>
-            </div>
-            {/* Away team */}
-            <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-              {match.awayLogo ? (
-                <img src={match.awayLogo} alt="" className="w-10 h-10 object-contain rounded-xl bg-white/[0.03] p-1 border border-white/[0.04]" />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 flex items-center justify-center text-[11px] font-bold text-cyan-400/70 border border-cyan-500/10">
-                  {safeStr(match.awayTeam).slice(0, 2).toUpperCase()}
-                </div>
-              )}
-              <span className="text-[12px] font-semibold text-white truncate w-full text-center">{safeStr(match.awayTeam)}</span>
-            </div>
-          </div>
-        ) : (
-          <h3 className="text-[13px] font-semibold text-white truncate mb-3 leading-snug">{safeStr(match.title)}</h3>
-        )}
-
-        {/* Footer: League + Viewers + Time */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.04]">
-          <span className="text-[10px] text-zinc-500 font-medium truncate max-w-[55%]">{safeStr(match.league || match.sport)}</span>
-          <div className="flex items-center gap-2.5 shrink-0">
-            {safeNum(match.viewers) > 0 && (
-              <span className="flex items-center gap-1 text-[10px] text-zinc-500">
-                <svg className="w-3 h-3 opacity-60" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
-                {formatViewers(match.viewers)}
-              </span>
-            )}
-            {safeDate(match.date) && (
-              <span className="text-[10px] text-zinc-600">{formatTime(match.date)}</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Hover play overlay */}
-      {isLive && primarySource && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center">
-          <div className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-5 py-2.5 rounded-xl text-[12px] font-bold shadow-lg shadow-red-500/30 scale-90 group-hover:scale-100 transition-transform">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-            Watch Live
-          </div>
-        </div>
-      )}
-    </button>
-  );
-}
-
-// ─── TV Channel Card ───
-function ChannelCard({ channel, onWatch }: { channel: LiveMatch; onWatch: (c: LiveMatch) => void }) {
-  const countryFlag = (code?: string) => {
-    if (!code) return null;
-    const flags: Record<string, string> = { us: "🇺🇸", uk: "🇬🇧", de: "🇩🇪", fr: "🇫🇷", es: "🇪🇸", in: "🇮🇳", it: "🇮🇹", br: "🇧🇷", pk: "🇵🇰", ca: "🇨🇦", au: "🇦🇺" };
-    return flags[code.toLowerCase()] || "🌍";
-  };
-
-  return (
-    <button
-      onClick={() => onWatch(channel)}
-      className="group relative w-full text-left rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] border border-white/[0.06] hover:border-cyan-500/25 bg-[#111820] hover:bg-[#141d28]"
-    >
-      <div className="relative p-4 flex flex-col items-center gap-3">
-        {/* Channel logo - prominently displayed */}
-        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center overflow-hidden border border-white/[0.06] group-hover:border-cyan-500/15 transition-colors">
-          {channel.channelImage ? (
-            <img src={channel.channelImage} alt={safeStr(channel.title)} className="w-full h-full object-contain p-1.5" />
+  if (variant === "compact") {
+    return (
+      <button
+        onClick={() => onWatch(match)}
+        className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-white/[0.06] transition-all duration-200 hover:border-white/[0.12] cursor-pointer backdrop-blur-sm"
+        style={{
+          background: `linear-gradient(135deg, ${sportColor}12, ${sportColor}06)`,
+        }}
+      >
+        {/* Left: Sport icon circle with gradient */}
+        <div
+          className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm"
+          style={{
+            background: `linear-gradient(135deg, ${sportColor}30, ${sportColor}15)`,
+            border: `1px solid ${sportColor}25`,
+          }}
+        >
+          {match.homeBadge ? (
+            <img src={match.homeBadge} alt="" className="w-6 h-6 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
           ) : (
-            <span className="text-lg font-bold text-cyan-400/60">{safeStr(channel.title).slice(0, 2).toUpperCase()}</span>
+            <span>{getSportIcon(match.sport)}</span>
           )}
         </div>
-        {/* Channel name */}
-        <div className="w-full text-center space-y-1">
-          <h4 className="text-[12px] font-semibold text-white truncate">{safeStr(channel.title)}</h4>
-          <div className="flex items-center justify-center gap-1.5">
-            {channel.countryCode && (
-              <span className="text-[11px]">{countryFlag(channel.countryCode)}</span>
+
+        {/* Middle: Match info */}
+        <div className="flex-1 min-w-0 text-left">
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-bold text-white truncate">{match.title}</p>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            {match.isLive ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-600/20 text-red-400 text-[8px] font-black uppercase tracking-wider">
+                <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                LIVE
+              </span>
+            ) : (
+              <span className="text-[9px] text-white/30 font-medium">{formatTimeOnly(match.date)}</span>
             )}
-            <span className="flex items-center gap-1 text-[9px] font-bold text-red-400/70">
-              <LivePulse size="sm" />
-              LIVE
-            </span>
+            {match.league && (
+              <span className="text-[8px] text-white/25 font-medium truncate max-w-[120px]">{match.league}</span>
+            )}
+            {match.currentMinute && match.isLive && (
+              <span className="text-[8px] text-amber-400/80 font-bold">{safeStr(match.currentMinute)}&apos;</span>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Hover play overlay */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center">
-        <div className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-4 py-2 rounded-xl text-[11px] font-bold shadow-lg shadow-cyan-500/30 scale-90 group-hover:scale-100 transition-transform">
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-          Watch
+        {/* Right: Score or Watch button */}
+        <div className="flex-shrink-0 flex items-center">
+          {hasScore ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/30 border border-white/[0.08]">
+              <span className="text-[12px] font-black text-white">{safeStr(match.homeScore)}</span>
+              <span className="text-[9px] text-white/30 font-bold">-</span>
+              <span className="text-[12px] font-black text-white">{safeStr(match.awayScore)}</span>
+            </div>
+          ) : match.isLive ? (
+            <span
+              className="px-3 py-1 rounded-lg text-[9px] font-bold uppercase text-white transition-all group-hover:opacity-90"
+              style={{
+                background: `linear-gradient(135deg, ${sportColor}40, ${sportColor}20)`,
+                border: `1px solid ${sportColor}30`,
+              }}
+            >
+              Watch
+            </span>
+          ) : (
+            <span className="text-[9px] text-white/20 font-medium">{match.sportName}</span>
+          )}
+        </div>
+      </button>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // LANDSCAPE POSTER CARD (poster variant)
+  // ~220px wide, ~140px tall, landscape orientation
+  // ═══════════════════════════════════════════════════════════════
+  return (
+    <button
+      onClick={() => onWatch(match)}
+      className="group relative flex-shrink-0 w-[200px] sm:w-[220px] rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl cursor-pointer"
+    >
+      <div className="relative h-[130px] sm:h-[140px]" style={{ background: `linear-gradient(135deg, ${sportColor}30, #0d0d12)` }}>
+        {/* Poster as background */}
+        {match.poster && (
+          <img
+            src={match.poster}
+            alt={match.title}
+            className="absolute inset-0 w-full h-full object-cover opacity-50"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
+
+        {/* Dark gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+
+        {/* Top-left: LIVE badge */}
+        <div className="absolute top-2 left-2">
+          {match.isLive ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-600 text-white text-[8px] font-black uppercase tracking-wider shadow-lg">
+              <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+              LIVE
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-md bg-black/70 text-white text-[8px] font-bold">
+              {formatTimeOnly(match.date)}
+            </span>
+          )}
+        </div>
+
+        {/* Top-right: League badge */}
+        <div className="absolute top-2 right-2">
+          {match.league && (
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm text-white text-[7px] font-bold uppercase max-w-[100px] truncate">
+              {match.leagueLogo && <img src={match.leagueLogo} alt="" className="w-2.5 h-2.5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+              {match.league}
+            </span>
+          )}
+        </div>
+
+        {/* Bottom: Team names and score */}
+        <div className="absolute bottom-0 left-0 right-0 p-2.5 pt-6 bg-gradient-to-t from-black/90 to-transparent">
+          {hasScore ? (
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <span className="text-[10px] font-bold text-white/80 truncate max-w-[70px]">{safeStr(match.homeTeam)}</span>
+              <span className="text-[12px] font-black text-white">{safeStr(match.homeScore)}</span>
+              <span className="text-[8px] text-white/30">-</span>
+              <span className="text-[12px] font-black text-white">{safeStr(match.awayScore)}</span>
+              <span className="text-[10px] font-bold text-white/80 truncate max-w-[70px]">{safeStr(match.awayTeam)}</span>
+            </div>
+          ) : (
+            <p className="text-[10px] font-bold text-white truncate">{match.title}</p>
+          )}
+          {match.currentMinute && match.isLive && (
+            <p className="text-[7px] text-amber-400 font-bold text-center">{safeStr(match.currentMinute)}&apos;</p>
+          )}
+          {!hasScore && (
+            <p className="text-[8px] text-white/40 mt-0.5">{match.sportName}</p>
+          )}
         </div>
       </div>
     </button>
   );
 }
 
-// ─── Main Live Page ───
-export default function LivePage() {
-  const navigate = useAppStore((s) => s.navigate);
-  const [matches, setMatches] = useState<LiveMatch[]>([]);
-  const [channels, setChannels] = useState<LiveMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>("all");
-  const [sportFilter, setSportFilter] = useState("all");
-  const [channelFilter, setChannelFilter] = useState("all");
-  const [sourceStats, setSourceStats] = useState<Record<string, number | string>>({});
-  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+// ═══════════════════════════════════════════════════════════════
+// NEWS CARD
+// ═══════════════════════════════════════════════════════════════
+function NewsCard({ article }: { article: NewsArticle }) {
+  return (
+    <a
+      href={article.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block rounded-xl overflow-hidden bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-300 hover:scale-[1.02]"
+    >
+      {article.imageUrl && (
+        <div className="h-36 overflow-hidden">
+          <img src={article.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+        </div>
+      )}
+      <div className="p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider text-white ${sportTagColors[article.sport] || "bg-gray-700"}`}>
+            {article.sport || "NEWS"}
+          </span>
+          <span className="text-[8px] text-white/25">{timeAgo(article.publishedAt)}</span>
+        </div>
+        <p className="text-[11px] font-bold text-white/80 group-hover:text-white line-clamp-2 mb-1">{article.headline}</p>
+        {article.description && (
+          <p className="text-[9px] text-white/35 line-clamp-2">{article.description}</p>
+        )}
+      </div>
+    </a>
+  );
+}
 
+// ═══════════════════════════════════════════════════════════════
+// MATCH SECTION (grouped matches — vertical list layout)
+// ═══════════════════════════════════════════════════════════════
+function MatchSection({ title, icon, matches, onWatch, liveCount }: {
+  title: string;
+  icon: string;
+  matches: LiveMatch[];
+  onWatch: (m: LiveMatch) => void;
+  liveCount?: number;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const INITIAL_SHOW = 5;
+  const displayedMatches = showAll ? matches : matches.slice(0, INITIAL_SHOW);
+  const hasMore = matches.length > INITIAL_SHOW;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+          <span className="text-base">{icon}</span> {title}
+          {liveCount !== undefined && liveCount > 0 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">Live ({liveCount})</span>
+          )}
+        </h2>
+        {hasMore && (
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="text-[10px] font-bold text-white/30 hover:text-white/60 transition-all"
+            style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+          >
+            {showAll ? "Show less" : `+${matches.length - INITIAL_SHOW} more`}
+          </button>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        {displayedMatches.map(match => (
+          <MatchCard key={match.id} match={match} onWatch={onWatch} variant="compact" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN LIVE PAGE
+// ═══════════════════════════════════════════════════════════════
+export default function LivePage() {
+  const navigate = useAppStore(s => s.navigate);
+
+  // ── Sports state ──
+  const [selectedSport, setSelectedSport] = useState("all");
+  const [liveOnly, setLiveOnly] = useState(false);
+  const [matches, setMatches] = useState<LiveMatch[]>([]);
+  const [sports, setSports] = useState<SportCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // ── News state ──
+  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsOffset, setNewsOffset] = useState(0);
+  const [newsHasMore, setNewsHasMore] = useState(true);
+
+  // ── Refs ──
+  const sportCardsRef = useRef<HTMLDivElement>(null);
+  const popularRef = useRef<HTMLDivElement>(null);
+
+  // ── Fetch data ──
   const fetchData = useCallback(async () => {
-    setRefreshing(true);
+    setLoading(true);
+    setError("");
     try {
-      const res = await fetch("/api/live/matches");
-      if (!res.ok) throw new Error("Failed to fetch");
+      const params = new URLSearchParams();
+      if (selectedSport !== "all") params.set("sport", selectedSport);
+      if (liveOnly) params.set("filter", "live");
+
+      const res = await fetch(`/api/live?${params.toString()}`);
+      if (!res.ok) throw new Error("API failed");
       const data = await res.json();
-      if (data.success) {
-        setMatches(data.matches || []);
-        setChannels(data.channels || []);
-        // Safely convert source stats to primitives only (fix React #310)
-        const safeSources: Record<string, number | string> = {};
-        if (data.sources && typeof data.sources === "object") {
-          for (const [key, val] of Object.entries(data.sources)) {
-            if (typeof val === "number" || typeof val === "string") {
-              safeSources[key] = val;
-            } else if (val == null) {
-              safeSources[key] = 0;
-            } else {
-              safeSources[key] = String(val);
-            }
-          }
-        }
-        setSourceStats(safeSources);
-      }
-      setLastRefresh(Date.now());
-      setError(null);
-    } catch (e: any) {
-      setError(e.message || "Failed to load");
+
+      const matchList: LiveMatch[] = (data.matches || []).map((m: any) => ({
+        ...m,
+        // Trust the server's isLive determination (it already applies proper status checks + time-based sanity)
+        // Don't override with status strings that may be stale
+      }));
+
+      matchList.sort((a, b) => {
+        if (a.isLive && !b.isLive) return -1;
+        if (!a.isLive && b.isLive) return 1;
+        if (a.popular && !b.popular) return -1;
+        if (!a.popular && b.popular) return 1;
+        return a.date - b.date;
+      });
+
+      setMatches(matchList);
+      setSports(data.sports || []);
+      setLastUpdated(new Date());
+    } catch (err: any) {
+      setError(err.message || "Failed to load live data");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  }, []);
+  }, [selectedSport, liveOnly]);
 
+  useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => {
-    fetchData();
     const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const handleWatch = (item: LiveMatch) => {
-    const primarySource = item.sources[0];
-    if (!primarySource) return;
+  // ── Fetch News ──
+  const fetchNews = useCallback(async (offset: number = 0, append: boolean = false) => {
+    setNewsLoading(true);
+    try {
+      const res = await fetch(`/api/news?limit=12&offset=${offset}&sort=newest`);
+      if (res.ok) {
+        const data = await res.json();
+        const articles: NewsArticle[] = data.articles || [];
+        if (append) {
+          setNewsArticles(prev => [...prev, ...articles]);
+        } else {
+          setNewsArticles(articles);
+        }
+        setNewsHasMore(articles.length >= 12);
+        setNewsOffset(offset + articles.length);
+      }
+    } catch {}
+    setNewsLoading(false);
+  }, []);
+
+  useEffect(() => { fetchNews(0, false); }, [fetchNews]);
+
+  // ── Navigate to watch ──
+  const handleWatchMatch = (match: LiveMatch) => {
     navigate({
       page: "live-watch",
-      matchId: item.id,
-      source: primarySource.source,
-      sourceId: primarySource.sourceId,
-      title: safeStr(item.title),
-    });
+      matchId: match.id,
+      matchTitle: safeStr(match.title),
+      matchSport: safeStr(match.sport),
+      matchSportName: safeStr(match.sportName),
+      matchHomeTeam: safeStr(match.homeTeam),
+      matchAwayTeam: safeStr(match.awayTeam),
+      matchHomeBadge: safeStr(match.homeBadge),
+      matchAwayBadge: safeStr(match.awayBadge),
+      matchPoster: safeStr(match.poster),
+      matchPopular: match.popular,
+      matchSources: JSON.stringify(match.sources),
+      matchDate: match.date,
+      matchStreamKey: safeStr(match.streamKey),
+      matchStreamCategory: safeStr(match.streamCategory),
+      matchChannelName: safeStr(match.channelName),
+      matchChannelCode: safeStr(match.channelCode),
+      matchDamitvId: safeStr(match.damitvId),
+      matchWatchfootyId: match.watchfootyId ? String(match.watchfootyId) : "",
+      matchApiSource: safeStr(match.apiSource),
+      matchSportsrcCategory: safeStr(match.sportsrcCategory),
+      matchSportsrcId: safeStr(match.sportsrcId),
+      matchWatchfootyStreams: match.watchfootyStreams ? JSON.stringify(match.watchfootyStreams) : "",
+      matchLeague: safeStr(match.league),
+      matchLeagueLogo: safeStr(match.leagueLogo),
+      matchHomeScore: toPrimitive(match.homeScore) ?? undefined,
+      matchAwayScore: toPrimitive(match.awayScore) ?? undefined,
+      matchCurrentMinute: toPrimitive(match.currentMinute) || "",
+    } as any);
   };
 
-  // Filter logic
-  const filteredMatches = matches.filter((m) => {
-    const matchesSport = sportFilter === "all" ||
-      m.category.toLowerCase().includes(sportFilter) ||
-      m.sport.toLowerCase().includes(sportFilter);
-    const matchesSearch = !searchQuery ||
-      m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (m.homeTeam || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (m.awayTeam || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (m.league || "").toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSport && matchesSearch;
-  });
+  // ── Derived state ──
+  const now = Date.now();
+  const filteredMatches = useMemo(() => {
+    let result = matches;
+    if (selectedSport !== "all") result = result.filter(m => m.sport === selectedSport);
+    if (liveOnly) result = result.filter(m => m.isLive);
+    return result;
+  }, [matches, selectedSport, liveOnly]);
 
-  const filteredChannels = channels.filter((c) => {
-    const matchesCountry = channelFilter === "all" ||
-      (channelFilter === "other" && !["us","uk","de","fr","es","it","in","br","pk","ca","au"].includes(c.countryCode || "")) ||
-      c.countryCode === channelFilter;
-    const matchesSearch = !searchQuery ||
-      c.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCountry && matchesSearch;
-  });
+  const liveMatches = useMemo(() => filteredMatches.filter(m => m.isLive), [filteredMatches]);
+  const startingSoon = useMemo(() => filteredMatches.filter(m => !m.isLive && m.date > now && m.date - now < 3600000), [filteredMatches, now]);
+  const todayUpcoming = useMemo(() => filteredMatches.filter(m => !m.isLive && m.date > now && m.date - now >= 3600000 && m.date - now < 86400000), [filteredMatches, now]);
+  const laterMatches = useMemo(() => filteredMatches.filter(m => !m.isLive && m.date > now && m.date - now >= 86400000), [filteredMatches, now]);
 
-  // Group sports matches by status
-  const liveMatches = filteredMatches.filter((m) => m.status === "live");
-  const upcomingMatches = filteredMatches.filter((m) => m.status === "upcoming");
-  const endedMatches = filteredMatches.filter((m) => m.status === "ended");
+  const popularLiveMatches = useMemo(() => {
+    return liveMatches.filter(m => m.popular || (m.apiSource === "watchfooty" && m.poster)).slice(0, 20);
+  }, [liveMatches]);
 
-  const totalLive = liveMatches.length;
-  const totalUpcoming = upcomingMatches.length;
-  const totalAll = filteredMatches.length;
-  const totalChannels = filteredChannels.length;
+  // Group matches by sport for sport sections
+  const matchesBySport = useMemo(() => {
+    const groups: Record<string, LiveMatch[]> = {};
+    for (const m of filteredMatches) {
+      if (!groups[m.sport]) groups[m.sport] = [];
+      groups[m.sport].push(m);
+    }
+    return groups;
+  }, [filteredMatches]);
 
-  // Featured match (most viewed live match)
-  const featuredMatch = liveMatches.length > 0
-    ? [...liveMatches].sort((a, b) => safeNum(b.viewers) - safeNum(a.viewers))[0]
-    : null;
+  const liveCountBySport: Record<string, number> = {};
+  for (const m of matches) {
+    if (m.isLive) liveCountBySport[m.sport] = (liveCountBySport[m.sport] || 0) + 1;
+  }
+  const totalLiveCount = Object.values(liveCountBySport).reduce((a, b) => a + b, 0);
 
+  // Merge sports from API with defaults
+  const displayCategories = useMemo(() => {
+    const cats = defaultSportCategories.map(cat => {
+      const apiSport = sports.find(s => s.id === cat.id);
+      return {
+        ...cat,
+        label: apiSport?.displayName || apiSport?.name || cat.label,
+        liveCount: liveCountBySport[cat.id] || apiSport?.liveCount || 0,
+      };
+    });
+    for (const s of sports) {
+      if (!cats.find(c => c.id === s.id)) {
+        cats.push({
+          id: s.id,
+          label: s.displayName || s.name || capitalize(s.id),
+          icon: getSportIcon(s.id),
+          color: getSportColor(s.id),
+          liveCount: liveCountBySport[s.id] || s.liveCount || 0,
+        });
+      }
+    }
+    return cats;
+  }, [sports, liveCountBySport]);
+
+  const sortedNavSports = useMemo(() => {
+    return [...displayCategories]
+      .filter(c => c.id !== "all")
+      .sort((a, b) => (b.liveCount || 0) - (a.liveCount || 0));
+  }, [displayCategories]);
+
+  const topNavSports = sortedNavSports.slice(0, 7);
+  const moreNavSports = sortedNavSports.slice(7);
+  const [showMoreDropdown, setShowMoreDropdown] = useState(false);
+
+  const scrollContainer = (ref: React.RefObject<HTMLDivElement | null>, direction: "left" | "right") => {
+    if (!ref.current) return;
+    ref.current.scrollBy({ left: direction === "left" ? -400 : 400, behavior: "smooth" });
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="fade-in space-y-6 pb-8">
-      {/* ── Hero Section ── */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/[0.06]">
-        {/* Animated background layers */}
-        <div className="absolute inset-0 bg-[#0b1116]" />
-        <div className="absolute inset-0 bg-gradient-to-br from-red-500/[0.07] via-transparent to-cyan-500/[0.05]" />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-red-500/[0.04] rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-cyan-500/[0.04] rounded-full blur-[120px] translate-y-1/2 -translate-x-1/4" />
-        <div className="absolute top-1/2 left-1/2 w-[300px] h-[300px] bg-purple-500/[0.02] rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2" />
+    <div className="min-h-screen pb-8 -mx-4 lg:-mx-8">
 
-        <div className="relative px-6 py-10 md:px-10 md:py-14">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
-            <div className="space-y-5">
-              {/* Logo + Title */}
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 via-red-600 to-rose-700 flex items-center justify-center shadow-2xl shadow-red-500/30">
-                    <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="4" width="20" height="14" rx="2" ry="2" />
-                      <path d="M8 10l4 3 4-3" />
-                      <circle cx="17" cy="7" r="1.5" fill="currentColor" />
-                    </svg>
-                  </div>
-                  <div className="absolute -inset-1.5 rounded-2xl border border-red-500/20 animate-pulse" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
-                      Luffy <span className="bg-gradient-to-r from-red-400 via-red-500 to-rose-500 bg-clip-text text-transparent">TV Live</span>
-                    </h1>
-                    <div className="flex items-center gap-1.5 bg-red-500/15 px-3 py-1 rounded-full border border-red-500/20">
-                      <LivePulse size="md" />
-                      <span className="text-[10px] font-bold text-red-400 uppercase">Live</span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-zinc-500 font-medium mt-1">
-                    Sports, TV Channels & Entertainment — Watch free from anywhere
-                  </p>
-                </div>
-              </div>
+      {/* ══════════════════════════════════════════
+          A. NEWS TICKER BAR (top of page)
+          ══════════════════════════════════════════ */}
+      <NewsTicker articles={newsArticles} />
 
-              {/* Stats row */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {totalLive > 0 && (
-                  <div className="flex items-center gap-2 bg-red-500/10 px-4 py-2.5 rounded-xl border border-red-500/15 backdrop-blur-sm">
-                    <LivePulse size="md" />
-                    <span className="text-sm font-bold text-red-400">{totalLive} Live</span>
-                  </div>
-                )}
-                {totalUpcoming > 0 && (
-                  <div className="flex items-center gap-2 bg-amber-500/10 px-4 py-2.5 rounded-xl border border-amber-500/15 backdrop-blur-sm">
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-                    <span className="text-sm font-bold text-amber-400">{totalUpcoming} Upcoming</span>
-                  </div>
-                )}
-                {totalChannels > 0 && (
-                  <div className="flex items-center gap-2 bg-cyan-500/10 px-4 py-2.5 rounded-xl border border-cyan-500/15 backdrop-blur-sm">
-                    <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <rect x="2" y="4" width="20" height="14" rx="2" />
-                      <path d="M8 10l4 3 4-3" />
-                    </svg>
-                    <span className="text-sm font-bold text-cyan-400">{totalChannels} Channels</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 bg-white/[0.04] px-4 py-2.5 rounded-xl border border-white/[0.06] backdrop-blur-sm">
-                  <span className="text-sm font-bold text-zinc-400">{totalAll} Events</span>
-                </div>
-              </div>
-            </div>
+      {/* ══════════════════════════════════════════
+          B. STICKY TOP NAVIGATION BAR
+          ══════════════════════════════════════════ */}
+      <div className="sticky top-[65px] z-40 bg-[#0d0d12]/95 backdrop-blur-md border-b border-white/[0.06] px-4 lg:px-8">
+        <div className="max-w-[1400px] mx-auto flex items-center gap-3 h-12">
+          {/* Home Button */}
+          <button
+            onClick={() => { setSelectedSport("all"); setLiveOnly(false); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white/60 hover:text-white hover:bg-white/[0.06] transition-all flex-shrink-0"
+            style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            Home
+          </button>
 
-            {/* Right side controls */}
-            <div className="flex flex-col gap-3 w-full lg:w-auto">
-              {/* Search */}
-              <div className="relative">
-                <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Search matches, channels..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full lg:w-[280px] h-11 pl-10 pr-4 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-zinc-500 outline-none focus:border-cyan-500/30 focus:bg-white/[0.08] transition-all backdrop-blur-sm"
-                />
-              </div>
-              {/* Refresh */}
-              <div className="flex items-center gap-3">
+          {/* Live Only Toggle */}
+          <button
+            onClick={() => setLiveOnly(!liveOnly)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex-shrink-0 ${
+              liveOnly
+                ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+            }`}
+            style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+          >
+            <span className={`w-2 h-2 rounded-full ${liveOnly ? "bg-red-500 animate-pulse" : "bg-white/20"}`} />
+            Live only
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-white/[0.06] flex-shrink-0" />
+
+          {/* Sport Category Buttons */}
+          <div className="flex items-center gap-1 overflow-x-auto flex-1 scrollbar-hide">
+            {topNavSports.map(cat => {
+              const isActive = selectedSport === cat.id;
+              return (
                 <button
-                  onClick={fetchData}
-                  disabled={refreshing}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl text-xs text-zinc-400 hover:text-white transition-all disabled:opacity-50"
+                  key={cat.id}
+                  onClick={() => setSelectedSport(cat.id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                    isActive
+                      ? "text-white"
+                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                  }`}
+                  style={{
+                    ...(isActive ? {
+                      background: `linear-gradient(135deg, ${cat.color}25, ${cat.color}10)`,
+                      border: `1px solid ${cat.color}40`,
+                    } : {}),
+                    fontFamily: "var(--font-space-mono), 'Space Mono', monospace",
+                  }}
                 >
-                  <svg className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Refresh
+                  <span className="text-sm">{cat.icon}</span>
+                  {cat.label}
+                  {cat.liveCount > 0 && (
+                    <span className="text-[8px] px-1 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold">Live ({cat.liveCount})</span>
+                  )}
                 </button>
-                <span className="text-[10px] text-zinc-600">
-                  {new Date(lastRefresh).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-              {/* Source health indicators */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {Object.entries(sourceStats).map(([key, count]) => (
-                  <div key={key} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.04]">
-                    <span className={`w-1.5 h-1.5 rounded-full ${count === "error" ? "bg-red-500" : typeof count === "number" && count > 0 ? "bg-emerald-400" : "bg-zinc-600"}`} />
-                    <span className="text-[9px] font-medium text-zinc-500">
-                      {key === "watchfooty" ? "WF" : key === "streamed" ? "STR" : key === "dami-tv" ? "DAMI" : key === "cdnlivetv" ? "CDN" : key === "streamfree" ? "SF" : key === "tv-channels" ? "TV" : key.slice(0, 4).toUpperCase()}
-                    </span>
-                    {typeof count === "number" && count > 0 && (
-                      <span className="text-[9px] text-zinc-600">{count}</span>
-                    )}
+              );
+            })}
+
+            {/* More Dropdown */}
+            {moreNavSports.length > 0 && (
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => setShowMoreDropdown(!showMoreDropdown)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-all"
+                >
+                  More
+                  <svg className={`w-3 h-3 transition-transform ${showMoreDropdown ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                {showMoreDropdown && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-[#1a1a24] border border-white/[0.08] rounded-xl shadow-2xl py-2 z-50">
+                    {moreNavSports.map(cat => (
+                      <button
+                        key={cat.id}
+                        onClick={() => { setSelectedSport(cat.id); setShowMoreDropdown(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] hover:bg-white/[0.04] transition-all ${
+                          selectedSport === cat.id ? "text-white" : "text-white/50"
+                        }`}
+                      >
+                        <span>{cat.icon}</span>
+                        {cat.label}
+                        {cat.liveCount > 0 && (
+                          <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400">{cat.liveCount}</span>
+                        )}
+                      </button>
+                    ))}
                   </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          CONTENT AREA (single scroll, no tabs)
+          ══════════════════════════════════════════ */}
+      <div className="px-4 lg:px-8 max-w-[1400px] mx-auto pt-4 space-y-8">
+
+        {/* Loading */}
+        {loading && matches.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-12 h-12 rounded-full border-2 border-[#7c6cf0]/30 border-t-[#7c6cf0] animate-spin" />
+            <p className="text-sm text-white/30">Loading live sports...</p>
+            <p className="text-[10px] text-white/15">Fetching from multiple sources</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="text-5xl">⚠️</div>
+            <p className="text-sm text-white/40">{error}</p>
+            <button onClick={fetchData} className="px-4 py-2 rounded-lg bg-white/[0.06] text-white/50 text-[11px] font-bold hover:bg-white/[0.08]">Retry</button>
+          </div>
+        )}
+
+        {!loading && (
+          <>
+            {/* ══════════════════════════════════════════
+                C. SPORTS CATEGORY CARDS (Horizontal Scroll)
+                ══════════════════════════════════════════ */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-white/60 uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                  <span className="text-base">🏟️</span> Sports
+                </h2>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => scrollContainer(sportCardsRef, "left")} className="p-1 rounded-lg bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <button onClick={() => scrollContainer(sportCardsRef, "right")} className="p-1 rounded-lg bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                </div>
+              </div>
+              <div ref={sportCardsRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                {displayCategories.filter(c => c.id !== "all").map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedSport(selectedSport === cat.id ? "all" : cat.id)}
+                    className={`group flex flex-col items-center gap-2 px-5 py-4 rounded-xl min-w-[100px] flex-shrink-0 transition-all duration-200 ${
+                      selectedSport === cat.id
+                        ? "border-[1.5px]"
+                        : "bg-[#222] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04]"
+                    }`}
+                    style={{
+                      ...(selectedSport === cat.id ? {
+                        background: `linear-gradient(135deg, ${cat.color}20, ${cat.color}08)`,
+                        borderColor: `${cat.color}50`,
+                      } : {}),
+                    }}
+                  >
+                    <span className="text-2xl">{cat.icon}</span>
+                    <span className="text-[10px] font-bold text-white/70 group-hover:text-white whitespace-nowrap" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>{cat.label}</span>
+                    {cat.liveCount > 0 && (
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400">Live ({cat.liveCount})</span>
+                    )}
+                  </button>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
+
+            {/* ══════════════════════════════════════════
+                D. POPULAR LIVE (Landscape Poster Cards)
+                ══════════════════════════════════════════ */}
+            {popularLiveMatches.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                    <span className="text-base">🔥</span> Popular Live
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">Live ({popularLiveMatches.length})</span>
+                  </h2>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => scrollContainer(popularRef, "left")} className="p-1 rounded-lg bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <button onClick={() => scrollContainer(popularRef, "right")} className="p-1 rounded-lg bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                </div>
+                <div ref={popularRef} className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+                  {popularLiveMatches.map(match => (
+                    <MatchCard key={match.id} match={match} onWatch={handleWatchMatch} variant="poster" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════
+                E. MATCHES BY SPORT SECTIONS (Vertical List)
+                ══════════════════════════════════════════ */}
+            {/* Live Now */}
+            {liveMatches.length > 0 && (
+              <MatchSection
+                title="Live Now"
+                icon="🔴"
+                matches={liveMatches}
+                onWatch={handleWatchMatch}
+                liveCount={liveMatches.length}
+              />
+            )}
+
+            {/* Starting Soon */}
+            {startingSoon.length > 0 && (
+              <MatchSection
+                title="Starting Soon"
+                icon="⏰"
+                matches={startingSoon}
+                onWatch={handleWatchMatch}
+              />
+            )}
+
+            {/* Today */}
+            {todayUpcoming.length > 0 && (
+              <MatchSection
+                title="Today"
+                icon="📅"
+                matches={todayUpcoming}
+                onWatch={handleWatchMatch}
+              />
+            )}
+
+            {/* Upcoming */}
+            {laterMatches.length > 0 && (
+              <MatchSection
+                title="Upcoming"
+                icon="📆"
+                matches={laterMatches}
+                onWatch={handleWatchMatch}
+              />
+            )}
+
+            {/* Sport-specific sections */}
+            {selectedSport === "all" && Object.entries(matchesBySport)
+              .filter(([sport]) => sport !== "other")
+              .sort(([,a], [,b]) => {
+                const aLive = a.filter(m => m.isLive).length;
+                const bLive = b.filter(m => m.isLive).length;
+                return bLive - aLive;
+              })
+              .map(([sport, sportMatches]) => {
+                const sportLive = sportMatches.filter(m => m.isLive).length;
+                if (sportMatches.length <= liveMatches.length + startingSoon.length + todayUpcoming.length + laterMatches.length) {
+                  // Skip if already covered above
+                  return null;
+                }
+                return (
+                  <MatchSection
+                    key={sport}
+                    title={`Popular ${getSportIcon(sport)} ${capitalize(sport)}`}
+                    icon={getSportIcon(sport)}
+                    matches={sportMatches.slice(0, 20)}
+                    onWatch={handleWatchMatch}
+                    liveCount={sportLive}
+                  />
+                );
+              })
+            }
+
+            {/* No matches */}
+            {filteredMatches.length === 0 && !loading && (
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <div className="text-5xl">🏟️</div>
+                <p className="text-sm text-white/40">No matches found</p>
+                <p className="text-[10px] text-white/20">Try a different sport or check back later</p>
+                <button onClick={() => { setSelectedSport("all"); setLiveOnly(false); }} className="px-4 py-2 rounded-full bg-white/[0.06] text-white/50 text-[11px] font-bold hover:bg-white/[0.08]">Show All</button>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════
+                F. NEWS SECTION
+                ══════════════════════════════════════════ */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                  <span className="text-base">📰</span> Latest Sports News
+                </h2>
+              </div>
+
+              {newsLoading && newsArticles.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <div className="w-10 h-10 rounded-full border-2 border-[#7c6cf0]/30 border-t-[#7c6cf0] animate-spin" />
+                  <p className="text-sm text-white/30">Loading news...</p>
+                </div>
+              )}
+
+              {newsArticles.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {newsArticles.map(article => (
+                    <NewsCard key={article.id} article={article} />
+                  ))}
+                </div>
+              )}
+
+              {!newsLoading && newsArticles.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <div className="text-4xl">📰</div>
+                  <p className="text-sm text-white/40">No news available</p>
+                </div>
+              )}
+
+              {newsHasMore && newsArticles.length > 0 && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={() => fetchNews(newsOffset, true)}
+                    disabled={newsLoading}
+                    className="px-6 py-2.5 rounded-xl bg-white/[0.04] text-white/40 text-[11px] font-bold hover:bg-white/[0.06] hover:text-white/60 transition-all disabled:opacity-50"
+                  >
+                    {newsLoading ? "Loading..." : "Load More"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Last updated */}
+            {lastUpdated && (
+              <div className="text-center">
+                <span className="text-[9px] text-white/15">Last updated {lastUpdated.toLocaleTimeString()} • Auto-refreshes every 60s</span>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* ── Featured Match ── */}
-      {featuredMatch && !loading && !searchQuery && (activeTab === "sports" || activeTab === "all") && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-red-400/80">🔴 Featured</span>
-            <div className="h-px flex-1 bg-gradient-to-r from-red-500/20 via-red-500/10 to-transparent" />
-          </div>
-          <div className="max-w-2xl">
-            <MatchCard match={featuredMatch} onWatch={handleWatch} featured />
-          </div>
-        </div>
+      {/* Click-outside handler for More dropdown */}
+      {showMoreDropdown && (
+        <div className="fixed inset-0 z-30" onClick={() => setShowMoreDropdown(false)} />
       )}
 
-      {/* ── Tab Navigation ── */}
-      <div className="flex items-center gap-2">
-        {[
-          { id: "all" as TabType, label: "All", icon: "🌐" },
-          { id: "sports" as TabType, label: "Live Sports", icon: "⚽" },
-          { id: "channels" as TabType, label: "TV Channels", icon: "📺" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-              activeTab === tab.id
-                ? "bg-red-500/15 text-red-300 border border-red-500/25 shadow-[0_0_20px_rgba(244,63,94,0.1)]"
-                : "bg-white/[0.03] text-zinc-500 border border-white/[0.04] hover:text-zinc-300 hover:bg-white/[0.06]"
-            }`}
-          >
-            <span>{tab.icon}</span>
-            {tab.label}
-            {tab.id === "sports" && totalLive > 0 && (
-              <span className="text-[10px] font-bold bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full">{totalLive}</span>
-            )}
-            {tab.id === "channels" && totalChannels > 0 && (
-              <span className="text-[10px] font-bold bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full">{totalChannels}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Sport Category Filters (only for sports/all tabs) ── */}
-      {(activeTab === "sports" || activeTab === "all") && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {SPORT_FILTERS.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSportFilter(cat.id)}
-              className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
-                sportFilter === cat.id
-                  ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20 shadow-[0_0_15px_rgba(0,168,225,0.08)]"
-                  : "bg-white/[0.03] text-zinc-500 border border-white/[0.04] hover:text-zinc-300 hover:bg-white/[0.06]"
-              }`}
-            >
-              <span>{cat.icon}</span>
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Channel Country Filters (only for channels tab) ── */}
-      {activeTab === "channels" && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {CHANNEL_CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setChannelFilter(cat.id)}
-              className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
-                channelFilter === cat.id
-                  ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20"
-                  : "bg-white/[0.03] text-zinc-500 border border-white/[0.04] hover:text-zinc-300 hover:bg-white/[0.06]"
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Loading State ── */}
-      {loading && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Error State ── */}
-      {error && !loading && (
-        <div className="text-center py-20 space-y-4">
-          <div className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto">
-            <svg className="w-10 h-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-bold text-white">Failed to Load</h3>
-          <p className="text-sm text-zinc-400 max-w-md mx-auto">{error}</p>
-          <button onClick={fetchData} className="px-6 py-2.5 bg-red-500/15 hover:bg-red-500/25 border border-red-500/25 rounded-xl text-sm font-semibold text-red-400 transition-all">
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* ── No Results ── */}
-      {!loading && !error && filteredMatches.length === 0 && filteredChannels.length === 0 && (
-        <div className="text-center py-20 space-y-4">
-          <div className="w-20 h-20 rounded-full bg-zinc-500/10 flex items-center justify-center mx-auto">
-            <svg className="w-10 h-10 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-bold text-white">No Events Found</h3>
-          <p className="text-sm text-zinc-400">
-            {searchQuery ? `No results for "${searchQuery}". Try a different search.` : "No live or upcoming events right now. Check back later!"}
-          </p>
-        </div>
-      )}
-
-      {/* ── Live Now Section ── */}
-      {!loading && liveMatches.length > 0 && (activeTab === "sports" || activeTab === "all") && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <LivePulse size="lg" />
-              <h2 className="text-xl font-bold text-white">Live Now</h2>
-            </div>
-            <div className="h-px flex-1 bg-gradient-to-r from-red-500/30 via-red-500/10 to-transparent" />
-            <span className="text-[10px] font-bold text-red-400/60">{liveMatches.length} live</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {liveMatches.map((match) => (
-              <MatchCard key={match.id} match={match} onWatch={handleWatch} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Upcoming Section ── */}
-      {!loading && upcomingMatches.length > 0 && (activeTab === "sports" || activeTab === "all") && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Starting Soon
-            </h2>
-            <div className="h-px flex-1 bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent" />
-            <span className="text-[10px] font-bold text-amber-400/60">{upcomingMatches.length} upcoming</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {upcomingMatches.slice(0, 12).map((match) => (
-              <MatchCard key={match.id} match={match} onWatch={handleWatch} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── TV Channels Section ── */}
-      {!loading && filteredChannels.length > 0 && (activeTab === "channels" || activeTab === "all") && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <svg className="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <rect x="2" y="4" width="20" height="14" rx="2" />
-                <path d="M8 10l4 3 4-3" />
-              </svg>
-              TV Channels
-            </h2>
-            <div className="h-px flex-1 bg-gradient-to-r from-cyan-500/20 via-cyan-500/10 to-transparent" />
-            <span className="text-[10px] font-bold text-cyan-400/60">{filteredChannels.length} channels</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            {filteredChannels.slice(0, activeTab === "channels" ? 200 : 24).map((channel) => (
-              <ChannelCard key={channel.id} channel={channel} onWatch={handleWatch} />
-            ))}
-          </div>
-          {activeTab === "all" && filteredChannels.length > 24 && (
-            <div className="text-center">
-              <button
-                onClick={() => setActiveTab("channels")}
-                className="px-6 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-xl text-sm font-semibold text-cyan-400 transition-all"
-              >
-                View All {filteredChannels.length} Channels →
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Ended Section (collapsed) ── */}
-      {!loading && endedMatches.length > 0 && (activeTab === "sports" || activeTab === "all") && (
-        <details className="group">
-          <summary className="flex items-center gap-3 cursor-pointer py-2">
-            <h2 className="text-sm font-bold text-zinc-500">Finished ({endedMatches.length})</h2>
-            <div className="h-px flex-1 bg-gradient-to-r from-zinc-500/20 to-transparent" />
-            <svg className="w-4 h-4 text-zinc-600 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M19 9l-7 7-7-7" />
-            </svg>
-          </summary>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-2 opacity-50">
-            {endedMatches.slice(0, 8).map((match) => (
-              <MatchCard key={match.id} match={match} onWatch={handleWatch} />
-            ))}
-          </div>
-        </details>
-      )}
+      {/* Marquee animation styles */}
+      <style jsx global>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          animation: marquee 60s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
     </div>
   );
 }

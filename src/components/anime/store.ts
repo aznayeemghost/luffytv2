@@ -101,7 +101,6 @@ type Route =
   | { page: "bookmarks" }
   | { page: "history" }
   | { page: "dub" }
-  | { page: "schedule" }
   | { page: "movies" }
   | { page: "tv" }
   | { page: "manga" }
@@ -111,16 +110,28 @@ type Route =
   | { page: "tv-detail"; id: number }
   | { page: "movie-watch"; id: number }
   | { page: "tv-watch"; id: number; season: number; episode: number }
+  | { page: "watchnow" }
+  | { page: "contact" }
+  | { page: "guide" }
+  | { page: "features" }
   | { page: "live" }
-  | { page: "live-watch"; matchId: string; source: string; sourceId?: string; title?: string };
+  | { page: "live-watch"; matchId: string; matchTitle: string; matchSport: string; matchSportName: string; matchHomeTeam: string; matchAwayTeam: string; matchHomeBadge: string; matchAwayBadge: string; matchPoster: string; matchPopular: boolean; matchSources: string; matchDate: number; matchStreamKey?: string; matchStreamCategory?: string; matchChannelName?: string; matchChannelCode?: string; matchDamitvId?: string; matchWatchfootyId?: string; matchApiSource?: string; matchSportsrcCategory?: string; matchSportsrcId?: string; matchWatchfootyStreams?: string; matchLeague?: string; matchLeagueLogo?: string; matchHomeScore?: number; matchAwayScore?: number; matchCurrentMinute?: string }
+  | { page: "novel" }
+  | { page: "novel-detail"; novelId: string; novelTitle: string; novelCover: string; novelAuthor: string; novelSource: string }
+  | { page: "novel-read"; novelId: string; novelTitle: string; chapterId: string; chapterNum: number; chapterTitle: string; totalChapters: number; novelSource: string };
 
 // ============================================================
 // App Store
 // ============================================================
 
+// Section sub-page type — each section can have its own sub-navigation
+export type SectionSubPage = "home" | "schedule" | "genres" | "trending" | "top-rated" | "tv-channels" | "sports";
+
 interface AppState {
   route: Route;
   navigate: (route: Route) => void;
+  sectionSubPage: SectionSubPage;
+  setSectionSubPage: (subPage: SectionSubPage) => void;
   bookmarks: BookmarkItem[];
   setBookmarks: (items: BookmarkItem[]) => void;
   history: HistoryItem[];
@@ -130,8 +141,11 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   route: { page: "home" },
+  sectionSubPage: "home",
+  setSectionSubPage: (subPage) => set({ sectionSubPage: subPage }),
   navigate: (route) => {
-    set({ route });
+    // Reset section sub-page when navigating to a new section
+    set({ route, sectionSubPage: "home" });
     if (typeof window !== "undefined") {
       if (route.page === "home") window.location.hash = "";
       else if (route.page === "search" && route.query)
@@ -146,7 +160,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       else if (route.page === "bookmarks") window.location.hash = "bookmarks";
       else if (route.page === "history") window.location.hash = "history";
       else if (route.page === "dub") window.location.hash = "dub";
-      else if (route.page === "schedule") window.location.hash = "schedule";
       else if (route.page === "movies") window.location.hash = "movies";
       else if (route.page === "tv") window.location.hash = "tv";
       else if (route.page === "manga") window.location.hash = "manga";
@@ -162,10 +175,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         window.location.hash = `watch-movie/${route.id}`;
       else if (route.page === "tv-watch")
         window.location.hash = `watch-tv/${route.id}/${route.season}/${route.episode}`;
-      else if (route.page === "live")
-        window.location.hash = "live";
-      else if (route.page === "live-watch")
-        window.location.hash = `live-watch/${route.matchId}/${route.source}${route.sourceId ? '/' + route.sourceId : ''}`;
+      else if (route.page === "watchnow") window.location.hash = "watchnow";
+      else if (route.page === "contact") window.location.hash = "contact";
+      else if (route.page === "features") window.location.hash = "features";
+      else if (route.page === "live") window.location.hash = "live";
+      else if (route.page === "live-watch") window.location.hash = `live-watch/${encodeURIComponent(route.matchId)}/${encodeURIComponent(route.matchSport)}`;
+      else if (route.page === "novel") window.location.hash = "novel";
+      else if (route.page === "novel-detail") window.location.hash = `novel/${encodeURIComponent(route.novelId)}`;
+      else if (route.page === "novel-read") window.location.hash = `read-novel/${encodeURIComponent(route.novelId)}/${route.chapterNum}`;
       window.scrollTo(0, 0);
     }
   },
@@ -175,6 +192,49 @@ export const useAppStore = create<AppState>((set, get) => ({
   setHistory: (items) => set({ history: items }),
   isBookmarked: (animeId) => get().bookmarks.some((b) => b.animeId === animeId),
 }));
+
+// Get the section-specific nav links based on current route
+export function getSectionNavLinks(route: Route): { id: SectionSubPage; label: string }[] {
+  const page = route.page;
+  
+  // Anime section
+  if (page === "dub") {
+    return [
+      { id: "home", label: "Home" },
+      { id: "schedule", label: "Schedule" },
+      { id: "genres", label: "Browse Genres" },
+    ];
+  }
+  
+  // Movies section
+  if (page === "movies") {
+    return [
+      { id: "home", label: "Home" },
+      { id: "trending", label: "Trending" },
+      { id: "top-rated", label: "Top Rated" },
+    ];
+  }
+  
+  // TV Shows section
+  if (page === "tv") {
+    return [
+      { id: "home", label: "Home" },
+      { id: "trending", label: "Trending" },
+      { id: "top-rated", label: "Top Rated" },
+    ];
+  }
+  
+  // Live TV section — 2 sub-tabs
+  if (page === "live" || page === "live-watch") {
+    return [
+      { id: "tv-channels", label: "Live TV" },
+      { id: "sports", label: "Sports" },
+    ];
+  }
+  
+  // Default — no section-specific nav
+  return [];
+}
 
 export function parseHash(hash: string): Route {
   const h = hash.replace("#", "");
@@ -188,7 +248,6 @@ export function parseHash(hash: string): Route {
   if (parts[0] === "bookmarks") return { page: "bookmarks" };
   if (parts[0] === "history") return { page: "history" };
   if (parts[0] === "dub") return { page: "dub" };
-  if (parts[0] === "schedule") return { page: "schedule" };
   if (parts[0] === "movies") return { page: "movies" };
   if (parts[0] === "tv") return { page: "tv" };
   if (parts[0] === "manga" && parts[1]) return { page: "manga-detail", id: parts[1] };
@@ -200,9 +259,15 @@ export function parseHash(hash: string): Route {
   if (parts[0] === "watch-movie" && parts[1]) return { page: "movie-watch", id: parseInt(parts[1]) };
   if (parts[0] === "watch-tv" && parts[1] && parts[2] && parts[3])
     return { page: "tv-watch", id: parseInt(parts[1]), season: parseInt(parts[2]), episode: parseInt(parts[3]) };
+  if (parts[0] === "watchnow") return { page: "watchnow" };
+  if (parts[0] === "contact") return { page: "contact" };
+  if (parts[0] === "guide") return { page: "guide" };
+  if (parts[0] === "features") return { page: "features" };
   if (parts[0] === "live") return { page: "live" };
-  if (parts[0] === "live-watch" && parts[1] && parts[2])
-    return { page: "live-watch", matchId: parts[1], source: parts[2], sourceId: parts[3] };
+  if (parts[0] === "live-watch") return { page: "live-watch", matchId: decodeURIComponent(parts[1] || ""), matchTitle: "", matchSport: decodeURIComponent(parts[2] || ""), matchSportName: "", matchHomeTeam: "", matchAwayTeam: "", matchHomeBadge: "", matchAwayBadge: "", matchPoster: "", matchPopular: false, matchSources: "[]", matchDate: 0 };
+  if (parts[0] === "novel" && parts[1]) return { page: "novel-detail", novelId: decodeURIComponent(parts[1]), novelTitle: "", novelCover: "", novelAuthor: "", novelSource: "readlightnovel" };
+  if (parts[0] === "novel") return { page: "novel" };
+  if (parts[0] === "read-novel" && parts[1] && parts[2]) return { page: "novel-read", novelId: decodeURIComponent(parts[1]), novelTitle: "", chapterId: `chapter-${parts[2]}`, chapterNum: parseInt(parts[2]), chapterTitle: "", totalChapters: 0, novelSource: "readlightnovel" };
   return { page: "home" };
 }
 
