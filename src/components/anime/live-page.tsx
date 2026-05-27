@@ -84,6 +84,22 @@ interface LiveMatch {
   currentMinute?: string;
 }
 
+interface TVChannel {
+  id: string;
+  title: string;
+  sport: string;
+  sportName: string;
+  isLive: boolean;
+  apiSource: string;
+  streamKey?: string;
+  streamCategory?: string;
+  channelName?: string;
+  channelCode?: string;
+  damitvId?: string;
+  poster?: string;
+  sources?: { source: string; id: string }[];
+}
+
 interface SportCategory { id: string; name: string; displayName?: string; liveCount?: number; }
 
 interface NewsArticle {
@@ -394,6 +410,53 @@ function NewsCard({ article }: { article: NewsArticle }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// TV CHANNEL CARD
+// ═══════════════════════════════════════════════════════════════
+function TVChannelCard({ channel, onWatch }: { channel: TVChannel; onWatch: (ch: TVChannel) => void }) {
+  const sportColor = getSportColor(channel.sport);
+  const sportIcon = getSportIcon(channel.sport);
+  const sourceTag = channel.apiSource === "streamfree" ? "StreamFree" :
+                    channel.apiSource === "damitv" ? "DamiTV" :
+                    channel.apiSource === "streamed" ? "StreamedPK" : channel.apiSource;
+
+  return (
+    <button
+      onClick={() => onWatch(channel)}
+      className="group relative flex-shrink-0 w-[150px] sm:w-[170px] rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl cursor-pointer border border-white/[0.06] hover:border-white/[0.15]"
+    >
+      <div className="relative h-[100px] sm:h-[110px] flex flex-col items-center justify-center p-3" style={{ background: `linear-gradient(135deg, ${sportColor}25, #0d0d12)` }}>
+        {/* Channel icon */}
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-lg mb-2"
+          style={{
+            background: `linear-gradient(135deg, ${sportColor}40, ${sportColor}20)`,
+            border: `1.5px solid ${sportColor}50`,
+          }}
+        >
+          {channel.poster ? (
+            <img src={channel.poster} alt="" className="w-7 h-7 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          ) : (
+            <span>{sportIcon}</span>
+          )}
+        </div>
+
+        {/* Channel name */}
+        <p className="text-[10px] font-bold text-white text-center truncate w-full">{channel.channelName || channel.title}</p>
+
+        {/* Source badge + LIVE */}
+        <div className="flex items-center gap-1.5 mt-1.5">
+          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-red-600/20 text-red-400 text-[7px] font-black uppercase tracking-wider">
+            <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+            LIVE
+          </span>
+          <span className="text-[7px] font-bold text-white/25 px-1 py-0.5 rounded bg-white/[0.04]">{sourceTag}</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MATCH SECTION (grouped matches — vertical list layout)
 // ═══════════════════════════════════════════════════════════════
 function MatchSection({ title, icon, matches, onWatch, liveCount }: {
@@ -446,6 +509,7 @@ export default function LivePage() {
   const [selectedSport, setSelectedSport] = useState("all");
   const [liveOnly, setLiveOnly] = useState(false);
   const [matches, setMatches] = useState<LiveMatch[]>([]);
+  const [tvChannels, setTvChannels] = useState<TVChannel[]>([]);
   const [sports, setSports] = useState<SportCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -489,6 +553,7 @@ export default function LivePage() {
       });
 
       setMatches(matchList);
+      setTvChannels(data.tvChannels || []);
       setSports(data.sports || []);
       setLastUpdated(new Date());
     } catch (err: any) {
@@ -525,6 +590,31 @@ export default function LivePage() {
   }, []);
 
   useEffect(() => { fetchNews(0, false); }, [fetchNews]);
+
+  // ── Navigate to watch a TV channel ──
+  const handleWatchChannel = (channel: TVChannel) => {
+    navigate({
+      page: "live-watch",
+      matchId: channel.id,
+      matchTitle: safeStr(channel.channelName || channel.title),
+      matchSport: safeStr(channel.sport),
+      matchSportName: safeStr(channel.sportName),
+      matchHomeTeam: "",
+      matchAwayTeam: "",
+      matchHomeBadge: "",
+      matchAwayBadge: "",
+      matchPoster: safeStr(channel.poster),
+      matchPopular: false,
+      matchSources: JSON.stringify(channel.sources || []),
+      matchDate: 0,
+      matchStreamKey: safeStr(channel.streamKey),
+      matchStreamCategory: safeStr(channel.streamCategory),
+      matchChannelName: safeStr(channel.channelName || channel.title),
+      matchChannelCode: safeStr(channel.channelCode),
+      matchDamitvId: safeStr(channel.damitvId),
+      matchApiSource: safeStr(channel.apiSource),
+    } as any);
+  };
 
   // ── Navigate to watch ──
   const handleWatchMatch = (match: LiveMatch) => {
@@ -835,6 +925,25 @@ export default function LivePage() {
                 <div ref={popularRef} className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
                   {popularLiveMatches.map(match => (
                     <MatchCard key={match.id} match={match} onWatch={handleWatchMatch} variant="poster" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════
+                D.5. TV CHANNELS (Sky F1, Willow, 24/7, etc.)
+                ══════════════════════════════════════════ */}
+            {tvChannels.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                    <span className="text-base">📺</span> Live TV Channels
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400">{tvChannels.length} channels</span>
+                  </h2>
+                </div>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                  {tvChannels.map(channel => (
+                    <TVChannelCard key={channel.id} channel={channel} onWatch={handleWatchChannel} />
                   ))}
                 </div>
               </div>
