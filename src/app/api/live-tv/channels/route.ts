@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 // ============================================================
 // LIVE TV CHANNELS API — DamiTV + StreamFree ONLY
 // Sources: DamiTV (dami-tv.pro/channels.json) + StreamFree (streamfree.app/streams)
-// DamiTV embed: https://cdnlivetv.tv/api/v1/channels/player/?name={name}&code={code}&user=cdnlivetv&plan=free
+// DamiTV embed: iframeUrl from channels.json (cdnlivetv.tv player)
 // StreamFree embed: https://streamfree.app/embed/{category}/{key}?quality=1080p&category={cat}&server=origin
+// All iframe embeds use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 // ?source=damitv|streamfree|all (default: all)
 // ============================================================
 
@@ -235,14 +236,12 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
       const channelId = ch.id || "";
       const encodedName = encodeURIComponent(name);
 
-      // DamiTV HLS Player is PRIMARY for all channels.
-      // Format: https://dami-tv.pro/player/hls/?v=300&resolve={name}&name={url_encoded_name}
-      // For match streams, resolve is the uri_name (like "mlb/2026-05-27/mia-tor")
-      // For TV channels, resolve is the channel name (like "Sky Sports Main Event")
+      // DamiTV iframe embed from channels.json — PRIMARY for all channels
+      // iframeUrl is the cdnlivetv.tv player URL that works in iframe with sandbox
       const cdnIframeUrl = ch.iframeUrl || "";
       const defaultStreamUrl = ch.defaultUrl || "";
 
-      // PRIMARY embed URL: cdnlivetv CDN iframe
+      // PRIMARY embed URL: iframeUrl from channels.json (cdnlivetv.tv CDN player)
       const embedUrl = cdnIframeUrl || defaultStreamUrl || `https://dami-tv.pro/cdn-stream/${encodedName}`;
 
       // Logo URL — comes from channels.json
@@ -269,8 +268,8 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
         status: "live",
         viewers: ch.viewers || 0,
         // DamiTV-specific data for the watch page to build multiple servers
-        // channelId from channels.json is like "cdn-0" - NOT a valid HLS resolve ID
-        // Pass the channel name as damitvName so the watch page can build HLS URL if needed
+        // channelId from channels.json is like "cdn-0"
+        // Pass the channel name as damitvName for fallback server construction
         damitvId: channelId,
         damitvCdnUrl: cdnIframeUrl,
         damitvName: name,

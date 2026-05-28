@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 
 // ============================================================
 // LIVE STREAM RESOLVER — DamiTV + StreamFree + WatchFooty
-// PRIMARY: DamiTV (cdnlivetv CDN iframe embed)
+// PRIMARY: DamiTV (cdnlivetv CDN iframe embed — from channels.json iframeUrl)
 // SECONDARY: streamfree.app (origin/miror servers + M3U8 with CORS CDN)
 // TERTIARY: watchfooty.st (embed URLs), sportsembed.su (embed)
+// All iframe embeds use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 // ============================================================
 
 export const runtime = "edge";
@@ -216,6 +217,7 @@ async function resolveStreamfree(category: string, streamKey: string): Promise<S
 }
 
 // ── PROVIDER 3: dami-tv.pro ──
+// Uses iframeUrl from channels.json as PRIMARY embed
 // resolve = the stream ID/uri_name (like "mlb/2026-05-27/mia-tor")
 // name = the display name (like "Miami Marlins vs. Toronto Blue Jays")
 async function resolveDamiTV(matchId: string, matchName: string): Promise<StreamResult[]> {
@@ -223,7 +225,8 @@ async function resolveDamiTV(matchId: string, matchName: string): Promise<Stream
   try {
     const displayName = matchName || matchId;
 
-    // PRIMARY: cdnlivetv CDN iframe — best quality and most reliable
+    // PRIMARY: cdnlivetv CDN iframe — constructed from channel name
+    // (For TV channels, the iframeUrl from channels.json is passed directly as channelEmbedUrl)
     const cdnName = displayName.toLowerCase().replace(/\s+/g, "+");
     const cdnUrl = `https://cdnlivetv.tv/api/v1/channels/player/?name=${encodeURIComponent(cdnName)}&code=int&user=cdnlivetv&plan=free`;
     results.push({

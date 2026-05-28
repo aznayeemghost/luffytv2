@@ -6,12 +6,13 @@ import { useAppStore } from "./store";
 // ============================================================
 // LIVE TV WATCH PAGE — DamiTV + StreamFree Multi-Source Player
 // DamiTV servers:
-//   1. cdnlivetv: /api/v1/channels/player/?name=...&code=...&user=cdnlivetv&plan=free (PRIMARY)
+//   1. iframeUrl from channels.json — direct iframe embed (PRIMARY)
 //   2. dami-tv.pro cdn-stream: /cdn-stream/{name} (FALLBACK)
 //   3. dami-tv.pro embed: /embed/?id={match_id} (BACKUP)
 // StreamFree servers:
 //   Origin: /embed/{category}/{key}?quality={q}&category={cat}&server=origin
 //   Miror:  /embed/{category}/{key}?quality={q}&category={cat}&server=miror
+// All iframes use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 // Auto-fallback on iframe errors with 15s timeout
 // ============================================================
 
@@ -203,24 +204,25 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     const availableServers: ServerOption[] = [];
 
     // ── DamiTV servers ──
+    // PRIMARY: Use the iframeUrl from channels.json directly (passed as channelEmbedUrl)
+    // This is the actual cdnlivetv player URL that works in iframe with sandbox
     if (isDami) {
-      const resolveId = damiResolveId;
       const encodedName = encodeURIComponent(damiName);
-      const isNumericOrUriResolve = resolveId && !resolveId.startsWith("cdn-");
+      const resolveId = damiResolveId;
 
-      // Server 1: cdnlivetv player — PRIMARY for all DamiTV channels
-      const cdnName = damiName.toLowerCase().replace(/\s+/g, "+");
-      const cdnCode = (props.channelCountryCode || "int").toLowerCase();
-      const cdnUrl = `https://cdnlivetv.tv/api/v1/channels/player/?name=${encodeURIComponent(cdnName)}&code=${cdnCode}&user=cdnlivetv&plan=free`;
-      availableServers.push({
-        id: `dami-cdn`,
-        label: "DamiTV CDN",
-        source: "damitv",
-        embedUrl: cdnUrl,
-        quality: "HD",
-        color: "#f97316",
-        isPrimary: true,
-      });
+      // Server 1: iframeUrl from channels.json — PRIMARY
+      // This is the direct embed URL from DamiTV's channel list
+      if (props.channelEmbedUrl) {
+        availableServers.push({
+          id: `dami-cdn`,
+          label: "DamiTV CDN",
+          source: "damitv",
+          embedUrl: props.channelEmbedUrl,
+          quality: "HD",
+          color: "#f97316",
+          isPrimary: true,
+        });
+      }
 
       // Server 2: dami-tv.pro cdn-stream redirect (FALLBACK)
       availableServers.push({
@@ -237,7 +239,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         id: `dami-embed`,
         label: "DamiTV Embed",
         source: "damitv",
-        embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(isNumericOrUriResolve ? resolveId : damiName)}`,
+        embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(resolveId || damiName)}`,
         quality: "HD",
         color: "#f97316",
       });
@@ -552,6 +554,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
           title={props.channelName || "Live TV"}
           className="absolute inset-0 w-full h-full border-0"
           style={{ zIndex: 10 }}
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
           marginWidth={0}
           marginHeight={0}
           scrolling="no"

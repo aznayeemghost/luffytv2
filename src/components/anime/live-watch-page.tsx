@@ -7,8 +7,9 @@ import Hls from "hls.js";
 // ============================================================
 // LIVE WATCH PAGE — DamiTV + StreamFree iframe Embed Player + hls.js M3U8
 // PRIMARY: DamiTV CDN embed + WatchFooty embed + StreamFree embed
-// SECONDARY: M3U8 via hls.js (streamfree, cdnlivetv, dami-tv)
+// SECONDARY: M3U8 via hls.js (streamfree only — DamiTV HLS removed)
 // FALLBACK: WatchFooty embeds
+// All iframes use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 // ============================================================
 
 interface StreamInfo {
@@ -874,20 +875,22 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           />
         )}
 
-        {/* Iframe for embed streams — direct iframe matching working format */}
-        {/* NOTE: Do NOT use referrerPolicy="no-referrer" — embedsites.top requires a referrer */}
+        {/* Iframe for embed streams — direct iframe with sandbox */}
+        {/* sandbox allows scripts, same-origin, popups, forms — required for player functionality */}
         {isEmbedStream && activeStream?.embedUrl && playerState === "playing" && !iframeFailed && (
           <iframe
             src={activeStream.embedUrl}
             title="Live Stream Player"
             className="absolute inset-0 w-full h-full border-0"
             style={{ zIndex: 15 }}
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
             marginWidth={0}
             marginHeight={0}
             scrolling="no"
             frameBorder={0}
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            referrerPolicy="no-referrer-when-downgrade"
             onLoad={() => {
               setIframeLoaded(true);
               // Clear timeout since iframe loaded successfully
