@@ -34,6 +34,8 @@ interface TVChannel {
   damitvId?: string;
   damitvCdnUrl?: string;
   damitvName?: string;
+  damitvResolveIdx?: number;
+  damitvEmbedUrl?: string;
 }
 
 interface CategoryInfo {
@@ -140,6 +142,8 @@ export default function LiveTVPage() {
       channelDamitvDefaultUrl: (channel as any).damitvDefaultUrl || "",
       channelViewers: channel.viewers || 0,
       channelLogoUrl: channel.logoUrl || "",
+      channelDamitvResolveIdx: (channel as any).damitvResolveIdx,
+      channelDamitvEmbedUrl: (channel as any).damitvEmbedUrl || "",
     } as any);
   };
 

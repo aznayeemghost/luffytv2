@@ -682,6 +682,7 @@ export default function LivePage() {
       matchApiSource: safeStr(match.apiSource),
       matchSportsrcCategory: safeStr(match.sportsrcCategory),
       matchSportsrcId: safeStr(match.sportsrcId),
+      matchWatchfootyId: match.watchfootyId ? String(match.watchfootyId) : "",
       matchWatchfootyStreams: match.watchfootyStreams ? JSON.stringify(match.watchfootyStreams) : "",
       matchLeague: safeStr(match.league),
       matchLeagueLogo: safeStr(match.leagueLogo),
@@ -709,9 +710,20 @@ export default function LivePage() {
     return liveMatches.filter(m => m.popular || (m.apiSource === "watchfooty" && m.poster)).slice(0, 20);
   }, [liveMatches]);
 
-  // Most Popular — DamiTV-sourced live matches (shown at top of page)
+  // Most Popular — DamiTV + WatchFooty popular live matches (shown at top of page)
   const mostPopularDamitv = useMemo(() => {
-    return liveMatches.filter(m => m.apiSource === "damitv" && m.isLive).slice(0, 20);
+    // Combine DamiTV live + WatchFooty popular live matches
+    const damitvLive = liveMatches.filter(m => m.apiSource === "damitv" && m.isLive);
+    const wfPopular = liveMatches.filter(m => m.apiSource === "watchfooty" && m.popular && m.poster);
+    // Merge, deduplicate by team names, and limit
+    const seen = new Set<string>();
+    const combined = [...damitvLive, ...wfPopular].filter(m => {
+      const key = m.homeTeam && m.awayTeam ? `${m.sport}:${m.homeTeam}:${m.awayTeam}` : m.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return combined.slice(0, 20);
   }, [liveMatches]);
 
   // Group matches by sport for sport sections
@@ -930,7 +942,7 @@ export default function LivePage() {
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
                     <span className="text-base">🔥</span> Most Popular
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400">DamiTV</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400">LIVE</span>
                   </h2>
                 </div>
                 <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">

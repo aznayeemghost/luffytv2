@@ -173,6 +173,8 @@ interface Channel {
   damitvCdnUrl?: string; // iframeUrl from channels.json (cdnlivetv.tv player)
   damitvName?: string; // Channel name for embed generation
   damitvDefaultUrl?: string; // cdn-stream fallback URL from channels.json
+  damitvResolveIdx?: number; // Array index for DamiTV resolve endpoint (/papi/tv/resolve/{idx})
+  damitvEmbedUrl?: string; // DamiTV embed URL (https://dami-tv.pro/embed/?id={id})
 }
 
 function detectCountry(name: string): { code: string; name: string; flag: string } {
@@ -228,7 +230,8 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
     if (!Array.isArray(channelList)) return [];
 
     const channels: Channel[] = [];
-    for (const ch of channelList) {
+    for (let idx = 0; idx < channelList.length; idx++) {
+      const ch = channelList[idx];
       const name = ch.name || "";
       if (!name) continue;
 
@@ -244,6 +247,9 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
 
       // PRIMARY embed URL: iframeUrl from channels.json (cdnlivetv.tv CDN player)
       const embedUrl = cdnIframeUrl || defaultStreamUrl || `https://dami-tv.pro/cdn-stream/${encodedName}`;
+
+      // DamiTV embed URL — works for all channels via iframe
+      const damitvEmbedUrl = `https://dami-tv.pro/embed/?id=${encodeURIComponent(channelId)}`;
 
       // Logo URL — comes from channels.json
       let logoUrl = ch.logo || "";
@@ -273,6 +279,8 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
         damitvCdnUrl: cdnIframeUrl,
         damitvDefaultUrl: defaultStreamUrl,
         damitvName: name,
+        damitvResolveIdx: idx, // Array index for /papi/tv/resolve/{idx} endpoint
+        damitvEmbedUrl, // DamiTV embed URL (iframe embed)
         streamKey: channelId,
         streamCategory: name,
       });

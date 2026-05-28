@@ -116,7 +116,7 @@ type Route =
   | { page: "features" }
   | { page: "live" }
   | { page: "live-watch"; matchId: string; matchTitle: string; matchSport: string; matchSportName: string; matchHomeTeam: string; matchAwayTeam: string; matchHomeBadge: string; matchAwayBadge: string; matchPoster: string; matchPopular: boolean; matchSources: string; matchDate: number; matchStreamKey?: string; matchStreamCategory?: string; matchChannelName?: string; matchChannelCode?: string; matchDamitvId?: string; matchDamitvName?: string; matchWatchfootyId?: string; matchApiSource?: string; matchSportsrcCategory?: string; matchSportsrcId?: string; matchWatchfootyStreams?: string; matchLeague?: string; matchLeagueLogo?: string; matchHomeScore?: number; matchAwayScore?: number; matchCurrentMinute?: string }
-  | { page: "live-tv-watch"; channelId: string; channelName: string; channelCategory: string; channelStreamCategory?: string; channelCountryCode?: string; channelCountryName?: string; channelEmbedUrl: string }
+  | { page: "live-tv-watch"; channelId: string; channelName: string; channelCategory: string; channelStreamCategory?: string; channelCountryCode?: string; channelCountryName?: string; channelEmbedUrl: string; channelDamitvDefaultUrl?: string; channelViewers?: number; channelLogoUrl?: string; channelDamitvResolveIdx?: number; channelDamitvEmbedUrl?: string }
   | { page: "novel" }
   | { page: "novel-detail"; novelId: string; novelTitle: string; novelCover: string; novelAuthor: string; novelSource: string }
   | { page: "novel-read"; novelId: string; novelTitle: string; chapterId: string; chapterNum: number; chapterTitle: string; totalChapters: number; novelSource: string };
