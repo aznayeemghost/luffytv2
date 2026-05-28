@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 // ============================================================
 // LIVE TV CHANNELS API — DamiTV + StreamFree ONLY
 // Sources: DamiTV (dami-tv.pro/channels.json) + StreamFree (streamfree.app/streams)
-// DamiTV embed: iframeUrl from channels.json (cdnlivetv.tv player)
+// DamiTV embed: https://dami-tv.pro/embed/?ch={numericId} (uses resolve API)
 // StreamFree embed: https://streamfree.app/embed/{category}/{key}?quality=1080p&category={cat}&server=origin
 // All iframe embeds use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 // ?source=damitv|streamfree|all (default: all)
@@ -210,8 +210,10 @@ function detectCategory(name: string): string {
 
 // ── Fetch DamiTV TV channels (from dami-tv.pro/channels.json) ──
 // This provides 371+ TV channels (ESPN, Sky Sports, etc.) with logos
-// PRIMARY embed: https://cdnlivetv.tv/api/v1/channels/player/?name={name}&code={code}&user=cdnlivetv&plan=free
-// FALLBACK embed: https://dami-tv.pro/cdn-stream/{name}
+// PRIMARY embed: https://dami-tv.pro/embed/?ch={numeric_id} (uses resolve API internally)
+// The resolve API (/papi/tv/resolve/{id}) returns the actual stream URL.
+// Channel IDs from channels.json are "cdn-0", "cdn-1", etc.
+// The numeric part (0, 1, 2...) is the resolve API channel ID.
 async function fetchDamiTVChannels(): Promise<Channel[]> {
   try {
     const controller = new AbortController();
@@ -237,16 +239,19 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
 
       const category = detectCategory(name);
       const country = ch.country || { code: ch.code || "int", name: ch.countryName || "International", flag: ch.countryFlag || "🌍" };
-      const channelId = ch.id || "";
-      const encodedName = encodeURIComponent(name);
+      const channelId = ch.id || ""; // e.g. "cdn-0", "cdn-1", "cdn-375"
 
-      // DamiTV iframe embed from channels.json — PRIMARY for all channels
-      // iframeUrl is the cdnlivetv.tv player URL that works in iframe with sandbox
-      const cdnIframeUrl = ch.iframeUrl || "";
-      const defaultStreamUrl = ch.defaultUrl || "";
+      // Extract numeric resolve ID from "cdn-N" format
+      // This is the ID used by /papi/tv/resolve/{id} API
+      const numericId = channelId.replace(/^cdn-/, "");
 
-      // PRIMARY embed URL: iframeUrl from channels.json (cdnlivetv.tv CDN player)
-      const embedUrl = cdnIframeUrl || defaultStreamUrl || `https://dami-tv.pro/cdn-stream/${encodedName}`;
+      // PRIMARY embed: DamiTV embed page with ch parameter
+      // This uses the resolve API internally: /papi/tv/resolve/{numericId}
+      // Format: https://dami-tv.pro/embed/?ch={numericId}
+      const embedUrl = `https://dami-tv.pro/embed/?ch=${numericId}`;
+
+      // Fallback URLs for additional server options
+      const cdnStreamUrl = ch.defaultUrl || `https://dami-tv.pro/cdn-stream/${encodeURIComponent(name)}`;
 
       // DamiTV embed URL — works for all channels via iframe
       const damitvEmbedUrl = `https://dami-tv.pro/embed/?id=${encodeURIComponent(channelId)}`;
@@ -275,9 +280,9 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
         status: "live",
         viewers: ch.viewers || 0,
         // DamiTV-specific data for the watch page to build multiple servers
-        damitvId: channelId,
-        damitvCdnUrl: cdnIframeUrl,
-        damitvDefaultUrl: defaultStreamUrl,
+        damitvId: numericId, // Numeric resolve ID (e.g. "0", "1", "375")
+        damitvCdnUrl: embedUrl, // Primary embed URL (DamiTV embed with resolve)
+        damitvDefaultUrl: cdnStreamUrl, // cdn-stream fallback URL
         damitvName: name,
         damitvResolveIdx: idx, // Array index for /papi/tv/resolve/{idx} endpoint
         damitvEmbedUrl, // DamiTV embed URL (iframe embed)

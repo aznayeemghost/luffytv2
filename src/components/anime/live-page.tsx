@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAppStore } from "./store";
 import LiveTVPage from "./live-tv-page";
-import Live247Page from "./live-247-page";
 import LiveNewsPage from "./live-news-page";
 
 // ============================================================
@@ -15,6 +14,7 @@ import LiveNewsPage from "./live-news-page";
 // D. Popular Live Section (landscape poster cards)
 // E. All Matches Section (grouped by sport/time, vertical list)
 // F. News Section (grid at bottom)
+// Sub-pages: Live TV, Sports, News (no 24/7 Live)
 // ============================================================
 
 const WF_BASE = "https://api.watchfooty.st";
@@ -789,11 +789,6 @@ export default function LivePage() {
   // This MUST be after all hooks to avoid React error #300
   if (sectionSubPage === "tv-channels") {
     return <LiveTVPage />;
-  }
-
-  // ── Tab: If on 247-live sub-page, render Live247Page instead ──
-  if (sectionSubPage === "247-live") {
-    return <Live247Page />;
   }
 
   // ── Tab: If on news sub-page, render LiveNewsPage instead ──

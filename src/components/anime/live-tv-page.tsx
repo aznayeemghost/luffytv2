@@ -6,7 +6,7 @@ import { useAppStore } from "./store";
 // ============================================================
 // LIVE TV CHANNEL BROWSER — DamiTV + StreamFree
 // Big card grid with channel logos, source toggle, search, filters
-// DamiTV: dami-tv.pro/channels.json + iframeUrl embed (sandbox iframe)
+// DamiTV: dami-tv.pro/channels.json → /embed/?ch={numericId} (resolve API)
 // StreamFree: streamfree.app/streams + embed player
 // ============================================================
 

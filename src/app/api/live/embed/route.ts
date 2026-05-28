@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 // ============================================================
 // LIVE STREAM RESOLVER — DamiTV + StreamFree + WatchFooty
-// PRIMARY: DamiTV (cdnlivetv CDN iframe embed — from channels.json iframeUrl)
-// SECONDARY: streamfree.app (origin/miror servers + M3U8 with CORS CDN)
+// PRIMARY: DamiTV (embed/?ch={numericId} — uses resolve API)
+// SECONDARY: streamfree.app (origin/miror servers + embed)
 // TERTIARY: watchfooty.st (embed URLs), sportsembed.su (embed)
 // All iframe embeds use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 // ============================================================
@@ -217,31 +217,47 @@ async function resolveStreamfree(category: string, streamKey: string): Promise<S
 }
 
 // ── PROVIDER 3: dami-tv.pro ──
-// Uses iframeUrl from channels.json as PRIMARY embed
-// resolve = the stream ID/uri_name (like "mlb/2026-05-27/mia-tor")
+// Uses /embed/?ch={numericId} as PRIMARY (uses resolve API internally)
+// resolve = the stream ID/uri_name (like "mlb/2026-05-27/mia-tor") OR numeric channel ID
 // name = the display name (like "Miami Marlins vs. Toronto Blue Jays")
 async function resolveDamiTV(matchId: string, matchName: string): Promise<StreamResult[]> {
   const results: StreamResult[] = [];
   try {
     const displayName = matchName || matchId;
 
-    // PRIMARY: cdnlivetv CDN iframe — constructed from channel name
-    // (For TV channels, the iframeUrl from channels.json is passed directly as channelEmbedUrl)
-    const cdnName = displayName.toLowerCase().replace(/\s+/g, "+");
-    const cdnUrl = `https://cdnlivetv.tv/api/v1/channels/player/?name=${encodeURIComponent(cdnName)}&code=int&user=cdnlivetv&plan=free`;
-    results.push({
-      id: `dami-cdn-${matchId}`, streamNo: 1, language: "English", hd: true,
-      m3u8Url: "", quality: "720p", source: "DamiTV CDN", viewers: 0, provider: "damitv",
-      corsEnabled: false, referer: "https://cdnlivetv.tv/", embedUrl: cdnUrl, streamType: "embed",
-    });
+    // Check if matchId is a numeric channel ID (for TV channels)
+    const isNumericId = /^\d+$/.test(matchId);
 
-    // FALLBACK: DamiTV embed
-    const embedUrl = `https://dami-tv.pro/embed/?id=${encodeURIComponent(matchId)}`;
-    results.push({
-      id: `dami-embed-${matchId}`, streamNo: 2, language: "English", hd: true,
-      m3u8Url: "", quality: "720p", source: "DamiTV Embed", viewers: 0, provider: "damitv",
-      corsEnabled: false, referer: "https://dami-tv.pro/", embedUrl, streamType: "embed",
-    });
+    if (isNumericId) {
+      // TV channel: Use DamiTV embed with resolve API
+      // /embed/?ch={numericId} internally calls /papi/tv/resolve/{id}
+      results.push({
+        id: `dami-resolve-${matchId}`, streamNo: 1, language: "English", hd: true,
+        m3u8Url: "", quality: "720p", source: "DamiTV Player", viewers: 0, provider: "damitv",
+        corsEnabled: false, referer: "https://dami-tv.pro/",
+        embedUrl: `https://dami-tv.pro/embed/?ch=${matchId}`,
+        streamType: "embed",
+      });
+
+      // Fallback: cdn-stream
+      const cdnName = displayName.toLowerCase().replace(/\s+/g, "+");
+      results.push({
+        id: `dami-cdn-${matchId}`, streamNo: 2, language: "English", hd: true,
+        m3u8Url: "", quality: "720p", source: "DamiTV Stream", viewers: 0, provider: "damitv",
+        corsEnabled: false, referer: "https://dami-tv.pro/",
+        embedUrl: `https://dami-tv.pro/cdn-stream/${encodeURIComponent(cdnName)}`,
+        streamType: "embed",
+      });
+    } else {
+      // Sports match: Use /embed/?id={matchId} format
+      results.push({
+        id: `dami-embed-${matchId}`, streamNo: 1, language: "English", hd: true,
+        m3u8Url: "", quality: "720p", source: "DamiTV Embed", viewers: 0, provider: "damitv",
+        corsEnabled: false, referer: "https://dami-tv.pro/",
+        embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(matchId)}`,
+        streamType: "embed",
+      });
+    }
   } catch {}
   return results;
 }

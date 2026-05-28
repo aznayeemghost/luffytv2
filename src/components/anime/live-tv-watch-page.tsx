@@ -6,10 +6,9 @@ import { useAppStore } from "./store";
 // ============================================================
 // LIVE TV WATCH PAGE — DamiTV + StreamFree + EmbedSports Multi-Source Player
 // DamiTV servers:
-//   1. iframeUrl from channels.json — direct iframe embed (PRIMARY)
-//   2. dami-tv.pro embed: /embed/?id={channel_id} (FALLBACK)
-//   3. dami-tv.pro cdn-stream: /cdn-stream/{name} (BACKUP)
-//   4. dami-tv.pro resolve: /papi/tv/resolve/{idx} (RESOLVER)
+//   1. dami-tv.pro embed with resolve: /embed/?ch={numericId} (PRIMARY)
+//      Uses /papi/tv/resolve/{id} internally to get actual stream URL
+//   2. dami-tv.pro cdn-stream: /cdn-stream/{name} (FALLBACK)
 // StreamFree servers:
 //   Origin: /embed/{category}/{key}?quality={q}&category={cat}&server=origin
 //   Miror:  /embed/{category}/{key}?quality={q}&category={cat}&server=miror
@@ -28,8 +27,6 @@ interface LiveTVWatchProps {
   channelDamitvDefaultUrl?: string; // DamiTV cdn-stream fallback URL
   channelViewers?: number;
   channelLogoUrl?: string;
-  channelDamitvResolveIdx?: number; // DamiTV resolve endpoint index (/papi/tv/resolve/{idx})
-  channelDamitvEmbedUrl?: string; // DamiTV embed URL (https://dami-tv.pro/embed/?id={id})
 }
 
 interface ServerOption {
@@ -162,10 +159,12 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
   const isSF = props.channelId.startsWith("sf-");
 
   // Extract DamiTV data from embed URL
-  // damiResolveId: The channel ID from channels.json (e.g., "cdn-0")
+  // damiResolveId: The numeric channel ID for the resolve API (e.g., "0", "1", "375")
+  // This is extracted from the channelId like "dami-cdn-0" → "0"
   const damiResolveId = useMemo(() => {
-    // The channelId is like "dami-cdn-0", so strip the "dami-" prefix
-    return props.channelId.replace("dami-", "");
+    // The channelId is like "dami-cdn-0", so strip the "dami-cdn-" prefix
+    // to get the numeric resolve ID
+    return props.channelId.replace("dami-cdn-", "");
   }, [props.channelId]);
 
   // damiName: The channel name for constructing fallback URLs
@@ -212,52 +211,29 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     const availableServers: ServerOption[] = [];
 
     // ── DamiTV servers ──
-    // PRIMARY: Use the iframeUrl from channels.json directly (passed as channelEmbedUrl)
-    // This is the actual cdnlivetv player URL that works in iframe with sandbox
+    // PRIMARY: Use dami-tv.pro/embed/?ch={numericId}
+    // This embed page internally calls /papi/tv/resolve/{id} to get the actual stream URL
+    // and plays it in an HLS player. This is the most reliable method.
     if (isDami) {
-      const encodedName = encodeURIComponent(damiName);
       const resolveId = damiResolveId;
 
-      // Server 1: iframeUrl from channels.json — PRIMARY (cdnlivetv.tv CDN player)
-      // This is the direct embed URL from DamiTV's channel list — most reliable
-      if (props.channelEmbedUrl) {
+      // Server 1: DamiTV Embed with Resolve API — PRIMARY
+      // Format: https://dami-tv.pro/embed/?ch={numericId}
+      // This internally resolves the channel and plays via HLS
+      if (resolveId) {
         availableServers.push({
-          id: `dami-cdn`,
-          label: "DamiTV CDN",
+          id: `dami-resolve`,
+          label: "DamiTV Player",
           source: "damitv",
-          embedUrl: props.channelEmbedUrl,
+          embedUrl: `https://dami-tv.pro/embed/?ch=${resolveId}`,
           quality: "HD",
           color: "#f97316",
           isPrimary: true,
         });
       }
 
-      // Server 2: dami-tv.pro embed (DamiTV native embed player)
-      // Uses https://dami-tv.pro/embed/?id={channelId} — works for all channels
-      if (props.channelDamitvEmbedUrl) {
-        availableServers.push({
-          id: `dami-embed`,
-          label: "DamiTV Embed",
-          source: "damitv",
-          embedUrl: props.channelDamitvEmbedUrl,
-          quality: "HD",
-          color: "#f97316",
-        });
-      } else {
-        // Fallback: construct embed URL from channel ID
-        availableServers.push({
-          id: `dami-embed`,
-          label: "DamiTV Embed",
-          source: "damitv",
-          embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(resolveId)}`,
-          quality: "HD",
-          color: "#f97316",
-        });
-      }
-
-      // Server 3: dami-tv.pro cdn-stream redirect (FALLBACK)
-      // Use the defaultUrl from channels.json if available, otherwise construct it
-      const cdnStreamUrl = props.channelDamitvDefaultUrl || `https://dami-tv.pro/cdn-stream/${encodedName}`;
+      // Server 2: dami-tv.pro cdn-stream redirect (FALLBACK)
+      const cdnStreamUrl = props.channelDamitvDefaultUrl || `https://dami-tv.pro/cdn-stream/${encodeURIComponent(damiName)}`;
       availableServers.push({
         id: `dami-stream`,
         label: "DamiTV Stream",
@@ -266,20 +242,6 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         quality: "HD",
         color: "#f97316",
       });
-
-      // Server 4: DamiTV resolve endpoint — resolves to stream URL
-      // Uses /papi/tv/resolve/{index} to get the actual stream URL
-      // This is like an HLS resolver but returns the embeddable URL
-      if (props.channelDamitvResolveIdx !== undefined && props.channelDamitvResolveIdx >= 0) {
-        availableServers.push({
-          id: `dami-resolve`,
-          label: "DamiTV Resolve",
-          source: "damitv",
-          embedUrl: `https://dami-tv.pro/papi/tv/resolve/${props.channelDamitvResolveIdx}`,
-          quality: "HD",
-          color: "#f97316",
-        });
-      }
     }
 
     // ── StreamFree servers ──
@@ -420,7 +382,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     }
 
     return availableServers;
-  }, [props.channelId, props.channelEmbedUrl, props.channelCountryCode, props.channelDamitvDefaultUrl, props.channelDamitvResolveIdx, props.channelDamitvEmbedUrl, isDami, isSF, damiResolveId, damiName, sfMatch, sfCategory, props.channelName]);
+  }, [props.channelId, props.channelEmbedUrl, props.channelCountryCode, props.channelDamitvDefaultUrl, isDami, isSF, damiResolveId, damiName, sfMatch, sfCategory, props.channelName]);
 
   // Compute the best initial server
   const bestInitialServer = useMemo(() => {
@@ -796,7 +758,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                 Servers & Sources
               </span>
               {isDami && (
-                <span className="text-[9px] text-orange-400/60 font-bold ml-1">(CDN + Embed + Stream + Resolve)</span>
+                <span className="text-[9px] text-orange-400/60 font-bold ml-1">(Resolve + Stream)</span>
               )}
               {isSF && (
                 <span className="text-[9px] text-purple-400/60 font-bold ml-1">(2 servers: origin + miror)</span>
@@ -827,7 +789,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                         <span className="text-[8px] text-white/20 font-bold ml-auto">ACTIVE</span>
                       )}
                       {source === "damitv" && (
-                        <span className="text-[8px] text-white/15 font-bold ml-auto">CDN + Embed + Stream + Resolve</span>
+                        <span className="text-[8px] text-white/15 font-bold ml-auto">Resolve + Stream</span>
                       )}
                       {source === "streamfree" && (
                         <span className="text-[8px] text-white/15 font-bold ml-auto">origin + miror</span>
@@ -921,7 +883,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]">
           <p className="text-[10px] text-white/20">
             {isDami ? (
-              <>DamiTV CDN (cdnlivetv) is PRIMARY. If it fails, auto-switches to Embed → Stream → Resolve. 12s timeout auto-fallback enabled.</>
+              <>DamiTV Player uses the resolve API (/papi/tv/resolve/{id}) to get the actual stream URL. If it fails, auto-switches to Stream server. 12s timeout auto-fallback enabled.</>
             ) : isSF ? (
               <>StreamFree has 2 servers: Origin (primary) and Miror (backup) with quality options (1080p, 720p, 540p). Failed servers are automatically skipped.</>
             ) : (
