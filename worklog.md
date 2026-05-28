@@ -333,3 +333,27 @@ Stage Summary:
 - All iframes have sandbox attribute for security
 - HLS/m3u8 references removed from DamiTV context
 - Changes pushed to https://github.com/fahadulalim93-cloud/luffytv-tasin
+---
+Task ID: 1
+Agent: Main
+Task: Complete DamiTV channels.json integration, fix all pending bugs, push to GitHub
+
+Work Log:
+- Fetched and analyzed dami-tv.pro/channels.json (371 channels, all cdnlivetv source)
+- Fixed channels API: Added damitvDefaultUrl field, sorted by viewers/popularity
+- Fixed live-tv-watch-page: CDN as PRIMARY server, proper damiResolveId extraction, 12s timeout
+- Fixed live-tv-page: Pass channelDamitvDefaultUrl, channelViewers, channelLogoUrl props
+- Cleaned up HLS/m3u8 references from comments
+- Added rally-tv to embedsports.top slug mapping
+- Verified WatchFooty integration in embed route and main API
+- Verified StreamedPK is already integrated in sports section
+- Verified StreamFree category fix with resolveSfEmbedCategory
+- Verified iframe height is 90vh (within 85-90vh range)
+- Built successfully and pushed to tasin and origin remotes
+
+Stage Summary:
+- All changes pushed to both GitHub remotes
+- DamiTV channels.json properly integrated with 371 channels
+- CDN iframeUrl is PRIMARY, cdn-stream is FALLBACK
+- 12s timeout for auto-fallback (reduced from 15s)
+- Build passes cleanly
