@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 // ============================================================
 // LIVE STREAM RESOLVER — DamiTV + StreamFree + WatchFooty
-// PRIMARY: DamiTV (HLS Player embed)
+// PRIMARY: DamiTV (cdnlivetv CDN iframe embed)
 // SECONDARY: streamfree.app (origin/miror servers + M3U8 with CORS CDN)
 // TERTIARY: watchfooty.st (embed URLs), sportsembed.su (embed)
 // ============================================================
@@ -221,58 +221,24 @@ async function resolveStreamfree(category: string, streamKey: string): Promise<S
 async function resolveDamiTV(matchId: string, matchName: string): Promise<StreamResult[]> {
   const results: StreamResult[] = [];
   try {
-    // Use matchId as resolve, matchName as the display name for the HLS player
-    const resolveId = matchId;
     const displayName = matchName || matchId;
 
-    // PRIMARY: HLS Player embed — /player/hls/?v=300&resolve={id}&name={url_encoded_name}
-    const hlsEmbedUrl = `https://dami-tv.pro/player/hls/?v=300&resolve=${encodeURIComponent(resolveId)}&name=${encodeURIComponent(displayName)}`;
+    // PRIMARY: cdnlivetv CDN iframe — best quality and most reliable
+    const cdnName = displayName.toLowerCase().replace(/\s+/g, "+");
+    const cdnUrl = `https://cdnlivetv.tv/api/v1/channels/player/?name=${encodeURIComponent(cdnName)}&code=int&user=cdnlivetv&plan=free`;
     results.push({
-      id: `dami-hls-${matchId}`, streamNo: 1, language: "English", hd: true,
-      m3u8Url: "", quality: "720p", source: "DamiTV HLS", viewers: 0, provider: "damitv",
-      corsEnabled: false, referer: "https://dami-tv.pro/", embedUrl: hlsEmbedUrl, streamType: "embed",
+      id: `dami-cdn-${matchId}`, streamNo: 1, language: "English", hd: true,
+      m3u8Url: "", quality: "720p", source: "DamiTV CDN", viewers: 0, provider: "damitv",
+      corsEnabled: false, referer: "https://cdnlivetv.tv/", embedUrl: cdnUrl, streamType: "embed",
     });
 
-    // FALLBACK: Old embed format
+    // FALLBACK: DamiTV embed
     const embedUrl = `https://dami-tv.pro/embed/?id=${encodeURIComponent(matchId)}`;
     results.push({
       id: `dami-embed-${matchId}`, streamNo: 2, language: "English", hd: true,
       m3u8Url: "", quality: "720p", source: "DamiTV Embed", viewers: 0, provider: "damitv",
       corsEnabled: false, referer: "https://dami-tv.pro/", embedUrl, streamType: "embed",
     });
-
-    // Try HLS M3U8
-    try {
-      const m3u8Url = `https://dami-tv.pro/live-hls/channel/${encodeURIComponent(matchId)}/playlist.m3u8`;
-      const res = await fetch(m3u8Url, { signal: makeCtrl().signal, headers: { "User-Agent": UA, Referer: "https://dami-tv.pro/" } });
-      if (res.ok) {
-        const ct = res.headers.get("content-type") || "";
-        if (ct.includes("mpegurl") || ct.includes("octet-stream")) {
-          results.push({
-            id: `dami-hls-m3u8-${matchId}`, streamNo: results.length + 1, language: "English", hd: true,
-            m3u8Url, quality: "720p", source: "DamiTV HLS M3U8", viewers: 0, provider: "damitv",
-            corsEnabled: false, referer: "https://dami-tv.pro/", streamType: "m3u8",
-          });
-        }
-      }
-    } catch {}
-
-    // Try PPV streams
-    try {
-      const data = await GETjson(`https://dami-tv.pro/papi/stream/ppv/${encodeURIComponent(matchId)}`, { Referer: "https://dami-tv.pro/" });
-      if (Array.isArray(data)) {
-        for (const s of data) {
-          if (s.embedUrl) {
-            results.push({
-              id: `dami-ppv-${matchId}-${s.streamNo || results.length}`, streamNo: s.streamNo || results.length + 1,
-              language: s.language || "English", hd: s.hd !== false, m3u8Url: "", quality: s.hd ? "HD" : "SD",
-              source: s.source || "DamiTV PPV", viewers: s.viewers || 0, provider: "damitv",
-              corsEnabled: false, referer: "https://dami-tv.pro/", embedUrl: s.embedUrl, streamType: "embed",
-            });
-          }
-        }
-      }
-    } catch {}
   } catch {}
   return results;
 }
@@ -489,13 +455,18 @@ export async function GET(req: Request) {
     return true;
   });
 
-  // Sort: DamiTV first, then other embeds, then M3U8
+  // Sort: DamiTV CDN first, WatchFooty second, StreamedPK third, other embeds, M3U8 last
+  const providerPriority: Record<string, number> = { damitv: 1, watchfooty: 2, streamedpk: 3 };
   const qualityOrder: Record<string, number> = { "2160p": 1, "1080p": 2, "HD": 2, "720p": 3, "SD": 4, "540p": 5, "480p": 6 };
   uniqueStreams.sort((a, b) => {
-    if (a.provider === "damitv" && b.provider !== "damitv") return -1;
-    if (b.provider === "damitv" && a.provider !== "damitv") return 1;
+    // Provider priority: DamiTV > WatchFooty > StreamedPK > others
+    const aPrio = providerPriority[a.provider] || 99;
+    const bPrio = providerPriority[b.provider] || 99;
+    if (aPrio !== bPrio) return aPrio - bPrio;
+    // Within same provider: embed before M3U8
     if (a.streamType === "embed" && b.streamType !== "embed") return -1;
     if (a.streamType !== "embed" && b.streamType === "embed") return 1;
+    // Then by CORS
     if (a.corsEnabled && !b.corsEnabled) return -1;
     if (!a.corsEnabled && b.corsEnabled) return 1;
     return (qualityOrder[a.quality] || 99) - (qualityOrder[b.quality] || 99);

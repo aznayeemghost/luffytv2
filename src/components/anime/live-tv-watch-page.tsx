@@ -6,10 +6,9 @@ import { useAppStore } from "./store";
 // ============================================================
 // LIVE TV WATCH PAGE — DamiTV + StreamFree Multi-Source Player
 // DamiTV servers:
-//   1. HLS Player: /player/hls/?v=300&resolve={id}&name={name} (PRIMARY)
-//   2. cdnlivetv: /api/v1/channels/player/?name=...&code=...&user=cdnlivetv&plan=free (FALLBACK)
+//   1. cdnlivetv: /api/v1/channels/player/?name=...&code=...&user=cdnlivetv&plan=free (PRIMARY)
+//   2. dami-tv.pro cdn-stream: /cdn-stream/{name} (FALLBACK)
 //   3. dami-tv.pro embed: /embed/?id={match_id} (BACKUP)
-//   4. dami-tv.pro cdn-stream: /cdn-stream/{name} (BACKUP)
 // StreamFree servers:
 //   Origin: /embed/{category}/{key}?quality={q}&category={cat}&server=origin
 //   Miror:  /embed/{category}/{key}?quality={q}&category={cat}&server=miror
@@ -209,22 +208,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
       const encodedName = encodeURIComponent(damiName);
       const isNumericOrUriResolve = resolveId && !resolveId.startsWith("cdn-");
 
-      // Server 1: DamiTV HLS Player — ALWAYS available for ALL DamiTV channels
-      // For match streams: resolve={uri_name} (like "mlb/2026-05-27/mia-tor")
-      // For TV channels: resolve={channel_name} (like "Sky%20Sports%20Main%20Event")
-      // Format: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={url_encoded_name}
-      const hlsResolve = isNumericOrUriResolve ? resolveId : encodedName;
-      availableServers.push({
-        id: `dami-hls`,
-        label: "DamiTV HLS",
-        source: "damitv",
-        embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${hlsResolve}&name=${encodedName}`,
-        quality: "HD",
-        color: "#f97316",
-        isPrimary: true,
-      });
-
-      // Server 2: cdnlivetv player (FALLBACK for all channels)
+      // Server 1: cdnlivetv player — PRIMARY for all DamiTV channels
       const cdnName = damiName.toLowerCase().replace(/\s+/g, "+");
       const cdnCode = (props.channelCountryCode || "int").toLowerCase();
       const cdnUrl = `https://cdnlivetv.tv/api/v1/channels/player/?name=${encodeURIComponent(cdnName)}&code=${cdnCode}&user=cdnlivetv&plan=free`;
@@ -235,9 +219,10 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         embedUrl: cdnUrl,
         quality: "HD",
         color: "#f97316",
+        isPrimary: true,
       });
 
-      // Server 3: dami-tv.pro cdn-stream redirect (BACKUP)
+      // Server 2: dami-tv.pro cdn-stream redirect (FALLBACK)
       availableServers.push({
         id: `dami-stream`,
         label: "DamiTV Stream",
@@ -247,7 +232,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         color: "#f97316",
       });
 
-      // Server 4: dami-tv.pro embed (BACKUP)
+      // Server 3: dami-tv.pro embed (LAST RESORT)
       availableServers.push({
         id: `dami-embed`,
         label: "DamiTV Embed",
@@ -771,7 +756,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                 Servers & Sources
               </span>
               {isDami && (
-                <span className="text-[9px] text-orange-400/60 font-bold ml-1">(HLS + CDN + Stream + Embed)</span>
+                <span className="text-[9px] text-orange-400/60 font-bold ml-1">(CDN + Stream + Embed)</span>
               )}
               {isSF && (
                 <span className="text-[9px] text-purple-400/60 font-bold ml-1">(2 servers: origin + miror)</span>
@@ -802,7 +787,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                         <span className="text-[8px] text-white/20 font-bold ml-auto">ACTIVE</span>
                       )}
                       {source === "damitv" && (
-                        <span className="text-[8px] text-white/15 font-bold ml-auto">HLS + CDN + Embed</span>
+                        <span className="text-[8px] text-white/15 font-bold ml-auto">CDN + Stream + Embed</span>
                       )}
                       {source === "streamfree" && (
                         <span className="text-[8px] text-white/15 font-bold ml-auto">origin + miror</span>
@@ -896,7 +881,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]">
           <p className="text-[10px] text-white/20">
             {isDami ? (
-              <>DamiTV HLS Player is PRIMARY for all channels (resolve={channel name} + name params). If it fails, auto-switches to CDN, Stream, or Embed servers. 15s timeout auto-fallback enabled.</>
+              <>DamiTV CDN (cdnlivetv) is PRIMARY for all channels. If it fails, auto-switches to Stream or Embed servers. 15s timeout auto-fallback enabled.</>
             ) : isSF ? (
               <>StreamFree has 2 servers: Origin (primary) and Miror (backup) with quality options (1080p, 720p, 540p). Failed servers are automatically skipped.</>
             ) : (

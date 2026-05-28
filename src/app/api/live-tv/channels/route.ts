@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 // ============================================================
 // LIVE TV CHANNELS API — DamiTV + StreamFree ONLY
 // Sources: DamiTV (dami-tv.pro/channels.json) + StreamFree (streamfree.app/streams)
-// DamiTV embed: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={name}
+// DamiTV embed: https://cdnlivetv.tv/api/v1/channels/player/?name={name}&code={code}&user=cdnlivetv&plan=free
 // StreamFree embed: https://streamfree.app/embed/{category}/{key}?quality=1080p&category={cat}&server=origin
 // ?source=damitv|streamfree|all (default: all)
 // ============================================================
@@ -206,8 +206,8 @@ function detectCategory(name: string): string {
 
 // ── Fetch DamiTV TV channels (from dami-tv.pro/channels.json) ──
 // This provides 371+ TV channels (ESPN, Sky Sports, etc.) with logos
-// PRIMARY embed: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={url_encoded_name}
-// FALLBACK embed: https://cdnlivetv.tv/api/v1/channels/player/?name={name}&code={code}&user=cdnlivetv&plan=free
+// PRIMARY embed: https://cdnlivetv.tv/api/v1/channels/player/?name={name}&code={code}&user=cdnlivetv&plan=free
+// FALLBACK embed: https://dami-tv.pro/cdn-stream/{name}
 async function fetchDamiTVChannels(): Promise<Channel[]> {
   try {
     const controller = new AbortController();
@@ -242,8 +242,8 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
       const cdnIframeUrl = ch.iframeUrl || "";
       const defaultStreamUrl = ch.defaultUrl || "";
 
-      // PRIMARY embed URL: DamiTV HLS Player
-      const embedUrl = `https://dami-tv.pro/player/hls/?v=300&resolve=${encodedName}&name=${encodedName}`;
+      // PRIMARY embed URL: cdnlivetv CDN iframe
+      const embedUrl = cdnIframeUrl || defaultStreamUrl || `https://dami-tv.pro/cdn-stream/${encodedName}`;
 
       // Logo URL — comes from channels.json
       let logoUrl = ch.logo || "";

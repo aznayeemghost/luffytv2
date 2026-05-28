@@ -6,7 +6,7 @@ import Hls from "hls.js";
 
 // ============================================================
 // LIVE WATCH PAGE — DamiTV + StreamFree iframe Embed Player + hls.js M3U8
-// PRIMARY: DamiTV HLS embed + StreamFree embed
+// PRIMARY: DamiTV CDN embed + WatchFooty embed + StreamFree embed
 // SECONDARY: M3U8 via hls.js (streamfree, cdnlivetv, dami-tv)
 // FALLBACK: WatchFooty embeds
 // ============================================================
@@ -386,7 +386,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           } catch {}
         }
 
-        // WatchFooty streams — added LAST (lowest priority, DamiTV/StreamFree are primary)
+        // WatchFooty streams — HIGH PRIORITY (direct embed URLs, reliable)
         const wfStreams: StreamInfo[] = wfStreamsFromProps
           .filter((s: any) => s.url && !s.isRedirect)
           .map((s: any, i: number) => ({
@@ -463,8 +463,8 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           }
         } catch {}
 
-        // Merge: resolver + provider routes FIRST, then WatchFooty LAST
-        const allStreams = [...resolverStreams, ...providerStreams, ...wfStreams];
+        // Merge: WatchFooty HIGH PRIORITY (direct embed URLs), then resolver + provider routes
+        const allStreams = [...wfStreams, ...resolverStreams, ...providerStreams];
 
         // Deduplicate by embedUrl / m3u8Url
         const seen = new Set<string>();
@@ -475,12 +475,17 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           return true;
         });
 
-        // Sort: DamiTV (provider "damitv") FIRST, then other embeds, then M3U8
+        // Sort: DamiTV CDN embeds first, WatchFooty second, StreamedPK third, other embeds, M3U8 last
+        const providerPriority: Record<string, number> = { damitv: 1, watchfooty: 2, streamedpk: 3 };
         uniqueStreams.sort((a, b) => {
-          if (a.provider === "damitv" && b.provider !== "damitv") return -1;
-          if (b.provider === "damitv" && a.provider !== "damitv") return 1;
+          // Provider priority: DamiTV > WatchFooty > StreamedPK > others
+          const aPrio = providerPriority[a.provider || ""] || 99;
+          const bPrio = providerPriority[b.provider || ""] || 99;
+          if (aPrio !== bPrio) return aPrio - bPrio;
+          // Within same provider: embed before M3U8
           if (a.streamType === "embed" && b.streamType !== "embed") return -1;
-          if (b.streamType === "embed" && a.streamType !== "embed") return 1;
+          if (a.streamType !== "embed" && b.streamType === "embed") return 1;
+          // Then by CORS
           if (a.corsEnabled && !b.corsEnabled) return -1;
           if (!a.corsEnabled && b.corsEnabled) return 1;
           return 0;
@@ -955,7 +960,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
             {/* Source-specific loading message */}
             <div className="text-center">
               <p className="text-sm font-bold text-white/60">
-                {activeStream?.provider === "damitv" ? `Loading DamiTV ${activeStream.source?.includes("HLS") ? "HLS" : "Embed"}...` :
+                {activeStream?.provider === "damitv" ? `Loading DamiTV CDN...` :
                  activeStream?.provider === "streamfree" ? "Loading StreamFree..." :
                  activeStream?.provider === "watchfooty" ? "Loading WatchFooty..." :
                  activeStream?.provider === "embedsports" ? "Loading EmbedSports..." :
@@ -964,7 +969,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
                  "Loading stream..."}
               </p>
               <p className="text-[11px] text-white/30 mt-1">
-                {activeStream?.provider === "damitv" ? "dami-tv.pro HLS Player" :
+                {activeStream?.provider === "damitv" ? "cdnlivetv.tv" :
                  activeStream?.provider === "streamfree" ? "streamfree.app CDN" :
                  activeStream?.provider === "cdnlivetv" ? "cdnlivetv.tv" :
                  activeStream?.provider === "watchfooty" ? "watchfooty.st" :
