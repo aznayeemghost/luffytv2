@@ -6,9 +6,9 @@ import { useAppStore } from "./store";
 // ============================================================
 // LIVE TV WATCH PAGE — DamiTV + StreamFree + EmbedSports Multi-Source Player
 // DamiTV servers:
-//   1. dami-tv.pro player/hls embed: /player/hls/?v=300&resolve={id}&name={name} (PRIMARY)
-//      Uses /papi/tv/resolve/{id} internally to get actual stream URL
-//   2. dami-tv.pro cdn-stream: /cdn-stream/{name} (FALLBACK)
+//   1. dami-tv.pro cdn-stream: /cdn-stream/{name} (PRIMARY — correct per API docs)
+//   2. dami-tv.pro embed: /embed/?ch={id} (SECONDARY)
+//   DO NOT USE /player/hls/ — it returns 403 Forbidden
 // StreamFree servers:
 //   Origin: /embed/{category}/{key}?quality={q}&category={cat}&server=origin
 //   Miror:  /embed/{category}/{key}?quality={q}&category={cat}&server=miror
@@ -210,36 +210,35 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     const availableServers: ServerOption[] = [];
 
     // ── DamiTV servers ──
-    // PRIMARY: Use dami-tv.pro/player/hls/?v=300&resolve={id}&name={name}
-    // This HLS player embed page calls the resolve API and plays the stream
+    // PRIMARY: Use dami-tv.pro/cdn-stream/{name} — correct URL per DamiTV API docs
+    // DO NOT USE /player/hls/ — it returns 403 Forbidden
     if (isDami) {
       const resolveId = damiResolveId;
       const encodedName = encodeURIComponent(damiName || `Channel ${resolveId}`);
 
-      // Server 1: DamiTV HLS Player with Resolve API — PRIMARY
-      // Format: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={name}
-      if (resolveId) {
-        availableServers.push({
-          id: `dami-resolve`,
-          label: "DamiTV Player",
-          source: "damitv",
-          embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${resolveId}&name=${encodedName}`,
-          quality: "HD",
-          color: "#f97316",
-          isPrimary: true,
-        });
-      }
-
-      // Server 2: dami-tv.pro cdn-stream redirect (FALLBACK)
-      const cdnStreamUrl = props.channelDamitvDefaultUrl || `https://dami-tv.pro/cdn-stream/${encodeURIComponent(damiName)}`;
+      // Server 1: DamiTV CDN Stream — PRIMARY (correct URL)
+      const cdnUrl = props.channelDamitvDefaultUrl || `https://dami-tv.pro/cdn-stream/${encodedName}`;
       availableServers.push({
-        id: `dami-stream`,
+        id: `dami-cdn`,
         label: "DamiTV Stream",
         source: "damitv",
-        embedUrl: cdnStreamUrl,
+        embedUrl: cdnUrl,
         quality: "HD",
         color: "#f97316",
+        isPrimary: true,
       });
+
+      // Server 2: DamiTV Embed — SECONDARY (uses resolve API internally)
+      if (resolveId) {
+        availableServers.push({
+          id: `dami-embed`,
+          label: "DamiTV Player",
+          source: "damitv",
+          embedUrl: `https://dami-tv.pro/embed/?ch=${resolveId}`,
+          quality: "HD",
+          color: "#f97316",
+        });
+      }
     }
 
     // ── StreamFree servers ──

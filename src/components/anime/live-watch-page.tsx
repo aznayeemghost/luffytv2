@@ -46,7 +46,8 @@ interface LiveWatchProps {
   matchChannelCode?: string;
   matchDamitvId?: string;
   matchDamitvName?: string;
-  matchDamitvIds?: string; // JSON array: [{id, name}]
+  matchDamitvIds?: string; // JSON array: [{id, name, embed?}]
+  matchDamitvEmbedUrl?: string; // Pre-built embed URL from DamiTV API
   matchWatchfootyId?: string;
   matchApiSource?: string;
   matchSportsrcCategory?: string;
@@ -410,6 +411,26 @@ export default function LiveWatchPage(props: LiveWatchProps) {
             streamType: "embed" as const,
           }));
 
+        // DamiTV pre-built embed URL — HIGHEST PRIORITY (direct from API, most reliable)
+        const damiApiStreams: StreamInfo[] = [];
+        if (props.matchDamitvEmbedUrl) {
+          damiApiStreams.push({
+            id: `dami-api-direct`,
+            streamNo: 1,
+            language: "English",
+            hd: true,
+            m3u8Url: "",
+            quality: "720p",
+            source: "DamiTV",
+            viewers: 0,
+            provider: "damitv",
+            embedUrl: props.matchDamitvEmbedUrl,
+            corsEnabled: false,
+            referer: "https://dami-tv.pro/",
+            streamType: "embed" as const,
+          });
+        }
+
         // Fetch from main resolver API (DamiTV PRIMARY, then StreamFree, WatchFooty, SportsEmbed)
         const params = new URLSearchParams();
         params.set("matchId", props.matchId);
@@ -469,8 +490,8 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           }
         } catch {}
 
-        // Merge: WatchFooty HIGH PRIORITY (direct embed URLs), then resolver + provider routes
-        const allStreams = [...wfStreams, ...resolverStreams, ...providerStreams];
+        // Merge: DamiTV API embed (highest), WatchFooty (high), then resolver + provider routes
+        const allStreams = [...damiApiStreams, ...wfStreams, ...resolverStreams, ...providerStreams];
 
         // Deduplicate by embedUrl / m3u8Url
         const seen = new Set<string>();
@@ -880,8 +901,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           />
         )}
 
-        {/* Iframe for embed streams — direct iframe with sandbox */}
-        {/* sandbox allows scripts, same-origin, popups, forms — required for player functionality */}
+        {/* Iframe for embed streams — NO sandbox attribute (it blocks embeds from loading) */}
         {isEmbedStream && activeStream?.embedUrl && playerState === "playing" && !iframeFailed && (
           <iframe
             src={activeStream.embedUrl}

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 // ============================================================
 // LIVE TV CHANNELS API — DamiTV + StreamFree ONLY
 // Sources: DamiTV (dami-tv.pro/channels.json) + StreamFree (streamfree.app/streams)
-// DamiTV embed: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={name} (uses resolve API)
+// DamiTV embed: https://dami-tv.pro/cdn-stream/{name} (PRIMARY) and /embed/?ch={id} (SECONDARY)
 // StreamFree embed: https://streamfree.app/embed/{category}/{key}?quality=1080p&category={cat}&server=origin
 // NO sandbox attribute on iframes — it blocks embeds from loading
 // ?source=damitv|streamfree|all (default: all)
@@ -245,17 +245,14 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
       // This is the ID used by /papi/tv/resolve/{id} API
       const numericId = channelId.replace(/^cdn-/, "");
 
-      // PRIMARY embed: DamiTV HLS player embed with resolve API
-      // This uses the resolve API internally: /papi/tv/resolve/{numericId}
-      // Format: https://dami-tv.pro/player/hls/?v=300&resolve={numericId}&name={encodedName}
+      // PRIMARY embed: DamiTV cdn-stream — correct URL per DamiTV API docs
+      // /player/hls/ returns 403 Forbidden — DO NOT USE
       const encodedName = encodeURIComponent(name);
-      const embedUrl = `https://dami-tv.pro/player/hls/?v=300&resolve=${numericId}&name=${encodedName}`;
+      const cdnStreamUrl = ch.defaultUrl || `https://dami-tv.pro/cdn-stream/${encodedName}`;
+      const embedUrl = cdnStreamUrl;
 
-      // Fallback URLs for additional server options
-      const cdnStreamUrl = ch.defaultUrl || `https://dami-tv.pro/cdn-stream/${encodeURIComponent(name)}`;
-
-      // DamiTV HLS player embed URL — works for all channels via iframe
-      const damitvEmbedUrl = `https://dami-tv.pro/player/hls/?v=300&resolve=${numericId}&name=${encodedName}`;
+      // SECONDARY: /embed/?ch={numericId} — uses resolve API internally
+      const damitvEmbedUrl = `https://dami-tv.pro/embed/?ch=${numericId}`;
 
       // Logo URL — comes from channels.json
       let logoUrl = ch.logo || "";

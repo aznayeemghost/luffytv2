@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 // ============================================================
 // LIVE STREAM RESOLVER — DamiTV + StreamFree + WatchFooty
-// PRIMARY: DamiTV (player/hls/?v=300&resolve={id}&name={name})
+// PRIMARY: DamiTV (https://dami-tv.pro/embed/?id={MATCH_ID})
 // SECONDARY: streamfree.app (origin/miror servers + embed)
 // TERTIARY: watchfooty.st (embed URLs), sportsembed.su (embed)
 // NO sandbox attribute on iframes — it blocks embeds from loading
@@ -217,9 +217,10 @@ async function resolveStreamfree(category: string, streamKey: string): Promise<S
 }
 
 // ── PROVIDER 3: dami-tv.pro ──
-// Uses /embed/?ch={numericId} as PRIMARY (uses resolve API internally)
-// resolve = the stream ID/uri_name (like "mlb/2026-05-27/mia-tor") OR numeric channel ID
-// name = the display name (like "Miami Marlins vs. Toronto Blue Jays")
+// Correct embed URLs from DamiTV API docs:
+// - Sports matches: https://dami-tv.pro/embed/?id={MATCH_ID} (URL-encoded)
+// - TV channels: https://dami-tv.pro/cdn-stream/{CHANNEL_NAME} (URL-encoded)
+// DO NOT use /player/hls/ — it returns 403 Forbidden
 async function resolveDamiTV(matchId: string, matchName: string): Promise<StreamResult[]> {
   const results: StreamResult[] = [];
   try {
@@ -229,29 +230,30 @@ async function resolveDamiTV(matchId: string, matchName: string): Promise<Stream
     const isNumericId = /^\d+$/.test(matchId);
 
     if (isNumericId) {
-      // TV channel: Use DamiTV HLS player embed with resolve API
-      // /player/hls/?v=300&resolve={id}&name={name} — this uses the resolve API internally
+      // TV channel: Use /cdn-stream/{name} as PRIMARY (works for TV channels)
+      // Also try /embed/?ch={numericId} as a secondary option
       const encodedName = encodeURIComponent(displayName || `Channel ${matchId}`);
+
+      // PRIMARY: cdn-stream — this is the correct URL for TV channels
       results.push({
-        id: `dami-resolve-${matchId}`, streamNo: 1, language: "English", hd: true,
-        m3u8Url: "", quality: "720p", source: "DamiTV Player", viewers: 0, provider: "damitv",
+        id: `dami-cdn-${matchId}`, streamNo: 1, language: "English", hd: true,
+        m3u8Url: "", quality: "720p", source: "DamiTV Stream", viewers: 0, provider: "damitv",
         corsEnabled: false, referer: "https://dami-tv.pro/",
-        embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${matchId}&name=${encodedName}`,
+        embedUrl: `https://dami-tv.pro/cdn-stream/${encodedName}`,
         streamType: "embed",
       });
 
-      // Fallback: cdn-stream
-      const cdnName = displayName.toLowerCase().replace(/\s+/g, "+");
+      // SECONDARY: /embed/?ch={numericId} — uses resolve API internally
       results.push({
-        id: `dami-cdn-${matchId}`, streamNo: 2, language: "English", hd: true,
-        m3u8Url: "", quality: "720p", source: "DamiTV Stream", viewers: 0, provider: "damitv",
+        id: `dami-embed-ch-${matchId}`, streamNo: 2, language: "English", hd: true,
+        m3u8Url: "", quality: "720p", source: "DamiTV Player", viewers: 0, provider: "damitv",
         corsEnabled: false, referer: "https://dami-tv.pro/",
-        embedUrl: `https://dami-tv.pro/cdn-stream/${encodeURIComponent(cdnName)}`,
+        embedUrl: `https://dami-tv.pro/embed/?ch=${matchId}`,
         streamType: "embed",
       });
     } else {
-      // Sports match: Use /player/hls/?v=300&resolve={uri_name}&name={name} format
-      const encodedName = encodeURIComponent(displayName || matchId);
+      // Sports match: Use /embed/?id={MATCH_ID} — this is the CORRECT embed URL
+      // The matchId is the uri_name like "mlb/2026-05-27/mia-tor" or "roland-garros-tnt-sports-1"
       // Extract channel name from the displayName if present (e.g., "Roland-Garros: TNT Sports 1")
       const channelSuffix = displayName.includes(":") ? displayName.split(":").pop()?.trim() : "";
       const sourceLabel = channelSuffix ? `DamiTV ${channelSuffix}` : "DamiTV Embed";
@@ -259,7 +261,7 @@ async function resolveDamiTV(matchId: string, matchName: string): Promise<Stream
         id: `dami-embed-${matchId}`, streamNo: 1, language: "English", hd: true,
         m3u8Url: "", quality: "720p", source: sourceLabel, viewers: 0, provider: "damitv",
         corsEnabled: false, referer: "https://dami-tv.pro/",
-        embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${encodeURIComponent(matchId)}&name=${encodedName}`,
+        embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(matchId)}`,
         streamType: "embed",
       });
     }
@@ -423,16 +425,33 @@ export async function GET(req: Request) {
   }
 
   // Parse damitvIds (multiple DamiTV channel entries for the same match)
-  let parsedDamitvIds: { id: string; name: string }[] = [];
+  let parsedDamitvIds: { id: string; name: string; embed?: string }[] = [];
   if (damitvIds) {
     try { parsedDamitvIds = JSON.parse(damitvIds); if (!Array.isArray(parsedDamitvIds)) parsedDamitvIds = []; } catch { parsedDamitvIds = []; }
   }
 
   const resolvePromises: Promise<StreamResult[]>[] = [];
 
-  // ── PRIORITY 1: DamiTV (if damitvId or damitvIds provided) — PRIMARY source ──
+  // ── PRIORITY 0: DamiTV pre-built embed URLs from the API ──
+  // The DamiTV /papi/api/streams response includes `iframe` and `embed` fields
+  // that already have the correct embed URLs. Use those directly instead of
+  // constructing our own — this is the most reliable approach.
+  for (const dEntry of parsedDamitvIds) {
+    if (dEntry.embed) {
+      const channelSuffix = dEntry.name?.includes(":") ? dEntry.name.split(":").pop()?.trim() : "";
+      const sourceLabel = channelSuffix ? `DamiTV ${channelSuffix}` : "DamiTV Embed";
+      resolvePromises.push(Promise.resolve([{
+        id: `dami-api-${dEntry.id}`, streamNo: resolvePromises.length + 1, language: "English", hd: true,
+        m3u8Url: "", quality: "720p", source: sourceLabel, viewers: 0, provider: "damitv",
+        corsEnabled: false, referer: "https://dami-tv.pro/",
+        embedUrl: dEntry.embed, streamType: "embed" as const,
+      }]));
+    }
+  }
+
+  // ── PRIORITY 1: DamiTV (if damitvId or damitvIds provided) — also generate embed URLs ──
   // Resolve EACH DamiTV ID as a separate stream/server option
-  // damitvIds contains multiple entries like [{id: "roland-garros-tnt-1", name: "Roland-Garros: TNT Sports 1"}, ...]
+  // This generates embed URLs using the correct /embed/?id={MATCH_ID} format
   if (parsedDamitvIds.length > 0) {
     // Resolve each DamiTV ID separately — each becomes its own server option
     for (const dEntry of parsedDamitvIds) {

@@ -57,7 +57,9 @@ interface LiveMatch {
   damitvId?: string;
   damitvName?: string;
   // Multiple DamiTV IDs for same match from different channels (e.g. TNT Sports 1 & 4)
-  damitvIds?: { id: string; name: string }[];
+  damitvIds?: { id: string; name: string; embed?: string }[];
+  // Pre-built embed URL from DamiTV API (the `iframe` or `embed` field)
+  damitvEmbedUrl?: string;
   watchfootyId?: number;
   sportsrcCategory?: string;
   sportsrcId?: string;
@@ -262,6 +264,12 @@ async function fetchDamiTVStreams(): Promise<LiveMatch[]> {
         const ts = s.starts_at ? s.starts_at * 1000 : 0;
         const dId = s.uri_name || s.id || "";
         const dName = s.name || "";
+        // Capture pre-built embed URLs from the DamiTV API — these are the correct URLs
+        const dEmbedUrl = s.iframe || s.embed || "";
+        // Capture DamiTV sources array (PPV embed sources)
+        const dSources: { source: string; id: string }[] = Array.isArray(s.sources)
+          ? s.sources.map((src: any) => ({ source: `damitv-${src.source || "default"}`, id: src.id || src.embed || "" }))
+          : [];
         matches.push({
           id: `dami-${dId || Math.random().toString(36).slice(2)}`,
           title: s.name || s.title || formatTitle(s.id || ""),
@@ -276,11 +284,13 @@ async function fetchDamiTVStreams(): Promise<LiveMatch[]> {
           awayBadge,
           isLive,
           apiSource: "damitv",
-          sources: [],
+          sources: dSources,
           damitvId: dId,
           damitvName: dName,
+          // Pre-built embed URL from DamiTV API (iframe/embed field)
+          damitvEmbedUrl: dEmbedUrl,
           // Initialize damitvIds with this entry — will accumulate during merge
-          damitvIds: dId ? [{ id: dId, name: dName }] : [],
+          damitvIds: dId ? [{ id: dId, name: dName, embed: dEmbedUrl }] : [],
         });
       }
     }
@@ -823,6 +833,7 @@ function mergeMatches(lists: LiveMatch[][]): LiveMatch[] {
           // Also keep the existing match's provider IDs if WatchFooty doesn't have them
           if (existing.damitvId && !merged.damitvId) merged.damitvId = existing.damitvId;
           if (existing.damitvName && !merged.damitvName) merged.damitvName = existing.damitvName;
+          if (existing.damitvEmbedUrl && !merged.damitvEmbedUrl) merged.damitvEmbedUrl = existing.damitvEmbedUrl;
           if (existing.streamKey && !merged.streamKey) merged.streamKey = existing.streamKey;
           if (existing.streamCategory && !merged.streamCategory) merged.streamCategory = existing.streamCategory;
           if (existing.sportsrcCategory && !merged.sportsrcCategory) merged.sportsrcCategory = existing.sportsrcCategory;
@@ -848,8 +859,10 @@ function mergeMatches(lists: LiveMatch[][]): LiveMatch[] {
           if (m.apiSource === "damitv" && m.damitvId) {
             if (!existing.damitvIds) existing.damitvIds = [];
             if (!existing.damitvIds.some(d => d.id === m.damitvId)) {
-              updates.damitvIds = [...(existing.damitvIds || []), { id: m.damitvId, name: m.damitvName || m.damitvId }];
+              updates.damitvIds = [...(existing.damitvIds || []), { id: m.damitvId, name: m.damitvName || m.damitvId, embed: m.damitvEmbedUrl }];
             }
+            // Also set the embed URL
+            if (m.damitvEmbedUrl && !existing.damitvEmbedUrl) updates.damitvEmbedUrl = m.damitvEmbedUrl;
           }
           Object.assign(existing, updates);
         }
@@ -876,7 +889,7 @@ function mergeMatches(lists: LiveMatch[][]): LiveMatch[] {
 }
 
 // ── Merge DamiTV IDs arrays — deduplicate by id ──
-function mergeDamitvIds(base?: { id: string; name: string }[], fill?: { id: string; name: string }[]): { id: string; name: string }[] {
+function mergeDamitvIds(base?: { id: string; name: string; embed?: string }[], fill?: { id: string; name: string; embed?: string }[]): { id: string; name: string; embed?: string }[] {
   const combined = [...(base || []), ...(fill || [])];
   const seen = new Set<string>();
   return combined.filter(d => {

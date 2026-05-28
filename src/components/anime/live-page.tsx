@@ -76,7 +76,8 @@ interface LiveMatch {
   channelName?: string;
   damitvId?: string;
   damitvName?: string;
-  damitvIds?: { id: string; name: string }[];
+  damitvIds?: { id: string; name: string; embed?: string }[];
+  damitvEmbedUrl?: string;
   watchfootyId?: number;
   sportsrcCategory?: string;
   sportsrcId?: string;
@@ -680,6 +681,7 @@ export default function LivePage() {
       matchDamitvId: safeStr(match.damitvId),
       matchDamitvName: safeStr(match.damitvName || match.title),
       matchDamitvIds: match.damitvIds ? JSON.stringify(match.damitvIds) : "",
+      matchDamitvEmbedUrl: safeStr(match.damitvEmbedUrl),
       matchApiSource: safeStr(match.apiSource),
       matchSportsrcCategory: safeStr(match.sportsrcCategory),
       matchSportsrcId: safeStr(match.sportsrcId),
