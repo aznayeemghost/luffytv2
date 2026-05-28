@@ -8,7 +8,7 @@ import Hls from "hls.js";
 // LIVE WATCH PAGE — DamiTV + WatchFooty + StreamFree iframe Embed Player
 // PRIMARY: DamiTV CDN embed + WatchFooty embed + StreamFree embed
 // SECONDARY: StreamFree M3U8 via hls.js (NO DamiTV HLS — removed per user request)
-// All iframes use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+// NO sandbox attribute on iframes — it blocks embeds from loading
 // ============================================================
 
 interface StreamInfo {
@@ -882,7 +882,6 @@ export default function LiveWatchPage(props: LiveWatchProps) {
             title="Live Stream Player"
             className="absolute inset-0 w-full h-full border-0"
             style={{ zIndex: 15 }}
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
             marginWidth={0}
             marginHeight={0}
             scrolling="no"

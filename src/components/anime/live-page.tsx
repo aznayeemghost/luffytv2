@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAppStore } from "./store";
-import LiveTVPage from "./live-tv-page";
 import LiveNewsPage from "./live-news-page";
 
 // ============================================================
@@ -784,12 +783,6 @@ export default function LivePage() {
   // ═══════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════
-
-  // ── Tab: If on tv-channels sub-page, render LiveTVPage instead ──
-  // This MUST be after all hooks to avoid React error #300
-  if (sectionSubPage === "tv-channels") {
-    return <LiveTVPage />;
-  }
 
   // ── Tab: If on news sub-page, render LiveNewsPage instead ──
   if (sectionSubPage === "news") {

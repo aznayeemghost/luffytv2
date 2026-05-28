@@ -6,14 +6,13 @@ import { useAppStore } from "./store";
 // ============================================================
 // LIVE TV WATCH PAGE — DamiTV + StreamFree + EmbedSports Multi-Source Player
 // DamiTV servers:
-//   1. dami-tv.pro embed with resolve: /embed/?ch={numericId} (PRIMARY)
+//   1. dami-tv.pro player/hls embed: /player/hls/?v=300&resolve={id}&name={name} (PRIMARY)
 //      Uses /papi/tv/resolve/{id} internally to get actual stream URL
 //   2. dami-tv.pro cdn-stream: /cdn-stream/{name} (FALLBACK)
 // StreamFree servers:
 //   Origin: /embed/{category}/{key}?quality={q}&category={cat}&server=origin
 //   Miror:  /embed/{category}/{key}?quality={q}&category={cat}&server=miror
-// All iframes use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-// Auto-fallback on iframe errors with 15s timeout
+// NO sandbox attribute on iframes — it blocks embeds from loading
 // ============================================================
 
 interface LiveTVWatchProps {
@@ -211,21 +210,20 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     const availableServers: ServerOption[] = [];
 
     // ── DamiTV servers ──
-    // PRIMARY: Use dami-tv.pro/embed/?ch={numericId}
-    // This embed page internally calls /papi/tv/resolve/{id} to get the actual stream URL
-    // and plays it in an HLS player. This is the most reliable method.
+    // PRIMARY: Use dami-tv.pro/player/hls/?v=300&resolve={id}&name={name}
+    // This HLS player embed page calls the resolve API and plays the stream
     if (isDami) {
       const resolveId = damiResolveId;
+      const encodedName = encodeURIComponent(damiName || `Channel ${resolveId}`);
 
-      // Server 1: DamiTV Embed with Resolve API — PRIMARY
-      // Format: https://dami-tv.pro/embed/?ch={numericId}
-      // This internally resolves the channel and plays via HLS
+      // Server 1: DamiTV HLS Player with Resolve API — PRIMARY
+      // Format: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={name}
       if (resolveId) {
         availableServers.push({
           id: `dami-resolve`,
           label: "DamiTV Player",
           source: "damitv",
-          embedUrl: `https://dami-tv.pro/embed/?ch=${resolveId}`,
+          embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${resolveId}&name=${encodedName}`,
           quality: "HD",
           color: "#f97316",
           isPrimary: true,
@@ -553,7 +551,6 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
           title={props.channelName || "Live TV"}
           className="absolute inset-0 w-full h-full border-0"
           style={{ zIndex: 10 }}
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
           marginWidth={0}
           marginHeight={0}
           scrolling="no"

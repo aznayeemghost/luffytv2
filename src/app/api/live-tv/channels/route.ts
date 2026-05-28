@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 // ============================================================
 // LIVE TV CHANNELS API — DamiTV + StreamFree ONLY
 // Sources: DamiTV (dami-tv.pro/channels.json) + StreamFree (streamfree.app/streams)
-// DamiTV embed: https://dami-tv.pro/embed/?ch={numericId} (uses resolve API)
+// DamiTV embed: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={name} (uses resolve API)
 // StreamFree embed: https://streamfree.app/embed/{category}/{key}?quality=1080p&category={cat}&server=origin
-// All iframe embeds use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+// NO sandbox attribute on iframes — it blocks embeds from loading
 // ?source=damitv|streamfree|all (default: all)
 // ============================================================
 
@@ -245,16 +245,17 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
       // This is the ID used by /papi/tv/resolve/{id} API
       const numericId = channelId.replace(/^cdn-/, "");
 
-      // PRIMARY embed: DamiTV embed page with ch parameter
+      // PRIMARY embed: DamiTV HLS player embed with resolve API
       // This uses the resolve API internally: /papi/tv/resolve/{numericId}
-      // Format: https://dami-tv.pro/embed/?ch={numericId}
-      const embedUrl = `https://dami-tv.pro/embed/?ch=${numericId}`;
+      // Format: https://dami-tv.pro/player/hls/?v=300&resolve={numericId}&name={encodedName}
+      const encodedName = encodeURIComponent(name);
+      const embedUrl = `https://dami-tv.pro/player/hls/?v=300&resolve=${numericId}&name=${encodedName}`;
 
       // Fallback URLs for additional server options
       const cdnStreamUrl = ch.defaultUrl || `https://dami-tv.pro/cdn-stream/${encodeURIComponent(name)}`;
 
-      // DamiTV embed URL — works for all channels via iframe
-      const damitvEmbedUrl = `https://dami-tv.pro/embed/?id=${encodeURIComponent(channelId)}`;
+      // DamiTV HLS player embed URL — works for all channels via iframe
+      const damitvEmbedUrl = `https://dami-tv.pro/player/hls/?v=300&resolve=${numericId}&name=${encodedName}`;
 
       // Logo URL — comes from channels.json
       let logoUrl = ch.logo || "";

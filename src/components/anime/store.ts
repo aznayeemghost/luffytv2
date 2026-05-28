@@ -146,8 +146,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSectionSubPage: (subPage) => set({ sectionSubPage: subPage }),
   navigate: (route) => {
     // Reset section sub-page when navigating to a new section
-    // Default to "tv-channels" when going to live page (Live TV is the primary tab)
-    const subPage = route.page === "live" ? "tv-channels" : "home";
+    // Default to "sports" when going to live page (Sports is the primary tab)
+    const subPage = route.page === "live" ? "sports" : "home";
     set({ route, sectionSubPage: subPage });
     if (typeof window !== "undefined") {
       if (route.page === "home") window.location.hash = "";
@@ -228,11 +228,10 @@ export function getSectionNavLinks(route: Route): { id: SectionSubPage; label: s
     ];
   }
   
-  // Live TV section — 3 sub-tabs (removed 24/7 Live)
+  // Live section — just sports (no TV channels or news tabs)
   if (page === "live" || page === "live-watch" || page === "live-tv-watch") {
     return [
-      { id: "tv-channels", label: "Live TV" },
-      { id: "sports", label: "Sports" },
+      { id: "sports", label: "Live Sports" },
       { id: "news", label: "News" },
     ];
   }

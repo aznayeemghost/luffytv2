@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 // ============================================================
 // LIVE STREAM RESOLVER — DamiTV + StreamFree + WatchFooty
-// PRIMARY: DamiTV (embed/?ch={numericId} — uses resolve API)
+// PRIMARY: DamiTV (player/hls/?v=300&resolve={id}&name={name})
 // SECONDARY: streamfree.app (origin/miror servers + embed)
 // TERTIARY: watchfooty.st (embed URLs), sportsembed.su (embed)
-// All iframe embeds use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+// NO sandbox attribute on iframes — it blocks embeds from loading
 // ============================================================
 
 export const runtime = "edge";
@@ -229,13 +229,14 @@ async function resolveDamiTV(matchId: string, matchName: string): Promise<Stream
     const isNumericId = /^\d+$/.test(matchId);
 
     if (isNumericId) {
-      // TV channel: Use DamiTV embed with resolve API
-      // /embed/?ch={numericId} internally calls /papi/tv/resolve/{id}
+      // TV channel: Use DamiTV HLS player embed with resolve API
+      // /player/hls/?v=300&resolve={id}&name={name} — this uses the resolve API internally
+      const encodedName = encodeURIComponent(displayName || `Channel ${matchId}`);
       results.push({
         id: `dami-resolve-${matchId}`, streamNo: 1, language: "English", hd: true,
         m3u8Url: "", quality: "720p", source: "DamiTV Player", viewers: 0, provider: "damitv",
         corsEnabled: false, referer: "https://dami-tv.pro/",
-        embedUrl: `https://dami-tv.pro/embed/?ch=${matchId}`,
+        embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${matchId}&name=${encodedName}`,
         streamType: "embed",
       });
 
@@ -249,12 +250,13 @@ async function resolveDamiTV(matchId: string, matchName: string): Promise<Stream
         streamType: "embed",
       });
     } else {
-      // Sports match: Use /embed/?id={matchId} format
+      // Sports match: Use /player/hls/?v=300&resolve={uri_name}&name={name} format
+      const encodedName = encodeURIComponent(displayName || matchId);
       results.push({
         id: `dami-embed-${matchId}`, streamNo: 1, language: "English", hd: true,
         m3u8Url: "", quality: "720p", source: "DamiTV Embed", viewers: 0, provider: "damitv",
         corsEnabled: false, referer: "https://dami-tv.pro/",
-        embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(matchId)}`,
+        embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${encodeURIComponent(matchId)}&name=${encodedName}`,
         streamType: "embed",
       });
     }
