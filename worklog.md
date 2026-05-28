@@ -22,3 +22,27 @@ Stage Summary:
 - Iframe should now load properly (removed blocking condition)
 - LiveHDTV added as 2nd server with 512 channels
 - Cross-server support: watching a DamiTV channel can also use LiveHDTV as fallback
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix match deduplication — same match from different APIs should appear as ONE entry with multiple server options
+
+Work Log:
+- Analyzed user screenshot showing duplicate Roland-Garros entries (TNT Sports 1 vs TNT Sports 4)
+- Read full codebase: /api/live/route.ts (1100+ lines), /api/live/embed/route.ts (500+ lines), live-watch-page.tsx, live-page.tsx
+- Identified root cause: DamiTV returns separate entries per channel (e.g., "Roland-Garros: TNT Sports 1" and "Roland-Garros: TNT Sports 4") but mergeMatches() only deduplicates by homeTeam/awayTeam — it doesn't merge by tournament/event name
+- Added `damitvIds` array to LiveMatch interface for accumulating multiple DamiTV channel IDs per match
+- Created `extractBaseEventName()` function to strip channel suffixes from DamiTV titles (e.g., "Roland-Garros: TNT Sports 1" → "roland-garros")
+- Rewrote `mergeMatches()` with 3-level matching: exact team match → fuzzy team match → base event name match
+- Process WatchFooty lists first so their data (title, poster, teams, scores) is used as base for merged matches
+- Accumulate ALL DamiTV IDs as separate server options during merge via `mergeDamitvIds()` helper
+- Updated embed route to parse `damitvIds` JSON array and resolve each DamiTV ID as a separate stream with labeled channel name (e.g., "DamiTV TNT Sports 1")
+- Updated live-page.tsx and live-watch-page.tsx to pass `damitvIds` through navigation props and embed API params
+- Build succeeded, pushed to GitHub (fahadulalim93-cloud/luffytv-tasin)
+
+Stage Summary:
+- Same tournament/event from different DamiTV channels now merges into ONE match card with multiple server buttons
+- WatchFooty used as PRIMARY for display data (image, title, teams, scores)
+- Each DamiTV channel becomes a separate stream option (labeled with channel name)
+- Pushed to GitHub as commit b04f645
