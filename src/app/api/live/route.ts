@@ -56,6 +56,8 @@ interface LiveMatch {
   channelName?: string;
   damitvId?: string;
   damitvName?: string;
+  // Multiple DamiTV IDs for same match from different channels (e.g. TNT Sports 1 & 4)
+  damitvIds?: { id: string; name: string }[];
   watchfootyId?: number;
   sportsrcCategory?: string;
   sportsrcId?: string;
@@ -258,8 +260,10 @@ async function fetchDamiTVStreams(): Promise<LiveMatch[]> {
         const homeBadge = s.teams?.home?.badge || "";
         const awayBadge = s.teams?.away?.badge || "";
         const ts = s.starts_at ? s.starts_at * 1000 : 0;
+        const dId = s.uri_name || s.id || "";
+        const dName = s.name || "";
         matches.push({
-          id: `dami-${s.id || s.uri_name || Math.random().toString(36).slice(2)}`,
+          id: `dami-${dId || Math.random().toString(36).slice(2)}`,
           title: s.name || s.title || formatTitle(s.id || ""),
           sport,
           sportName: SPORT_NAMES[sport] || capitalize(s.category_name || category.category || ""),
@@ -273,8 +277,10 @@ async function fetchDamiTVStreams(): Promise<LiveMatch[]> {
           isLive,
           apiSource: "damitv",
           sources: [],
-          damitvId: s.uri_name || s.id || "",
-          damitvName: s.name || "",
+          damitvId: dId,
+          damitvName: dName,
+          // Initialize damitvIds with this entry — will accumulate during merge
+          damitvIds: dId ? [{ id: dId, name: dName }] : [],
         });
       }
     }
@@ -715,22 +721,57 @@ function normalizeTeamName(name: string): string {
     .trim();
 }
 
+// ── Extract base event name from DamiTV title ──
+// DamiTV often returns "Roland-Garros: TNT Sports 1", "Roland-Garros: TNT Sports 4"
+// We need to extract "roland-garros" as the base event name for deduplication
+function extractBaseEventName(title: string): string {
+  // Remove channel suffixes like ": TNT Sports 1", ": ESPN 2", etc.
+  return title
+    .toLowerCase()
+    .trim()
+    // Remove patterns like ": TNT Sports X", ": Sky Sports X", ": ESPN X"
+    .replace(/\s*:\s*(tnt\s*sports|sky\s*sports|espn|bbc|itv|channel|bein|supersport|dazn|prime|peacock|paramount|fox|cbs|nbc|abc|tbs|tnt|trutv)\s*\d*\s*$/i, "")
+    // Remove trailing numbers after space (e.g., " 1", " 4")
+    .replace(/\s+\d{1,2}\s*$/, "")
+    .trim();
+}
+
 // ── Merge & Deduplicate ──
-// Uses fuzzy team name matching so "Man City vs Arsenal" (WatchFooty)
-// merges across providers
+// Strategy:
+// 1. WatchFooty is PRIMARY for display data (title, poster, teams, badges, scores, league)
+// 2. Merge by team names (homeTeam/awayTeam) across providers
+// 3. For DamiTV entries without teams, merge by base event name (e.g. "Roland-Garros")
+// 4. Accumulate ALL stream provider IDs (damitvIds, streamKey, etc.) as server options
 function mergeMatches(lists: LiveMatch[][]): LiveMatch[] {
   const seen = new Map<string, LiveMatch>();
 
-
+  // Process WatchFooty first (best display data), then other providers
+  // This ensures WatchFooty data is the base for merged matches
+  const orderedLists: LiveMatch[][] = [];
+  const wfLists: LiveMatch[][] = [];
+  const otherLists: LiveMatch[][] = [];
   for (const list of lists) {
+    const hasWatchfooty = list.some(m => m.apiSource === "watchfooty");
+    if (hasWatchfooty) wfLists.push(list);
+    else otherLists.push(list);
+  }
+  orderedLists.push(...wfLists, ...otherLists);
+
+  for (const list of orderedLists) {
     for (const m of list) {
-      // Generate exact key first
+      // ── Generate match key ──
+      // Priority 1: Exact team match key
       const exactKey = m.homeTeam && m.awayTeam
         ? `${m.sport}:${m.homeTeam.toLowerCase().trim()}:${m.awayTeam.toLowerCase().trim()}`
-        : m.id;
+        : "";
+
+      // Priority 2: Base event name key (for DamiTV entries without proper teams)
+      const baseEventKey = (!m.homeTeam || !m.awayTeam) && m.title
+        ? `${m.sport}:${extractBaseEventName(m.title)}`
+        : "";
 
       // Try exact match first
-      let existing = seen.get(exactKey);
+      let existing = exactKey ? seen.get(exactKey) : undefined;
 
       // If no exact match, try fuzzy match by normalized team names
       if (!existing && m.homeTeam && m.awayTeam) {
@@ -756,32 +797,92 @@ function mergeMatches(lists: LiveMatch[][]): LiveMatch[] {
         }
       }
 
-
+      // If still no match, try base event name match (for DamiTV entries without teams)
+      if (!existing && baseEventKey) {
+        existing = seen.get(baseEventKey);
+        // Also check if any existing match has a similar base event name
+        if (!existing) {
+          for (const [key, existingMatch] of seen) {
+            if (existingMatch.sport !== m.sport) continue;
+            const existingBaseKey = `${existingMatch.sport}:${extractBaseEventName(existingMatch.title)}`;
+            if (existingBaseKey === baseEventKey && baseEventKey.split(":")[1].length > 3) {
+              existing = existingMatch;
+              break;
+            }
+          }
+        }
+      }
 
       if (existing) {
-        // Merge: prefer streamfree (has M3U8), fill missing fields
-        if (m.apiSource === "streamfree" && existing.apiSource !== "streamfree") {
+        // ── MERGE: Prefer WatchFooty for display, accumulate all stream IDs ──
+        if (m.apiSource === "watchfooty" && existing.apiSource !== "watchfooty") {
+          // WatchFooty has best display data — use it as base, keep existing stream IDs
           const merged = { ...m, ...pickMissing(m, existing) };
-          seen.set(exactKey, merged);
+          // Accumulate DamiTV IDs from existing into merged
+          merged.damitvIds = mergeDamitvIds(existing.damitvIds, m.damitvIds);
+          // Also keep the existing match's provider IDs if WatchFooty doesn't have them
+          if (existing.damitvId && !merged.damitvId) merged.damitvId = existing.damitvId;
+          if (existing.damitvName && !merged.damitvName) merged.damitvName = existing.damitvName;
+          if (existing.streamKey && !merged.streamKey) merged.streamKey = existing.streamKey;
+          if (existing.streamCategory && !merged.streamCategory) merged.streamCategory = existing.streamCategory;
+          if (existing.sportsrcCategory && !merged.sportsrcCategory) merged.sportsrcCategory = existing.sportsrcCategory;
+          if (existing.sportsrcId && !merged.sportsrcId) merged.sportsrcId = existing.sportsrcId;
+          // Update all key mappings
+          if (exactKey) seen.set(exactKey, merged);
+          if (baseEventKey) seen.set(baseEventKey, merged);
+          // Update the old key that pointed to existing
+          for (const [k, v] of seen) {
+            if (v === existing && k !== exactKey && k !== baseEventKey) {
+              seen.set(k, merged);
+            }
+          }
         } else {
-          // Fill in missing fields from new match
-          Object.assign(existing, pickMissing(existing, m));
+          // Fill in missing fields from new match into existing
+          const updates = pickMissing(existing, m);
+          // Accumulate DamiTV IDs — this is the KEY fix
+          const mergedIds = mergeDamitvIds(existing.damitvIds, m.damitvIds);
+          if (mergedIds.length > (existing.damitvIds?.length || 0)) {
+            updates.damitvIds = mergedIds;
+          }
+          // If new match is DamiTV, add its ID to damitvIds even if existing already has one
+          if (m.apiSource === "damitv" && m.damitvId) {
+            if (!existing.damitvIds) existing.damitvIds = [];
+            if (!existing.damitvIds.some(d => d.id === m.damitvId)) {
+              updates.damitvIds = [...(existing.damitvIds || []), { id: m.damitvId, name: m.damitvName || m.damitvId }];
+            }
+          }
+          Object.assign(existing, updates);
         }
-        // Also update the exactKey mapping if existing was found via fuzzy/source match
-        if (!seen.has(exactKey) && existing) {
-          seen.set(exactKey, existing);
-        }
+        // Also update key mappings
+        if (exactKey && !seen.has(exactKey)) seen.set(exactKey, existing);
+        if (baseEventKey && !seen.has(baseEventKey)) seen.set(baseEventKey, existing);
         continue;
       }
-      seen.set(exactKey, m);
+
+      // New match — add to seen map
+      if (exactKey) seen.set(exactKey, m);
+      if (baseEventKey && baseEventKey !== exactKey) seen.set(baseEventKey, m);
+      if (!exactKey && !baseEventKey) seen.set(m.id, m);
     }
   }
+
   return Array.from(seen.values()).sort((a, b) => {
     if (a.isLive && !b.isLive) return -1;
     if (!a.isLive && b.isLive) return 1;
     if (a.popular && !b.popular) return -1;
     if (!a.popular && b.popular) return 1;
     return a.date - b.date;
+  });
+}
+
+// ── Merge DamiTV IDs arrays — deduplicate by id ──
+function mergeDamitvIds(base?: { id: string; name: string }[], fill?: { id: string; name: string }[]): { id: string; name: string }[] {
+  const combined = [...(base || []), ...(fill || [])];
+  const seen = new Set<string>();
+  return combined.filter(d => {
+    if (seen.has(d.id)) return false;
+    seen.add(d.id);
+    return true;
   });
 }
 

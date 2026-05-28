@@ -46,6 +46,7 @@ interface LiveWatchProps {
   matchChannelCode?: string;
   matchDamitvId?: string;
   matchDamitvName?: string;
+  matchDamitvIds?: string; // JSON array: [{id, name}]
   matchWatchfootyId?: string;
   matchApiSource?: string;
   matchSportsrcCategory?: string;
@@ -230,6 +231,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
                 matchStreamCategory: match.streamCategory || (currentRoute as any).matchStreamCategory,
                 matchDamitvId: match.damitvId || (currentRoute as any).matchDamitvId,
                 matchDamitvName: match.damitvName || (currentRoute as any).matchDamitvName,
+                matchDamitvIds: match.damitvIds ? JSON.stringify(match.damitvIds) : (currentRoute as any).matchDamitvIds,
                 matchSportsrcCategory: match.sportsrcCategory || (currentRoute as any).matchSportsrcCategory,
                 matchSportsrcId: match.sportsrcId || (currentRoute as any).matchSportsrcId,
                 matchChannelName: match.channelName || (currentRoute as any).matchChannelName,
@@ -335,6 +337,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
         let effectiveWatchfootyId = props.matchWatchfootyId || "";
         let effectiveDamitvId = props.matchDamitvId || "";
         let effectiveDamitvName = props.matchDamitvName || "";
+        let effectiveDamitvIds = props.matchDamitvIds || ""; // JSON array of multiple DamiTV IDs
         let effectiveStreamKey = props.matchStreamKey || "";
         let effectiveStreamCategory = props.matchStreamCategory || "";
         let effectiveChannelCode = props.matchChannelCode || "";
@@ -374,6 +377,8 @@ export default function LiveWatchPage(props: LiveWatchProps) {
                   // from their own source to prevent DamiTV/StreamFree showing everywhere
                   if (!effectiveWatchfootyId && m.watchfootyId && m.apiSource === "watchfooty") effectiveWatchfootyId = String(m.watchfootyId);
                   if (!effectiveDamitvId && m.damitvId && m.apiSource === "damitv") { effectiveDamitvId = m.damitvId; effectiveDamitvName = m.damitvName || m.title || ""; }
+                  // Also pick up damitvIds array (multiple DamiTV channels for same match)
+                  if (m.damitvIds && m.damitvIds.length > 0) { effectiveDamitvIds = JSON.stringify(m.damitvIds); }
                   if (!effectiveStreamKey && m.streamKey && m.apiSource === "streamfree") effectiveStreamKey = m.streamKey;
                   if (!effectiveStreamCategory && m.streamCategory && m.apiSource === "streamfree") effectiveStreamCategory = m.streamCategory;
                   if (!effectiveChannelCode && m.channelCode) effectiveChannelCode = m.channelCode;
@@ -419,6 +424,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
         if (effectiveChannelCode) params.set("channelCode", effectiveChannelCode);
         if (effectiveDamitvId) params.set("damitvId", effectiveDamitvId);
         if (effectiveDamitvName) params.set("damitvName", effectiveDamitvName);
+        if (effectiveDamitvIds) params.set("damitvIds", effectiveDamitvIds);
         if (effectiveWatchfootyId) params.set("watchfootyId", effectiveWatchfootyId);
         if (effectiveSources) params.set("sources", effectiveSources);
         if (effectiveSportsrcCategory) params.set("sportsrcCategory", effectiveSportsrcCategory);

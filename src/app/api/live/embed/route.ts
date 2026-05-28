@@ -252,9 +252,12 @@ async function resolveDamiTV(matchId: string, matchName: string): Promise<Stream
     } else {
       // Sports match: Use /player/hls/?v=300&resolve={uri_name}&name={name} format
       const encodedName = encodeURIComponent(displayName || matchId);
+      // Extract channel name from the displayName if present (e.g., "Roland-Garros: TNT Sports 1")
+      const channelSuffix = displayName.includes(":") ? displayName.split(":").pop()?.trim() : "";
+      const sourceLabel = channelSuffix ? `DamiTV ${channelSuffix}` : "DamiTV Embed";
       results.push({
         id: `dami-embed-${matchId}`, streamNo: 1, language: "English", hd: true,
-        m3u8Url: "", quality: "720p", source: "DamiTV Embed", viewers: 0, provider: "damitv",
+        m3u8Url: "", quality: "720p", source: sourceLabel, viewers: 0, provider: "damitv",
         corsEnabled: false, referer: "https://dami-tv.pro/",
         embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${encodeURIComponent(matchId)}&name=${encodedName}`,
         streamType: "embed",
@@ -402,6 +405,7 @@ export async function GET(req: Request) {
   const channelCode = url.searchParams.get("channelCode") || "";
   const damitvId = url.searchParams.get("damitvId") || "";
   const damitvName = url.searchParams.get("damitvName") || "";
+  const damitvIds = url.searchParams.get("damitvIds") || ""; // JSON array: [{id, name}]
   const watchfootyId = url.searchParams.get("watchfootyId") || "";
   const sources = url.searchParams.get("sources") || "";
   const matchId = url.searchParams.get("matchId") || "";
@@ -418,12 +422,24 @@ export async function GET(req: Request) {
     try { parsedSources = JSON.parse(sources); if (!Array.isArray(parsedSources)) parsedSources = []; } catch { parsedSources = []; }
   }
 
+  // Parse damitvIds (multiple DamiTV channel entries for the same match)
+  let parsedDamitvIds: { id: string; name: string }[] = [];
+  if (damitvIds) {
+    try { parsedDamitvIds = JSON.parse(damitvIds); if (!Array.isArray(parsedDamitvIds)) parsedDamitvIds = []; } catch { parsedDamitvIds = []; }
+  }
+
   const resolvePromises: Promise<StreamResult[]>[] = [];
 
-  // ── PRIORITY 1: DamiTV (if damitvId provided) — PRIMARY source ──
-  // damitvId = the resolve ID (uri_name like "mlb/2026-05-27/mia-tor")
-  // damitvName = the display name (like "Miami Marlins vs. Toronto Blue Jays")
-  if (damitvId) {
+  // ── PRIORITY 1: DamiTV (if damitvId or damitvIds provided) — PRIMARY source ──
+  // Resolve EACH DamiTV ID as a separate stream/server option
+  // damitvIds contains multiple entries like [{id: "roland-garros-tnt-1", name: "Roland-Garros: TNT Sports 1"}, ...]
+  if (parsedDamitvIds.length > 0) {
+    // Resolve each DamiTV ID separately — each becomes its own server option
+    for (const dEntry of parsedDamitvIds) {
+      resolvePromises.push(resolveDamiTV(dEntry.id, dEntry.name));
+    }
+  } else if (damitvId) {
+    // Fallback: single damitvId
     resolvePromises.push(resolveDamiTV(damitvId, damitvName));
   }
 
