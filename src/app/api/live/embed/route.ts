@@ -302,8 +302,8 @@ async function resolveEmbedsportsTop(sport: string, homeTeam: string, awayTeam: 
   const sportSlugMap: Record<string, string[]> = {
     cricket: ["willow-cricket", "sky-sports-cricket"],
     tennis: ["tennis-channel", "sky-sports-tennis"],
-    "motor-sports": ["sky-sports-f1"],
-    racing: ["sky-sports-f1"],
+    "motor-sports": ["sky-sports-f1", "rally-tv"],
+    racing: ["sky-sports-f1", "rally-tv"],
     football: ["sky-sports-football", "sky-sports-main-event"],
     soccer: ["sky-sports-football", "sky-sports-main-event"],
     basketball: ["espn"],
@@ -335,6 +335,7 @@ async function resolveEmbedsportsTop(sport: string, homeTeam: string, awayTeam: 
     cbc: "espn",
     bbc: "sky-sports-main-event",
     supersport: "sky-sports-main-event",
+    rallytv: "rally-tv",
   };
 
   // If streamKey matches a known channel, use that slug

@@ -5,10 +5,9 @@ import { useAppStore } from "./store";
 import Hls from "hls.js";
 
 // ============================================================
-// LIVE WATCH PAGE — DamiTV + StreamFree iframe Embed Player + hls.js M3U8
+// LIVE WATCH PAGE — DamiTV + WatchFooty + StreamFree iframe Embed Player
 // PRIMARY: DamiTV CDN embed + WatchFooty embed + StreamFree embed
-// SECONDARY: M3U8 via hls.js (streamfree only — DamiTV HLS removed)
-// FALLBACK: WatchFooty embeds
+// SECONDARY: StreamFree M3U8 via hls.js (NO DamiTV HLS — removed per user request)
 // All iframes use sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 // ============================================================
 

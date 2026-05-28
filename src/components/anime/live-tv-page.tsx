@@ -137,6 +137,9 @@ export default function LiveTVPage() {
       channelCountryCode: channel.country.code,
       channelCountryName: channel.country.name,
       channelEmbedUrl: channel.embedUrl,
+      channelDamitvDefaultUrl: (channel as any).damitvDefaultUrl || "",
+      channelViewers: channel.viewers || 0,
+      channelLogoUrl: channel.logoUrl || "",
     } as any);
   };
 

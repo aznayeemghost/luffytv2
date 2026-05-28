@@ -169,9 +169,10 @@ interface Channel {
   streamCategory?: string;
   viewers?: number;
   // DamiTV-specific extra data for the watch page
-  damitvId?: string; // The resolve ID for HLS player
-  damitvCdnUrl?: string; // cdnlivetv fallback URL
+  damitvId?: string; // The channel ID from channels.json (e.g., "cdn-0")
+  damitvCdnUrl?: string; // iframeUrl from channels.json (cdnlivetv.tv player)
   damitvName?: string; // Channel name for embed generation
+  damitvDefaultUrl?: string; // cdn-stream fallback URL from channels.json
 }
 
 function detectCountry(name: string): { code: string; name: string; flag: string } {
@@ -268,10 +269,9 @@ async function fetchDamiTVChannels(): Promise<Channel[]> {
         status: "live",
         viewers: ch.viewers || 0,
         // DamiTV-specific data for the watch page to build multiple servers
-        // channelId from channels.json is like "cdn-0"
-        // Pass the channel name as damitvName for fallback server construction
         damitvId: channelId,
         damitvCdnUrl: cdnIframeUrl,
+        damitvDefaultUrl: defaultStreamUrl,
         damitvName: name,
         streamKey: channelId,
         streamCategory: name,
@@ -414,10 +414,15 @@ export async function GET(req: Request) {
       }
     }
 
-    // Sort: live first, then alphabetically
+    // Sort: by viewers (most popular first), then alphabetically
+    // This puts the most-watched channels at the top for easy access
     allChannels.sort((a, b) => {
-      if (a.isLive && !b.isLive) return -1;
-      if (!a.isLive && b.isLive) return 1;
+      // DamiTV channels first (they have logos), then StreamFree
+      if (a.source === "damitv" && b.source !== "damitv") return -1;
+      if (a.source !== "damitv" && b.source === "damitv") return 1;
+      // Within same source: by viewers (descending)
+      if ((b.viewers || 0) !== (a.viewers || 0)) return (b.viewers || 0) - (a.viewers || 0);
+      // Then alphabetically
       return a.name.localeCompare(b.name);
     });
 

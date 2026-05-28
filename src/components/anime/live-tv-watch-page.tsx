@@ -24,6 +24,9 @@ interface LiveTVWatchProps {
   channelCountryCode?: string;
   channelCountryName?: string;
   channelEmbedUrl: string;
+  channelDamitvDefaultUrl?: string; // DamiTV cdn-stream fallback URL
+  channelViewers?: number;
+  channelLogoUrl?: string;
 }
 
 interface ServerOption {
@@ -156,15 +159,17 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
   const isSF = props.channelId.startsWith("sf-");
 
   // Extract DamiTV data from embed URL
+  // damiResolveId: The channel ID from channels.json (e.g., "cdn-0")
   const damiResolveId = useMemo(() => {
-    const match = props.channelEmbedUrl.match(/resolve=(\d+)/);
-    return match ? match[1] : props.channelId.replace("dami-", "");
-  }, [props.channelEmbedUrl, props.channelId]);
+    // The channelId is like "dami-cdn-0", so strip the "dami-" prefix
+    return props.channelId.replace("dami-", "");
+  }, [props.channelId]);
 
+  // damiName: The channel name for constructing fallback URLs
   const damiName = useMemo(() => {
-    const match = props.channelEmbedUrl.match(/name=([^&]+)/);
-    return match ? decodeURIComponent(match[1]) : props.channelName;
-  }, [props.channelEmbedUrl, props.channelName]);
+    // Use the channel name directly from props
+    return props.channelName || "";
+  }, [props.channelName]);
 
   // Extract StreamFree data from embed URL
   const sfMatch = useMemo(() => {
@@ -210,8 +215,8 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
       const encodedName = encodeURIComponent(damiName);
       const resolveId = damiResolveId;
 
-      // Server 1: iframeUrl from channels.json — PRIMARY
-      // This is the direct embed URL from DamiTV's channel list
+      // Server 1: iframeUrl from channels.json — PRIMARY (cdnlivetv.tv CDN player)
+      // This is the direct embed URL from DamiTV's channel list — most reliable
       if (props.channelEmbedUrl) {
         availableServers.push({
           id: `dami-cdn`,
@@ -225,24 +230,30 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
       }
 
       // Server 2: dami-tv.pro cdn-stream redirect (FALLBACK)
+      // Use the defaultUrl from channels.json if available, otherwise construct it
+      const cdnStreamUrl = props.channelDamitvDefaultUrl || `https://dami-tv.pro/cdn-stream/${encodedName}`;
       availableServers.push({
         id: `dami-stream`,
         label: "DamiTV Stream",
         source: "damitv",
-        embedUrl: `https://dami-tv.pro/cdn-stream/${encodedName}`,
+        embedUrl: cdnStreamUrl,
         quality: "HD",
         color: "#f97316",
       });
 
-      // Server 3: dami-tv.pro embed (LAST RESORT)
-      availableServers.push({
-        id: `dami-embed`,
-        label: "DamiTV Embed",
-        source: "damitv",
-        embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(resolveId || damiName)}`,
-        quality: "HD",
-        color: "#f97316",
-      });
+      // Server 3: dami-tv.pro embed (LAST RESORT — only for sports matches)
+      // This uses the match embed format, not suitable for TV channels
+      // Only add if the resolveId looks like a match ID (has slashes)
+      if (resolveId.includes("/")) {
+        availableServers.push({
+          id: `dami-embed`,
+          label: "DamiTV Embed",
+          source: "damitv",
+          embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(resolveId)}`,
+          quality: "HD",
+          color: "#f97316",
+        });
+      }
     }
 
     // ── StreamFree servers ──
@@ -383,7 +394,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     }
 
     return availableServers;
-  }, [props.channelId, props.channelEmbedUrl, props.channelCountryCode, isDami, isSF, damiResolveId, damiName, sfMatch, sfCategory, props.channelName]);
+  }, [props.channelId, props.channelEmbedUrl, props.channelCountryCode, props.channelDamitvDefaultUrl, isDami, isSF, damiResolveId, damiName, sfMatch, sfCategory, props.channelName]);
 
   // Compute the best initial server
   const bestInitialServer = useMemo(() => {
@@ -467,31 +478,31 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     };
   }, [activeServer, iframeLoaded]);
 
-  // Auto-fallback with timeout: if iframe doesn't load within 15s, try next server
-  // Show "taking longer" message at 10s, auto-switch at 15s
+  // Auto-fallback with timeout: if iframe doesn't load within 12s, try next server
+  // Show "taking longer" message at 8s, auto-switch at 12s
   useEffect(() => {
     if (!activeServer || iframeLoaded || allServersFailed) return;
 
-    // 10s warning message
+    // 8s warning message
     const warningTimer = setTimeout(() => {
       if (!iframeLoaded && !failedServersSet.has(activeServer.id)) {
         const sourceLabel = SOURCE_CONFIG[activeServer.source]?.label || activeServer.label;
         const nextServer = servers.find(s => !failedServersSet.has(s.id) && s.id !== activeServer.id);
         if (nextServer) {
           const nextLabel = SOURCE_CONFIG[nextServer.source]?.label || nextServer.label;
-          setFallbackMessage(`${sourceLabel} taking too long. Switching to ${nextLabel} in 5s...`);
+          setFallbackMessage(`${sourceLabel} taking too long. Switching to ${nextLabel} in 4s...`);
         } else {
           setFallbackMessage(`${sourceLabel} stream is slow. Please wait...`);
         }
       }
-    }, 10000);
+    }, 8000);
 
-    // 15s auto-switch
+    // 12s auto-switch
     const switchTimer = setTimeout(() => {
       if (!iframeLoaded && !failedServersSet.has(activeServer.id)) {
         handleIframeError();
       }
-    }, 15000);
+    }, 12000);
 
     return () => {
       clearTimeout(warningTimer);
@@ -572,14 +583,14 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
             {/* Spinner with progress ring */}
             <div className="relative">
               <div className="w-16 h-16 rounded-full border-3 border-white/10 border-t-[#7c6cf0] animate-spin" />
-              {/* Progress arc showing elapsed time (15s max) */}
+              {/* Progress arc showing elapsed time (12s max) */}
               <svg className="absolute inset-0 w-16 h-16 -rotate-90" viewBox="0 0 64 64">
                 <circle
                   cx="32" cy="32" r="28"
                   fill="none"
                   stroke="#7c6cf0"
                   strokeWidth="2"
-                  strokeDasharray={`${Math.min(loadingElapsed / 15, 1) * 176} 176`}
+                  strokeDasharray={`${Math.min(loadingElapsed / 12, 1) * 176} 176`}
                   strokeLinecap="round"
                   className="transition-all duration-1000"
                 />
@@ -884,7 +895,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]">
           <p className="text-[10px] text-white/20">
             {isDami ? (
-              <>DamiTV CDN (cdnlivetv) is PRIMARY for all channels. If it fails, auto-switches to Stream or Embed servers. 15s timeout auto-fallback enabled.</>
+              <>DamiTV CDN (cdnlivetv) is PRIMARY. If it fails, auto-switches to Stream server. 12s timeout auto-fallback enabled.</>
             ) : isSF ? (
               <>StreamFree has 2 servers: Origin (primary) and Miror (backup) with quality options (1080p, 720p, 540p). Failed servers are automatically skipped.</>
             ) : (
