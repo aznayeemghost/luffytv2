@@ -4,16 +4,23 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAppStore } from "./store";
 
 // ============================================================
-// LIVE TV WATCH PAGE — Multi-Source with ElGato-style Server Picker
-// Sources: Daddylive | DamiTV | StreamFree
-// Each source can have multiple servers/qualities
-// Auto-fallback on iframe errors
+// LIVE TV WATCH PAGE — DamiTV + StreamFree Multi-Source Player
+// DamiTV servers:
+//   1. HLS Player: /player/hls/?v=300&resolve={id}&name={name} (PRIMARY)
+//   2. cdnlivetv: /api/v1/channels/player/?name=...&code=...&user=cdnlivetv&plan=free (FALLBACK)
+//   3. dami-tv.pro embed: /embed/?id={match_id} (BACKUP)
+//   4. dami-tv.pro cdn-stream: /cdn-stream/{name} (BACKUP)
+// StreamFree servers:
+//   Origin: /embed/{category}/{key}?quality={q}&category={cat}&server=origin
+//   Miror:  /embed/{category}/{key}?quality={q}&category={cat}&server=miror
+// Auto-fallback on iframe errors with 15s timeout
 // ============================================================
 
 interface LiveTVWatchProps {
   channelId: string;
   channelName: string;
   channelCategory: string;
+  channelStreamCategory?: string; // Actual StreamFree embed category (cricket, racing, tennis) — NOT the display "Sports"
   channelCountryCode?: string;
   channelCountryName?: string;
   channelEmbedUrl: string;
@@ -22,11 +29,12 @@ interface LiveTVWatchProps {
 interface ServerOption {
   id: string;
   label: string;
-  source: "daddylive" | "damitv" | "streamfree";
+  source: "damitv" | "streamfree" | "embedsports";
   embedUrl: string;
   quality?: string;
   serverNum?: number;
   color: string;
+  isPrimary?: boolean;
 }
 
 const CAT_COLORS: Record<string, string> = {
@@ -42,9 +50,91 @@ const CAT_COLORS: Record<string, string> = {
 
 // Source config
 const SOURCE_CONFIG: Record<string, { color: string; label: string; shortLabel: string }> = {
-  daddylive: { color: "#3b82f6", label: "DaddyLive", shortLabel: "DADDY" },
-  damitv: { color: "#22c55e", label: "DamiTV", shortLabel: "DAMI" },
+  damitv: { color: "#f97316", label: "DamiTV", shortLabel: "DAMI" },
   streamfree: { color: "#a855f7", label: "StreamFree", shortLabel: "SF" },
+  embedsports: { color: "#22c55e", label: "EmbedSports", shortLabel: "ES" },
+};
+
+// EmbedSports.top channel mapping — keyed by stream key
+// IMPORTANT: Each sport gets its OWN correct slug. F1 ≠ Rally TV.
+// Pattern: https://embedsports.top/embed/admin/admin-{slug}/{serverNum}
+// Multiple servers available for some channels
+const EMBEDSPORTS_CHANNELS: Record<string, string[]> = {
+  // Cricket channels — 6 servers
+  willow: [
+    "https://embedsports.top/embed/admin/admin-willow-cricket/1",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/2",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/3",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/4",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/5",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/6",
+  ],
+  cricketsky: [
+    "https://embedsports.top/embed/admin/admin-willow-cricket/1",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/2",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/3",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/4",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/5",
+    "https://embedsports.top/embed/admin/admin-willow-cricket/6",
+  ],
+  // Tennis channels — 2 servers
+  skytennis: [
+    "https://embedsports.top/embed/admin/admin-tennis-channel/1",
+    "https://embedsports.top/embed/admin/admin-tennis-channel/2",
+  ],
+  tntsports1: [
+    "https://embedsports.top/embed/admin/admin-tennis-channel/1",
+    "https://embedsports.top/embed/admin/admin-tennis-channel/2",
+  ],
+  // F1 / Racing channels — F1 gets its own slug, NOT rally
+  skyf1: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-f1/1",
+    "https://embedsports.top/embed/admin/admin-sky-sports-f1/2",
+  ],
+  // Rally TV
+  rallytv: [
+    "https://embedsports.top/embed/admin/admin-rally-tv/1",
+  ],
+  // Golf channels
+  skysportsgolf: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-golf/1",
+  ],
+  // Football channels
+  skysportsfootball: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-football/1",
+  ],
+  // Main event / general sports
+  skysports: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-main-event/1",
+  ],
+  skysportsaction: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-action/1",
+  ],
+  skysportsarena: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-arena/1",
+  ],
+  // News
+  skysportsnews: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-news/1",
+  ],
+  // ESPN
+  espn: [
+    "https://embedsports.top/embed/admin/admin-espn/1",
+  ],
+  // BT Sport / TNT
+  btsport: [
+    "https://embedsports.top/embed/admin/admin-tnt-sports/1",
+  ],
+  // Additional channels
+  cbc: [
+    "https://embedsports.top/embed/admin/admin-espn/1",
+  ],
+  bbc: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-main-event/1",
+  ],
+  supersport: [
+    "https://embedsports.top/embed/admin/admin-sky-sports-main-event/1",
+  ],
 };
 
 export default function LiveTVWatchPage(props: LiveTVWatchProps) {
@@ -53,132 +143,269 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [userSelection, setUserSelection] = useState<{ channelId: string; serverId: string } | null>(null);
-  const [sfQualities, setSfQualities] = useState<Record<string, boolean>>({});
   const [failedServerIds, setFailedServerIds] = useState<string[]>([]);
   const [fallbackMessage, setFallbackMessage] = useState("");
+  const [loadingElapsed, setLoadingElapsed] = useState(0); // seconds elapsed since iframe started loading
+  const [allServersFailed, setAllServersFailed] = useState(false);
+  const loadingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const categoryColor = CAT_COLORS[props.channelCategory] || CAT_COLORS.General;
 
-  // Build all available server options for this channel (computed, not in effect)
+  // Determine channel source
+  const isDami = props.channelId.startsWith("dami-");
+  const isSF = props.channelId.startsWith("sf-");
+
+  // Extract DamiTV data from embed URL
+  const damiResolveId = useMemo(() => {
+    const match = props.channelEmbedUrl.match(/resolve=(\d+)/);
+    return match ? match[1] : props.channelId.replace("dami-", "");
+  }, [props.channelEmbedUrl, props.channelId]);
+
+  const damiName = useMemo(() => {
+    const match = props.channelEmbedUrl.match(/name=([^&]+)/);
+    return match ? decodeURIComponent(match[1]) : props.channelName;
+  }, [props.channelEmbedUrl, props.channelName]);
+
+  // Extract StreamFree data from embed URL
+  const sfMatch = useMemo(() => {
+    const m = props.channelEmbedUrl.match(/\/embed\/([^/]+)\/([^?]+)/);
+    return m ? { category: m[1], streamKey: m[2] } : { category: "", streamKey: "" };
+  }, [props.channelEmbedUrl]);
+
+  // StreamFree category: Use the ACTUAL embed category from the API data
+  // This is the sport-specific category (cricket, racing, tennis, soccer, etc.)
+  // NEVER use the display category "Sports" — that breaks embed URLs!
+  const sfCategory = useMemo(() => {
+    // Priority 1: The channelStreamCategory prop — the resolved embed category
+    // passed directly from the API (e.g., "cricket", "racing", "tennis")
+    if (props.channelStreamCategory) return props.channelStreamCategory;
+    // Priority 2: Extract from the embed URL (/embed/{category}/{key})
+    if (sfMatch.category && sfMatch.category !== "sports") return sfMatch.category;
+    // Priority 3: Detect from channel name (fallback)
+    const name = (props.channelName || "").toLowerCase();
+    if (name.includes("cricket") || name.includes("willow")) return "cricket";
+    if (name.includes("tennis")) return "tennis";
+    if (name.includes("f1") || name.includes("racing") || name.includes("motor")) return "racing";
+    if (name.includes("golf")) return "golf";
+    if (name.includes("football") || name.includes("soccer")) return "soccer";
+    if (name.includes("basketball") || name.includes("nba")) return "basketball";
+    if (name.includes("baseball") || name.includes("mlb")) return "baseball";
+    if (name.includes("hockey") || name.includes("nhl")) return "hockey";
+    if (name.includes("fight") || name.includes("ufc") || name.includes("boxing")) return "combat";
+    if (name.includes("rugby")) return "rugby";
+    if (name.includes("news")) return "news";
+    // Last resort: use what we have, but NEVER default to generic "sports"
+    if (sfMatch.category) return sfMatch.category;
+    return "";
+  }, [props.channelStreamCategory, sfMatch.category, props.channelName]);
+
+  // Build all available server options for this channel
   const servers = useMemo<ServerOption[]>(() => {
-    const channelId = props.channelId || "";
-    const embedUrl = props.channelEmbedUrl || "";
     const availableServers: ServerOption[] = [];
 
-    const isDami = embedUrl.includes("dami-tv.pro");
-    const isSF = embedUrl.includes("streamfree.app");
-    const isDaddy = embedUrl.includes("daddylive.org");
+    // ── DamiTV servers ──
+    if (isDami) {
+      const resolveId = damiResolveId;
+      const encodedName = encodeURIComponent(damiName);
+      const isNumericOrUriResolve = resolveId && !resolveId.startsWith("cdn-");
 
-    const sfMatch = embedUrl.match(/\/embed\/([^/]+)\/([^?]+)/);
-    const sfCategory = sfMatch?.[1] || "";
-    const sfStreamKey = sfMatch?.[2] || channelId.replace("sf-", "");
+      // Server 1: DamiTV HLS Player — ALWAYS available for ALL DamiTV channels
+      // For match streams: resolve={uri_name} (like "mlb/2026-05-27/mia-tor")
+      // For TV channels: resolve={channel_name} (like "Sky%20Sports%20Main%20Event")
+      // Format: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={url_encoded_name}
+      const hlsResolve = isNumericOrUriResolve ? resolveId : encodedName;
+      availableServers.push({
+        id: `dami-hls`,
+        label: "DamiTV HLS",
+        source: "damitv",
+        embedUrl: `https://dami-tv.pro/player/hls/?v=300&resolve=${hlsResolve}&name=${encodedName}`,
+        quality: "HD",
+        color: "#f97316",
+        isPrimary: true,
+      });
 
-    const damiMatch = embedUrl.match(/[?&]id=([^&]+)/) || embedUrl.match(/\/embed\/\?id=([^&]+)/);
-    const damiId = damiMatch?.[1] || channelId.replace("dami-", "");
+      // Server 2: cdnlivetv player (FALLBACK for all channels)
+      const cdnName = damiName.toLowerCase().replace(/\s+/g, "+");
+      const cdnCode = (props.channelCountryCode || "int").toLowerCase();
+      const cdnUrl = `https://cdnlivetv.tv/api/v1/channels/player/?name=${encodeURIComponent(cdnName)}&code=${cdnCode}&user=cdnlivetv&plan=free`;
+      availableServers.push({
+        id: `dami-cdn`,
+        label: "DamiTV CDN",
+        source: "damitv",
+        embedUrl: cdnUrl,
+        quality: "HD",
+        color: "#f97316",
+      });
 
-    const dlMatch = embedUrl.match(/[?&]id=([^&]+)/);
-    const dlId = dlMatch?.[1] || channelId.replace("dl-", "");
+      // Server 3: dami-tv.pro cdn-stream redirect (BACKUP)
+      availableServers.push({
+        id: `dami-stream`,
+        label: "DamiTV Stream",
+        source: "damitv",
+        embedUrl: `https://dami-tv.pro/cdn-stream/${encodedName}`,
+        quality: "HD",
+        color: "#f97316",
+      });
 
-    if (isSF || !isDami) {
-      const sfCat = sfCategory || "sports";
-      const sfKey = sfStreamKey;
-      if (sfKey) {
+      // Server 4: dami-tv.pro embed (BACKUP)
+      availableServers.push({
+        id: `dami-embed`,
+        label: "DamiTV Embed",
+        source: "damitv",
+        embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(isNumericOrUriResolve ? resolveId : damiName)}`,
+        quality: "HD",
+        color: "#f97316",
+      });
+    }
+
+    // ── StreamFree servers ──
+    if (isSF) {
+      // Use the actual StreamFree category from the embed URL or prop
+      // NEVER use "sports" as default — must use the real category (racing, cricket, etc.)
+      const sfCat = sfCategory;
+      const sfKey = sfMatch.streamKey || props.channelId.replace("sf-", "");
+
+      if (sfKey && sfCat) {
+        // Origin server (primary) — 3 quality options
         availableServers.push({
-          id: `sf-1080p`,
-          label: "StreamFree 1080p",
+          id: `sf-origin-1080p`,
+          label: "SF Origin 1080p",
           source: "streamfree",
-          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=1080p&category=${sfCat}&server=auto`,
+          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=1080p&category=${sfCat}&server=origin`,
           quality: "1080p",
           color: "#a855f7",
+          isPrimary: true,
         });
         availableServers.push({
-          id: `sf-720p`,
-          label: "StreamFree 720p",
+          id: `sf-origin-720p`,
+          label: "SF Origin 720p",
           source: "streamfree",
-          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=720p&category=${sfCat}&server=auto`,
+          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=720p&category=${sfCat}&server=origin`,
           quality: "720p",
           color: "#a855f7",
         });
         availableServers.push({
-          id: `sf-540p`,
-          label: "StreamFree 540p",
+          id: `sf-origin-540p`,
+          label: "SF Origin 540p",
           source: "streamfree",
-          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=540p&category=${sfCat}&server=auto`,
+          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=540p&category=${sfCat}&server=origin`,
+          quality: "540p",
+          color: "#a855f7",
+        });
+        // Miror server (backup) — 3 quality options
+        availableServers.push({
+          id: `sf-miror-1080p`,
+          label: "SF Miror 1080p",
+          source: "streamfree",
+          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=1080p&category=${sfCat}&server=miror`,
+          quality: "1080p",
+          color: "#a855f7",
+        });
+        availableServers.push({
+          id: `sf-miror-720p`,
+          label: "SF Miror 720p",
+          source: "streamfree",
+          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=720p&category=${sfCat}&server=miror`,
+          quality: "720p",
+          color: "#a855f7",
+        });
+        availableServers.push({
+          id: `sf-miror-540p`,
+          label: "SF Miror 540p",
+          source: "streamfree",
+          embedUrl: `https://streamfree.app/embed/${sfCat}/${sfKey}?quality=540p&category=${sfCat}&server=miror`,
           quality: "540p",
           color: "#a855f7",
         });
       }
     }
 
-    if (isDami || !isSF) {
-      if (damiId) {
+    // ── EmbedSports.top servers ──
+    // Add EmbedSports.top as additional servers for specific channels
+    const sfKeyForES = sfMatch.streamKey || (isSF ? props.channelId.replace("sf-", "") : "");
+    const esChannelUrls = EMBEDSPORTS_CHANNELS[sfKeyForES || ""];
+    if (esChannelUrls && esChannelUrls.length > 0) {
+      esChannelUrls.forEach((url, idx) => {
         availableServers.push({
-          id: `dami-${damiId}`,
-          label: "DamiTV",
-          source: "damitv",
-          embedUrl: `https://dami-tv.pro/embed/?id=${encodeURIComponent(damiId)}`,
-          quality: "Auto",
+          id: `es-${sfKeyForES}-${idx + 1}`,
+          label: `EmbedSports ${idx + 1}`,
+          source: "embedsports",
+          embedUrl: url,
+          quality: "HD",
           color: "#22c55e",
+          isPrimary: idx === 0,
         });
-      }
+      });
     }
-
-    if (isDaddy || (!isDami && !isSF)) {
-      if (dlId) {
-        availableServers.push({
-          id: `dl-${dlId}-p1`,
-          label: "DaddyLive Server 1",
-          source: "daddylive",
-          embedUrl: `https://daddylive.org/embed/embed.php?id=${dlId}&player=1&source=tv.json`,
-          serverNum: 1,
-          quality: "HD",
-          color: "#3b82f6",
-        });
-        availableServers.push({
-          id: `dl-${dlId}-p2`,
-          label: "DaddyLive Server 2",
-          source: "daddylive",
-          embedUrl: `https://daddylive.org/embed/embed.php?id=${dlId}&player=2&source=tv.json`,
-          serverNum: 2,
-          quality: "HD",
-          color: "#3b82f6",
-        });
-        availableServers.push({
-          id: `dl-${dlId}-p3`,
-          label: "DaddyLive Server 3",
-          source: "daddylive",
-          embedUrl: `https://daddylive.org/embed/embed.php?id=${dlId}&player=3&source=tv.json`,
-          serverNum: 3,
-          quality: "HD",
-          color: "#3b82f6",
-        });
+    // Also check channel name for EmbedSports matches (works for DamiTV channels too)
+    const chNameLower = (props.channelName || "").toLowerCase();
+    if (!esChannelUrls || esChannelUrls.length === 0) {
+      let esUrls: string[] = [];
+      let esLabel = "";
+      if (chNameLower.includes("willow") || chNameLower.includes("cricket")) {
+        esUrls = [
+          "https://embedsports.top/embed/admin/admin-willow-cricket/1",
+          "https://embedsports.top/embed/admin/admin-willow-cricket/2",
+          "https://embedsports.top/embed/admin/admin-willow-cricket/3",
+          "https://embedsports.top/embed/admin/admin-willow-cricket/4",
+          "https://embedsports.top/embed/admin/admin-willow-cricket/5",
+          "https://embedsports.top/embed/admin/admin-willow-cricket/6",
+        ];
+        esLabel = "Cricket";
+      } else if (chNameLower.includes("tennis")) {
+        esUrls = [
+          "https://embedsports.top/embed/admin/admin-tennis-channel/1",
+          "https://embedsports.top/embed/admin/admin-tennis-channel/2",
+        ];
+        esLabel = "Tennis";
+      } else if (chNameLower.includes("f1")) {
+        // F1 gets its OWN EmbedSports slug — NOT rally-tv
+        esUrls = [
+          "https://embedsports.top/embed/admin/admin-sky-sports-f1/1",
+          "https://embedsports.top/embed/admin/admin-sky-sports-f1/2",
+        ];
+        esLabel = "F1";
+      } else if (chNameLower.includes("rally") || chNameLower.includes("motor")) {
+        esUrls = [
+          "https://embedsports.top/embed/admin/admin-rally-tv/1",
+        ];
+        esLabel = "Motor";
+      } else if (chNameLower.includes("golf")) {
+        esUrls = [
+          "https://embedsports.top/embed/admin/admin-sky-sports-golf/1",
+        ];
+        esLabel = "Golf";
+      } else if (chNameLower.includes("football") || chNameLower.includes("soccer")) {
+        esUrls = [
+          "https://embedsports.top/embed/admin/admin-sky-sports-football/1",
+        ];
+        esLabel = "Football";
       }
+
+      esUrls.forEach((url, idx) => {
+        availableServers.push({
+          id: `es-name-${esLabel.toLowerCase()}-${idx + 1}`,
+          label: `EmbedSports ${esLabel} ${idx + 1}`,
+          source: "embedsports",
+          embedUrl: url,
+          quality: "HD",
+          color: "#22c55e",
+          isPrimary: idx === 0,
+        });
+      });
     }
 
     return availableServers;
-  }, [props.channelId, props.channelEmbedUrl]);
+  }, [props.channelId, props.channelEmbedUrl, props.channelCountryCode, isDami, isSF, damiResolveId, damiName, sfMatch, sfCategory, props.channelName]);
 
-  // Compute the best initial server (not in effect)
+  // Compute the best initial server
   const bestInitialServer = useMemo(() => {
     if (servers.length === 0) return null;
-    const embedUrl = props.channelEmbedUrl || "";
-    const isDami = embedUrl.includes("dami-tv.pro");
-    const isSF = embedUrl.includes("streamfree.app");
-    const isDaddy = embedUrl.includes("daddylive.org");
+    // Primary first, then any available
+    return servers.find(s => s.isPrimary) || servers[0];
+  }, [servers]);
 
-    const currentSourceFirst = servers.find(s =>
-      (isSF && s.source === "streamfree" && s.quality === "1080p") ||
-      (isDami && s.source === "damitv") ||
-      (isDaddy && s.source === "daddylive" && s.serverNum === 1)
-    );
-    const sf1080 = servers.find(s => s.id === "sf-1080p");
-    const dami = servers.find(s => s.source === "damitv");
-    const daddy1 = servers.find(s => s.source === "daddylive" && s.serverNum === 1);
-
-    return currentSourceFirst || sf1080 || dami || daddy1 || servers[0];
-  }, [servers, props.channelEmbedUrl]);
-
-  // Derive the active server: if user selected one for this channel, use it; otherwise use the best initial
+  // Derive the active server
   const activeServer = useMemo(() => {
     const currentChannelId = props.channelId || "";
     if (userSelection && userSelection.channelId === currentChannelId) {
@@ -193,29 +420,14 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
 
   // Reset failed servers when channel changes
   const currentChannelId = props.channelId || "";
-  // We use the channelId to detect stale state - if failedServerIds were for a different channel, clear them
   const [failedForChannel, setFailedForChannel] = useState(currentChannelId);
   if (failedForChannel !== currentChannelId) {
-    // Channel changed, reset failed servers (this is safe during render as it synchronizes state)
     setFailedServerIds([]);
     setFallbackMessage("");
+    setAllServersFailed(false);
+    setLoadingElapsed(0);
     setFailedForChannel(currentChannelId);
   }
-
-  // Check StreamFree stream status for quality availability
-  useEffect(() => {
-    const sfKey = props.channelId?.replace("sf-", "") || "";
-    if (!sfKey || !props.channelEmbedUrl?.includes("streamfree")) return;
-
-    fetch(`https://streamfree.app/api/stream-status/${encodeURIComponent(sfKey)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.qualities) {
-          setSfQualities(data.qualities);
-        }
-      })
-      .catch(() => {});
-  }, [props.channelId, props.channelEmbedUrl]);
 
   const switchServer = useCallback((server: ServerOption) => {
     setIframeLoaded(false);
@@ -238,12 +450,74 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
       setFallbackMessage(`${failedLabel} failed, trying ${nextLabel}...`);
       setIframeLoaded(false);
       setUserSelection({ channelId: props.channelId || "", serverId: nextServer.id });
-
       setTimeout(() => setFallbackMessage(""), 4000);
     } else {
       setFallbackMessage("All servers failed. Try refreshing or open externally.");
     }
   }, [activeServer, servers, failedServerIds, props.channelId]);
+
+  // Loading progress timer — track how long the iframe has been loading
+  useEffect(() => {
+    if (iframeLoaded || !activeServer) {
+      setLoadingElapsed(0);
+      if (loadingTimerRef.current) {
+        clearInterval(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+      return;
+    }
+
+    setLoadingElapsed(0);
+    loadingTimerRef.current = setInterval(() => {
+      setLoadingElapsed(prev => prev + 1);
+    }, 1000);
+
+    return () => {
+      if (loadingTimerRef.current) {
+        clearInterval(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+    };
+  }, [activeServer, iframeLoaded]);
+
+  // Auto-fallback with timeout: if iframe doesn't load within 15s, try next server
+  // Show "taking longer" message at 10s, auto-switch at 15s
+  useEffect(() => {
+    if (!activeServer || iframeLoaded || allServersFailed) return;
+
+    // 10s warning message
+    const warningTimer = setTimeout(() => {
+      if (!iframeLoaded && !failedServersSet.has(activeServer.id)) {
+        const sourceLabel = SOURCE_CONFIG[activeServer.source]?.label || activeServer.label;
+        const nextServer = servers.find(s => !failedServersSet.has(s.id) && s.id !== activeServer.id);
+        if (nextServer) {
+          const nextLabel = SOURCE_CONFIG[nextServer.source]?.label || nextServer.label;
+          setFallbackMessage(`${sourceLabel} taking too long. Switching to ${nextLabel} in 5s...`);
+        } else {
+          setFallbackMessage(`${sourceLabel} stream is slow. Please wait...`);
+        }
+      }
+    }, 10000);
+
+    // 15s auto-switch
+    const switchTimer = setTimeout(() => {
+      if (!iframeLoaded && !failedServersSet.has(activeServer.id)) {
+        handleIframeError();
+      }
+    }, 15000);
+
+    return () => {
+      clearTimeout(warningTimer);
+      clearTimeout(switchTimer);
+    };
+  }, [activeServer, iframeLoaded, failedServersSet, handleIframeError, allServersFailed, servers]);
+
+  // Detect when all servers have failed
+  useEffect(() => {
+    if (servers.length > 0 && failedServerIds.length >= servers.length) {
+      setAllServersFailed(true);
+    }
+  }, [failedServerIds, servers]);
 
   const toggleFullscreen = async () => {
     if (!playerContainerRef.current) return;
@@ -269,21 +543,21 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     return acc;
   }, {} as Record<string, ServerOption[]>);
 
-  const sourceOrder = ["streamfree", "damitv", "daddylive"];
+  const sourceOrder = ["damitv", "streamfree", "embedsports"];
   const sortedSources = sourceOrder.filter(s => serversBySource[s]);
 
   const currentEmbedUrl = activeServer?.embedUrl || props.channelEmbedUrl;
 
   return (
     <div className="min-h-screen flex flex-col -mx-4 lg:-mx-8 -mt-[75px] pt-0">
-      {/* Player Area — full-width big player */}
+      {/* Player Area — FULL viewport height player */}
       <div
         ref={playerContainerRef}
         className="relative w-full bg-black"
         style={{
-          height: isFullscreen ? "100vh" : "80vh",
-          minHeight: "600px",
-          maxHeight: isFullscreen ? "100vh" : "calc(100vh - 75px)",
+          height: isFullscreen ? "100vh" : "90vh",
+          minHeight: "500px",
+          maxHeight: isFullscreen ? "100vh" : "calc(100vh - 20px)",
         }}
       >
         {/* Iframe Player */}
@@ -299,18 +573,89 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
           frameBorder={0}
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          referrerPolicy="no-referrer-when-downgrade"
           onLoad={() => setIframeLoaded(true)}
           onError={handleIframeError}
         />
 
-        {/* Loading overlay */}
-        {!iframeLoaded && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black z-20">
-            <div className="w-12 h-12 rounded-full border-2 border-[#7c6cf0]/30 border-t-[#7c6cf0] animate-spin" />
-            <p className="text-sm text-white/40">Loading stream...</p>
-            <p className="text-[10px] text-white/20">
-              {props.channelName} via {activeServer ? SOURCE_CONFIG[activeServer.source]?.label : "..."}
+        {/* Loading overlay with progress indicator */}
+        {!iframeLoaded && !allServersFailed && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black z-20">
+            {/* Spinner with progress ring */}
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border-3 border-white/10 border-t-[#7c6cf0] animate-spin" />
+              {/* Progress arc showing elapsed time (15s max) */}
+              <svg className="absolute inset-0 w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                <circle
+                  cx="32" cy="32" r="28"
+                  fill="none"
+                  stroke="#7c6cf0"
+                  strokeWidth="2"
+                  strokeDasharray={`${Math.min(loadingElapsed / 15, 1) * 176} 176`}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000"
+                />
+              </svg>
+            </div>
+
+            {/* Source-specific loading message */}
+            <div className="text-center">
+              <p className="text-sm font-bold text-white/60">
+                {activeServer?.source === "damitv" ? "Connecting to DamiTV..." :
+                 activeServer?.source === "streamfree" ? "Loading StreamFree..." :
+                 activeServer?.source === "embedsports" ? "Loading EmbedSports..." :
+                 "Loading stream..."}
+              </p>
+              <p className="text-[11px] text-white/30 mt-1">
+                {props.channelName} via {activeServer ? SOURCE_CONFIG[activeServer.source]?.label : "..."}
+              </p>
+              {loadingElapsed > 0 && (
+                <p className="text-[10px] text-white/20 mt-1">
+                  {loadingElapsed}s elapsed
+                </p>
+              )}
+            </div>
+
+            {/* Warning after 10s */}
+            {loadingElapsed >= 10 && (
+              <div className="px-4 py-2 rounded-lg bg-amber-900/60 border border-amber-500/30 text-amber-200 text-[11px] font-bold text-center max-w-xs">
+                Stream taking longer than expected.
+                {servers.some(s => !failedServersSet.has(s.id) && s.id !== activeServer?.id) && (
+                  <span> Trying next server soon...</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* All servers failed overlay */}
+        {allServersFailed && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black z-20">
+            <div className="text-5xl">⚠️</div>
+            <p className="text-lg font-bold text-white/70">All servers failed</p>
+            <p className="text-[12px] text-white/40 max-w-xs text-center">
+              Unable to load {props.channelName}. The stream may be temporarily unavailable.
             </p>
+            <button
+              onClick={() => {
+                setFailedServerIds([]);
+                setAllServersFailed(false);
+                setIframeLoaded(false);
+                setUserSelection(null);
+                setFallbackMessage("");
+              }}
+              className="px-5 py-2.5 rounded-lg bg-[#7c6cf0] text-white text-[12px] font-bold hover:bg-[#7c6cf0]/80 transition-all"
+            >
+              🔄 Retry All Servers
+            </button>
+            <a
+              href={currentEmbedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg bg-white/[0.06] text-white/50 text-[11px] font-bold hover:bg-white/[0.08] hover:text-white/70 transition-all"
+            >
+              Open Externally ↗
+            </a>
           </div>
         )}
 
@@ -387,6 +732,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                   }}
                 >
                   {SOURCE_CONFIG[activeServer.source]?.label} {activeServer.quality ? `• ${activeServer.quality}` : ""}
+                  {activeServer.isPrimary ? " • Primary" : ""}
                 </span>
               )}
               {failedServerIds.length > 0 && (
@@ -412,7 +758,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         </div>
 
         {/* ═══════════════════════════════════════════════
-            ELGATO-STYLE SERVER/SOURCE SELECTION
+            SERVER/SOURCE SELECTION
             Grouped by source, with quality badges
         ═══════════════════════════════════════════════ */}
         {servers.length > 1 && (
@@ -424,6 +770,12 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
               <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
                 Servers & Sources
               </span>
+              {isDami && (
+                <span className="text-[9px] text-orange-400/60 font-bold ml-1">(HLS + CDN + Stream + Embed)</span>
+              )}
+              {isSF && (
+                <span className="text-[9px] text-purple-400/60 font-bold ml-1">(2 servers: origin + miror)</span>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -449,6 +801,15 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                       {isSourceActive && (
                         <span className="text-[8px] text-white/20 font-bold ml-auto">ACTIVE</span>
                       )}
+                      {source === "damitv" && (
+                        <span className="text-[8px] text-white/15 font-bold ml-auto">HLS + CDN + Embed</span>
+                      )}
+                      {source === "streamfree" && (
+                        <span className="text-[8px] text-white/15 font-bold ml-auto">origin + miror</span>
+                      )}
+                      {source === "embedsports" && (
+                        <span className="text-[8px] text-white/15 font-bold ml-auto">EmbedSports.top</span>
+                      )}
                     </div>
 
                     {/* Server buttons */}
@@ -456,19 +817,16 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                       {sourceServers.map(server => {
                         const isActive = activeServer?.id === server.id;
                         const hasFailed = failedServersSet.has(server.id);
-                        const isUnavailable = (server.source === "streamfree" &&
-                          server.quality &&
-                          sfQualities[server.quality] === false) || hasFailed;
 
                         return (
                           <button
                             key={server.id}
-                            onClick={() => !isUnavailable && switchServer(server)}
-                            disabled={isUnavailable}
+                            onClick={() => !hasFailed && switchServer(server)}
+                            disabled={hasFailed}
                             className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold transition-all ${
                               isActive
                                 ? "text-white shadow-lg"
-                                : isUnavailable
+                                : hasFailed
                                 ? "text-white/15 cursor-not-allowed line-through"
                                 : "text-white/50 hover:text-white/80 hover:bg-white/[0.06] cursor-pointer"
                             }`}
@@ -485,6 +843,13 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: config.color }} />
                             )}
 
+                            {/* Primary badge */}
+                            {server.isPrimary && !isActive && (
+                              <span className="text-[7px] font-black px-1 py-0.5 rounded bg-orange-500/20 text-orange-400">
+                                PRIMARY
+                              </span>
+                            )}
+
                             {/* Quality badge */}
                             {server.quality && (
                               <span
@@ -498,22 +863,23 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
                               </span>
                             )}
 
-                            {/* Server number for DaddyLive */}
-                            {server.serverNum && (
-                              <span>S{server.serverNum}</span>
+                            {/* Server type label */}
+                            {server.source === "damitv" && (
+                              <span>{server.label.replace("DamiTV ", "")}</span>
+                            )}
+                            {server.source === "streamfree" && server.id.includes("origin") && (
+                              <span>Origin</span>
+                            )}
+                            {server.source === "streamfree" && server.id.includes("miror") && (
+                              <span>Miror</span>
+                            )}
+                            {server.source === "embedsports" && (
+                              <span>{server.label}</span>
                             )}
 
-                            {/* Label text */}
-                            {!server.serverNum && (
-                              <span>{server.quality ? `Quality` : config.shortLabel}</span>
-                            )}
-
-                            {/* Unavailable / Failed marker */}
+                            {/* Failed marker */}
                             {hasFailed && (
                               <span className="text-[7px] text-red-500/70 font-bold">FAIL</span>
-                            )}
-                            {!hasFailed && server.source === "streamfree" && server.quality && sfQualities[server.quality] === false && (
-                              <span className="text-[7px] text-red-500/50 font-bold">OFF</span>
                             )}
                           </button>
                         );
@@ -529,10 +895,12 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
         {/* Info box */}
         <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]">
           <p className="text-[10px] text-white/20">
-            {servers.length > 1 ? (
-              <>Switch between sources and quality levels above. If one server doesn&apos;t work, try another. Failed servers are automatically skipped.</>
+            {isDami ? (
+              <>DamiTV HLS Player is PRIMARY for all channels (resolve={channel name} + name params). If it fails, auto-switches to CDN, Stream, or Embed servers. 15s timeout auto-fallback enabled.</>
+            ) : isSF ? (
+              <>StreamFree has 2 servers: Origin (primary) and Miror (backup) with quality options (1080p, 720p, 540p). Failed servers are automatically skipped.</>
             ) : (
-              <>Stream provided by <span className="font-bold" style={{ color: activeServer?.color || "#7c6cf0" }}>{activeServer ? SOURCE_CONFIG[activeServer.source]?.label : "unknown"}</span>. Stream availability depends on source server.</>
+              <>Stream provided by <span className="font-bold" style={{ color: activeServer?.color || "#7c6cf0" }}>{activeServer ? SOURCE_CONFIG[activeServer.source]?.label : "unknown"}</span>.</>
             )}
           </p>
         </div>
