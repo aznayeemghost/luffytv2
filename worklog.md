@@ -312,3 +312,24 @@ Stage Summary:
 - Iframe streams show "Try Next Server" button after 15s and "Stream not responding" overlay after 20s (no auto-switch)
 - Live TV Channels API returns partial results when one source fails/times out
 - Build verified successfully
+---
+Task ID: 1
+Agent: Main Agent
+Task: Use DamiTV channels.json iframeUrl as primary embed for Live TV, add sandbox to iframes, remove HLS refs
+
+Work Log:
+- Fetched DamiTV channels.json structure: 371 channels with id, name, logo, country, iframeUrl, status, viewers, source, defaultUrl, defaultQuality, qualities, code, countryName, countryFlag
+- Read all relevant source files: live-tv-page.tsx, live-tv-watch-page.tsx, live-tv/channels/route.ts, live-watch-page.tsx, live/embed/route.ts
+- Updated live-tv-watch-page.tsx: Changed DamiTV PRIMARY server from constructed CDN URL to props.channelEmbedUrl (iframeUrl from channels.json)
+- Added sandbox="allow-scripts allow-same-origin allow-popups allow-forms" to iframe in live-tv-watch-page.tsx
+- Added sandbox="allow-scripts allow-same-origin allow-popups allow-forms" to iframe in live-watch-page.tsx
+- Removed HLS/m3u8 references from comments in live-tv-watch-page.tsx, live-watch-page.tsx, live/embed/route.ts, live-tv/channels/route.ts
+- Updated live/embed/route.ts DamiTV resolution comments to reference iframeUrl from channels.json
+- Built project successfully with `npx next build`
+- Pushed to GitHub (tasin remote) after removing large file from git history
+
+Stage Summary:
+- DamiTV channels now use iframeUrl from channels.json as PRIMARY embed URL
+- All iframes have sandbox attribute for security
+- HLS/m3u8 references removed from DamiTV context
+- Changes pushed to https://github.com/fahadulalim93-cloud/luffytv-tasin
