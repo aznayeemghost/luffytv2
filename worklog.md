@@ -246,3 +246,69 @@ Stage Summary:
 - ElGato-style server selection UI on watch page with quality levels and source grouping
 - Bigger channel cards with team badges/logos
 - All changes pushed to luffytv-tasin remote (commit ab515b1)
+---
+Task ID: 1
+Agent: main
+Task: Major Live TV overhaul - dlhd.pk API with logos, 6-server auto-fallback, StreamedPK integration
+
+Work Log:
+- Read all current source files (store.ts, live-page.tsx, live-tv-page.tsx, live-tv-watch-page.tsx, live-247-page.tsx, live-watch-page.tsx, API routes)
+- Updated /api/live-tv/channels/route.ts: switched from daddylive.org to dlhd.pk API with logo_url support, added StreamedPK (api.vipstreamed.live) as 3rd source, removed DamiTV from Live TV sources
+- Updated live-tv-page.tsx: source filter now shows All/DaddyLive/StreamFree/StreamedPK (no DamiTV), uses API-provided logoUrl for channel logos
+- Updated live-tv-watch-page.tsx: 6 DaddyLive server folders (stream/cast/watch/plus/casting/player) for auto-fallback, bigger iframe (85vh), 15s timeout auto-fallback
+- Updated live-247-page.tsx: uses API-provided logos from dlhd.pk, added StreamedPK as source
+- Updated live-page.tsx: added 30s frontend timeout to prevent infinite loading
+- Updated live-tv-page.tsx: added 30s frontend timeout to prevent infinite loading
+- Updated live-watch-page.tsx: bigger iframe (85vh with 600px minimum)
+- Updated store.ts: changed live-tv-watch embed URL from daddylive.org to dlhd.pk format
+- Updated /api/live/channels/route.ts: switched to dlhd.pk with logo_url support
+- Pushed all changes to tasin remote
+
+Stage Summary:
+- DaddyLive now uses dlhd.pk API with logo_url (relative paths auto-prefixed with https://dlhd.pk/)
+- 6 DaddyLive server folders for auto-fallback on iframe failures
+- StreamedPK (api.vipstreamed.live) added as 3rd Live TV source
+- DamiTV removed from Live TV section (only in Sports)
+- Iframe sizes increased to 85vh
+- Frontend timeouts added to prevent infinite loading
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix multiple issues — EmbedSports.top for sports, iframe timeout, Live TV API error handling
+
+Work Log:
+- Added EmbedSports.top provider to /api/live/embed/route.ts:
+  - New `resolveEmbedSports()` function takes streamKey, channelName, and sport parameters
+  - Matches by stream key: willow/cricketsky → admin-willow-cricket, skytennis/tntsports1 → admin-tennis-channel, skyf1 → admin-rally-tv
+  - Matches by channel name: contains "willow"/"cricket" → admin-willow-cricket, contains "tennis" → admin-tennis-channel, contains "rally"/"f1"/"motor" → admin-rally-tv
+  - Added `channelName` parameter to the GET handler (was already being sent from frontend but not read by API)
+  - Changed `Promise.all` to `Promise.allSettled` for better resilience
+  - EmbedSports streams returned as "embedsports" provider with proper embed URLs
+- Fixed DamiTV infinite loading in live-watch-page.tsx:
+  - Added 15-second timer to show "Try Next Server" button after 15s of loading
+  - Added 20-second timer to show "Stream not responding" overlay
+  - Does NOT auto-switch — user decides whether to try next server
+  - Added `showIframeTimeout` state and `iframeTimeout15Ref` ref for timer management
+  - Both timers are properly cleaned up when stream changes or component unmounts
+  - "Stream not responding" overlay shows amber warning icon, message, and "Try Next Server" button
+- Fixed Live TV Channels API error handling in /api/live-tv/channels/route.ts:
+  - Added per-source 8-second timeout (faster than the 12s internal fetch timeout)
+  - Added overall 15-second API timeout that returns whatever results are available
+  - If DamiTV fails/times out, StreamFree channels are still returned
+  - If StreamFree fails/times out, DamiTV channels are still returned
+  - Partial results returned even on unexpected errors (instead of 500 with no data)
+  - Added `warnings` field in response when sources partially fail
+  - `success` field now reflects whether any channels were found (not just whether no errors occurred)
+- Verified StreamFree category passing: `matchStreamCategory` is properly passed from live-page.tsx to watch page (both handleWatchChannel and handleWatchMatch)
+- Verified iframe heights: sports watch page = 85vh, TV watch page = 90vh ✓
+
+Files modified:
+- /home/z/my-project/luffytv-current/src/app/api/live/embed/route.ts — Added EmbedSports.top provider, channelName param, Promise.allSettled
+- /home/z/my-project/luffytv-current/src/components/anime/live-watch-page.tsx — Added iframe timeout with Try Next Server button
+- /home/z/my-project/luffytv-current/src/app/api/live-tv/channels/route.ts — Better error handling with per-source timeout and partial results
+
+Stage Summary:
+- EmbedSports.top now available as server option in sports watch page (matching cricket, tennis, motorsport channels)
+- Iframe streams show "Try Next Server" button after 15s and "Stream not responding" overlay after 20s (no auto-switch)
+- Live TV Channels API returns partial results when one source fails/times out
+- Build verified successfully

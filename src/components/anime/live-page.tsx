@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAppStore } from "./store";
 import LiveTVPage from "./live-tv-page";
 import Live247Page from "./live-247-page";
+import LiveNewsPage from "./live-news-page";
 
 // ============================================================
 // LIVE TV & SPORTS — WatchFooty-Style Complete Redesign
@@ -75,6 +76,7 @@ interface LiveMatch {
   channelCode?: string;
   channelName?: string;
   damitvId?: string;
+  damitvName?: string;
   watchfootyId?: number;
   sportsrcCategory?: string;
   sportsrcId?: string;
@@ -98,6 +100,7 @@ interface TVChannel {
   channelName?: string;
   channelCode?: string;
   damitvId?: string;
+  damitvName?: string;
   poster?: string;
   sources?: { source: string; id: string }[];
 }
@@ -189,6 +192,16 @@ const sportTagColors: Record<string, string> = {
   news: "bg-blue-900",
 };
 
+// Source badge config — shows which provider the match comes from
+const SOURCE_BADGES: Record<string, { label: string; color: string; bg: string }> = {
+  damitv: { label: "DamiTV", color: "#f97316", bg: "rgba(249,115,22,0.15)" },
+  streamfree: { label: "StreamFree", color: "#a855f7", bg: "rgba(168,85,247,0.15)" },
+  watchfooty: { label: "WatchFooty", color: "#3b82f6", bg: "rgba(59,130,246,0.15)" },
+  streamedpk: { label: "StreamedPK", color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
+  espn: { label: "ESPN", color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
+  sportsembed: { label: "SportsEmbed", color: "#06b6d4", bg: "rgba(6,182,212,0.15)" },
+};
+
 // ═══════════════════════════════════════════════════════════════
 // NEWS TICKER BAR — Scrolling marquee at top
 // ═══════════════════════════════════════════════════════════════
@@ -233,6 +246,7 @@ function NewsTicker({ articles }: { articles: NewsArticle[] }) {
 function MatchCard({ match, onWatch, variant }: { match: LiveMatch; onWatch: (m: LiveMatch) => void; variant: "poster" | "compact" }) {
   const sportColor = getSportColor(match.sport);
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
+  const sourceBadge = match.apiSource ? SOURCE_BADGES[match.apiSource] : null;
 
   if (variant === "compact") {
     return (
@@ -271,6 +285,14 @@ function MatchCard({ match, onWatch, variant }: { match: LiveMatch; onWatch: (m:
               </span>
             ) : (
               <span className="text-[9px] text-white/30 font-medium">{formatTimeOnly(match.date)}</span>
+            )}
+            {sourceBadge && (
+              <span
+                className="px-1.5 py-0.5 rounded text-[7px] font-bold"
+                style={{ background: sourceBadge.bg, color: sourceBadge.color }}
+              >
+                {sourceBadge.label}
+              </span>
             )}
             {match.league && (
               <span className="text-[8px] text-white/25 font-medium truncate max-w-[120px]">{match.league}</span>
@@ -344,8 +366,16 @@ function MatchCard({ match, onWatch, variant }: { match: LiveMatch; onWatch: (m:
           )}
         </div>
 
-        {/* Top-right: League badge */}
-        <div className="absolute top-2 right-2">
+        {/* Top-right: Source badge + League badge */}
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+          {sourceBadge && (
+            <span
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[7px] font-bold backdrop-blur-sm"
+              style={{ background: sourceBadge.bg, color: sourceBadge.color }}
+            >
+              {sourceBadge.label}
+            </span>
+          )}
           {match.league && (
             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm text-white text-[7px] font-bold uppercase max-w-[100px] truncate">
               {match.leagueLogo && <img src={match.leagueLogo} alt="" className="w-2.5 h-2.5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
@@ -418,8 +448,7 @@ function TVChannelCard({ channel, onWatch }: { channel: TVChannel; onWatch: (ch:
   const sportColor = getSportColor(channel.sport);
   const sportIcon = getSportIcon(channel.sport);
   const sourceTag = channel.apiSource === "streamfree" ? "StreamFree" :
-                    channel.apiSource === "damitv" ? "DamiTV" :
-                    channel.apiSource === "streamed" ? "StreamedPK" : channel.apiSource;
+                    channel.apiSource === "damitv" ? "DamiTV" : channel.apiSource;
 
   return (
     <button
@@ -540,7 +569,12 @@ export default function LivePage() {
       if (selectedSport !== "all") params.set("sport", selectedSport);
       if (liveOnly) params.set("filter", "live");
 
-      const res = await fetch(`/api/live?${params.toString()}`);
+      // Add frontend timeout (30s) — prevents infinite loading if API hangs
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const res = await fetch(`/api/live?${params.toString()}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error("API failed");
       const data = await res.json();
 
@@ -618,6 +652,7 @@ export default function LivePage() {
       matchChannelName: safeStr(channel.channelName || channel.title),
       matchChannelCode: safeStr(channel.channelCode),
       matchDamitvId: safeStr(channel.damitvId),
+      matchDamitvName: safeStr(channel.damitvName || channel.channelName || channel.title),
       matchApiSource: safeStr(channel.apiSource),
     } as any);
   };
@@ -643,7 +678,7 @@ export default function LivePage() {
       matchChannelName: safeStr(match.channelName),
       matchChannelCode: safeStr(match.channelCode),
       matchDamitvId: safeStr(match.damitvId),
-      matchWatchfootyId: match.watchfootyId ? String(match.watchfootyId) : "",
+      matchDamitvName: safeStr(match.damitvName || match.title),
       matchApiSource: safeStr(match.apiSource),
       matchSportsrcCategory: safeStr(match.sportsrcCategory),
       matchSportsrcId: safeStr(match.sportsrcId),
@@ -672,6 +707,11 @@ export default function LivePage() {
 
   const popularLiveMatches = useMemo(() => {
     return liveMatches.filter(m => m.popular || (m.apiSource === "watchfooty" && m.poster)).slice(0, 20);
+  }, [liveMatches]);
+
+  // Most Popular — DamiTV-sourced live matches (shown at top of page)
+  const mostPopularDamitv = useMemo(() => {
+    return liveMatches.filter(m => m.apiSource === "damitv" && m.isLive).slice(0, 20);
   }, [liveMatches]);
 
   // Group matches by sport for sport sections
@@ -742,6 +782,11 @@ export default function LivePage() {
   // ── Tab: If on 247-live sub-page, render Live247Page instead ──
   if (sectionSubPage === "247-live") {
     return <Live247Page />;
+  }
+
+  // ── Tab: If on news sub-page, render LiveNewsPage instead ──
+  if (sectionSubPage === "news") {
+    return <LiveNewsPage />;
   }
 
   return (
@@ -877,6 +922,25 @@ export default function LivePage() {
 
         {!loading && (
           <>
+            {/* ══════════════════════════════════════════
+                MOST POPULAR — DamiTV Source (TOP OF PAGE)
+                ══════════════════════════════════════════ */}
+            {mostPopularDamitv.length > 0 && (
+              <div ref={popularRef}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                    <span className="text-base">🔥</span> Most Popular
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400">DamiTV</span>
+                  </h2>
+                </div>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                  {mostPopularDamitv.map(match => (
+                    <MatchCard key={match.id} match={match} onWatch={handleWatchMatch} variant="poster" />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* ══════════════════════════════════════════
                 C. SPORTS CATEGORY CARDS (Horizontal Scroll)
                 ══════════════════════════════════════════ */}

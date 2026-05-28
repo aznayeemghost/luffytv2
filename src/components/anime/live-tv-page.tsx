@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useAppStore } from "./store";
 
 // ============================================================
-// LIVE TV CHANNEL BROWSER — Daddylive + DamiTV + StreamFree
-// Big card grid with team logos, source toggle, search, filters
+// LIVE TV CHANNEL BROWSER — DamiTV + StreamFree
+// Big card grid with channel logos, source toggle, search, filters
+// DamiTV: dami-tv.pro/channels.json + HLS player embed
+// StreamFree: streamfree.app/streams + embed player
 // ============================================================
 
 interface TVChannel {
@@ -15,8 +17,9 @@ interface TVChannel {
   sport?: string;
   country: { code: string; name: string; flag: string };
   embedUrl: string;
-  source: "daddylive" | "damitv" | "streamfree";
+  source: "damitv" | "streamfree";
   poster?: string;
+  logoUrl?: string;
   isLive?: boolean;
   isAlwaysLive?: boolean;
   status?: string;
@@ -28,6 +31,9 @@ interface TVChannel {
   streamKey?: string;
   streamCategory?: string;
   viewers?: number;
+  damitvId?: string;
+  damitvCdnUrl?: string;
+  damitvName?: string;
 }
 
 interface CategoryInfo {
@@ -42,7 +48,7 @@ interface CountryInfo {
   count: number;
 }
 
-type SourceFilter = "all" | "daddylive" | "damitv" | "streamfree";
+type SourceFilter = "all" | "damitv" | "streamfree";
 
 // Category colors
 const CAT_COLORS: Record<string, string> = {
@@ -58,116 +64,9 @@ const CAT_COLORS: Record<string, string> = {
 
 // Source colors and labels
 const SOURCE_CONFIG: Record<string, { color: string; label: string; shortLabel: string }> = {
-  daddylive: { color: "#3b82f6", label: "DaddyLive", shortLabel: "DADDY" },
-  damitv: { color: "#22c55e", label: "DamiTV", shortLabel: "DAMI" },
+  damitv: { color: "#f97316", label: "DamiTV", shortLabel: "DAMI" },
   streamfree: { color: "#a855f7", label: "StreamFree", shortLabel: "SF" },
 };
-
-// ── Channel LOGO_MAP for common channels without API-provided logos ──
-// Maps lowercase channel name substrings to known logo URLs
-const LOGO_MAP: Record<string, string> = {
-  // ESPN
-  "espn": "https://cdn.espnmedia.com/images/espn_logo.png",
-  "espn 2": "https://cdn.espnmedia.com/images/espn2_logo.png",
-  "espn 3": "https://cdn.espnmedia.com/images/espn3_logo.png",
-  "espn+": "https://cdn.espnmedia.com/images/espnplus_logo.png",
-  "espn news": "https://cdn.espnmedia.com/images/espnews_logo.png",
-  "espn u": "https://cdn.espnmedia.com/images/espnu_logo.png",
-  // Sky Sports
-  "sky sports": "https://www.skysports.com/images/sky-sports-logo.png",
-  "sky sports premier": "https://www.skysports.com/images/sky-sports-premier-league.png",
-  "sky sports football": "https://www.skysports.com/images/sky-sports-football.png",
-  "sky sports f1": "https://www.skysports.com/images/sky-sports-f1.png",
-  "sky sports cricket": "https://www.skysports.com/images/sky-sports-cricket.png",
-  "sky sports golf": "https://www.skysports.com/images/sky-sports-golf.png",
-  "sky sports news": "https://www.skysports.com/images/sky-sports-news.png",
-  "sky sports nfl": "https://www.skysports.com/images/sky-sports-nfl.png",
-  "sky sports arena": "https://www.skysports.com/images/sky-sports-arena.png",
-  "sky sports action": "https://www.skysports.com/images/sky-sports-action.png",
-  // BT Sport / TNT Sport
-  "bt sport": "https://production.btsport.com/images/bt-sport-logo.png",
-  "tnt sport": "https://tntsports.co.uk/images/tnt-sports-logo.png",
-  // BeIN Sports
-  "bein": "https://www.beinsports.com/images/bein-sports-logo.png",
-  "bein sports": "https://www.beinsports.com/images/bein-sports-logo.png",
-  // DAZN
-  "dazn": "https://www.dazn.com/images/dazn-logo.png",
-  // NBC
-  "nbc sport": "https://www.nbcsports.com/images/nbc-sports-logo.png",
-  "nbc sports": "https://www.nbcsports.com/images/nbc-sports-logo.png",
-  // CBS Sports
-  "cbs sport": "https://www.cbssports.com/images/cbs-sports-logo.png",
-  "cbs sports": "https://www.cbssports.com/images/cbs-sports-logo.png",
-  // Fox Sports
-  "fox sport": "https://www.foxsports.com/images/fox-sports-logo.png",
-  "fox sports": "https://www.foxsports.com/images/fox-sports-logo.png",
-  // Eurosport
-  "euro sport": "https://www.eurosport.com/images/eurosport-logo.png",
-  "eurosport": "https://www.eurosport.com/images/eurosport-logo.png",
-  // TSN
-  "tsn": "https://www.tsn.ca/images/tsn-logo.png",
-  // SuperSport
-  "super sport": "https://www.supersport.com/images/supersport-logo.png",
-  "supersport": "https://www.supersport.com/images/supersport-logo.png",
-  // Willow
-  "willow": "https://www.willow.tv/images/willow-logo.png",
-  // CNN
-  "cnn": "https://edition.cnn.com/images/cnn-logo.png",
-  // BBC
-  "bbc": "https://static.files.bbci.co.uk/orbit/835287017f7c8f5b95e0e8ce7a0f4370/img/bbc-blocks-dark.png",
-  // HBO
-  "hbo": "https://www.hbo.com/images/hbo-logo.png",
-  // Discovery
-  "discovery": "https://www.discovery.com/images/discovery-logo.png",
-  // National Geographic
-  "nat geo": "https://www.nationalgeographic.com/images/nat-geo-logo.png",
-  "national geographic": "https://www.nationalgeographic.com/images/nat-geo-logo.png",
-  // Paramount
-  "paramount": "https://www.paramount.com/images/paramount-logo.png",
-  // Peacock
-  "peacock": "https://www.peacocktv.com/images/peacock-logo.png",
-  // Star Sports
-  "star sport": "https://www.hotstar.com/images/star-sports-logo.png",
-  "star sports": "https://www.hotstar.com/images/star-sports-logo.png",
-  // Arena Sport
-  "arena sport": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Arena_Sport_logo.svg/200px-Arena_Sport_logo.svg.png",
-  // Sony
-  "sony": "https://www.sonypictures.com/images/sony-logo.png",
-  // F1 TV
-  "f1 tv": "https://www.formula1.com/images/f1-tv-logo.png",
-  // NFL Network
-  "nfl network": "https://www.nfl.com/images/nfl-network-logo.png",
-  // NBA TV
-  "nba tv": "https://www.nba.com/images/nba-tv-logo.png",
-  // MLB Network
-  "mlb network": "https://www.mlb.com/images/mlb-network-logo.png",
-  // UFC
-  "ufc": "https://www.ufc.com/images/ufc-logo.png",
-  // WWE
-  "wwe": "https://www.wwe.com/images/wwe-logo.png",
-  "wwe network": "https://www.wwe.com/images/wwe-network-logo.png",
-  // Golf Channel
-  "golf channel": "https://www.golfchannel.com/images/golf-channel-logo.png",
-  // Tennis Channel
-  "tennis channel": "https://www.tennischannel.com/images/tennis-channel-logo.png",
-  // NHL
-  "nhl": "https://www.nhl.com/images/nhl-logo.png",
-  // NHL Network
-  "nhl network": "https://www.nhl.com/images/nhl-network-logo.png",
-};
-
-// Lookup logo from LOGO_MAP by matching channel name
-function getChannelLogo(name: string): string | null {
-  const lower = name.toLowerCase();
-  // Try exact match first
-  if (LOGO_MAP[lower]) return LOGO_MAP[lower];
-  // Try substring match (longest key first for best match)
-  const keys = Object.keys(LOGO_MAP).sort((a, b) => b.length - a.length);
-  for (const key of keys) {
-    if (lower.includes(key)) return LOGO_MAP[key];
-  }
-  return null;
-}
 
 export default function LiveTVPage() {
   const navigate = useAppStore(s => s.navigate);
@@ -176,8 +75,7 @@ export default function LiveTVPage() {
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [countries, setCountries] = useState<CountryInfo[]>([]);
   const [totalAll, setTotalAll] = useState(0);
-  const [daddyCount, setDaddyCount] = useState(0);
-  const [damiCount, setDamiCount] = useState(0);
+  const [damitvCount, setDamitvCount] = useState(0);
   const [sfCount, setSfCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -204,7 +102,12 @@ export default function LiveTVPage() {
       if (selectedCategory !== "all") params.set("category", selectedCategory);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
 
-      const res = await fetch(`/api/live-tv/channels?${params.toString()}`);
+      // Frontend timeout (30s) to prevent infinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const res = await fetch(`/api/live-tv/channels?${params.toString()}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error("Failed to load channels");
       const data = await res.json();
 
@@ -212,8 +115,7 @@ export default function LiveTVPage() {
       setCategories(data.categories || []);
       setCountries(data.countries || []);
       setTotalAll(data.totalAll || 0);
-      setDaddyCount(data.daddyCount || 0);
-      setDamiCount(data.damiCount || 0);
+      setDamitvCount(data.damitvCount || 0);
       setSfCount(data.sfCount || 0);
     } catch (err: any) {
       setError(err.message || "Failed to load channels");
@@ -231,6 +133,7 @@ export default function LiveTVPage() {
       channelId: channel.id,
       channelName: channel.name,
       channelCategory: channel.category,
+      channelStreamCategory: channel.streamCategory || "", // Actual SF embed category (cricket, racing, tennis) — NOT display category
       channelCountryCode: channel.country.code,
       channelCountryName: channel.country.name,
       channelEmbedUrl: channel.embedUrl,
@@ -254,13 +157,12 @@ export default function LiveTVPage() {
             </p>
           </div>
 
-          {/* SOURCE TOGGLE — 4 options */}
+          {/* SOURCE TOGGLE — 3 options: All, DamiTV, StreamFree */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
             {([
               { id: "all" as SourceFilter, label: "All", count: totalAll, color: "#7c6cf0" },
+              { id: "damitv" as SourceFilter, label: "DamiTV", count: damitvCount, color: "#f97316" },
               { id: "streamfree" as SourceFilter, label: "StreamFree", count: sfCount, color: "#a855f7" },
-              { id: "damitv" as SourceFilter, label: "DamiTV", count: damiCount, color: "#22c55e" },
-              { id: "daddylive" as SourceFilter, label: "DaddyLive", count: daddyCount, color: "#3b82f6" },
             ]).map(src => (
               <button
                 key={src.id}
@@ -372,7 +274,6 @@ export default function LiveTVPage() {
           <p className="text-sm text-white/30">Loading channels...</p>
           <p className="text-[10px] text-white/15">
             {sourceFilter === "damitv" ? "Fetching from DamiTV" :
-             sourceFilter === "daddylive" ? "Fetching from DaddyLive" :
              sourceFilter === "streamfree" ? "Fetching from StreamFree" :
              "Fetching from all sources"}
           </p>
@@ -403,7 +304,8 @@ export default function LiveTVPage() {
               const isLive = channel.isLive;
               const hasTeams = channel.homeTeam && channel.awayTeam;
               const hasBadges = channel.homeBadge || channel.awayBadge;
-              const channelLogo = getChannelLogo(channel.name);
+              // Use API-provided logo_url first, then fall back to badges
+              const hasLogo = channel.logoUrl;
 
               return (
                 <button
@@ -454,8 +356,21 @@ export default function LiveTVPage() {
                       </span>
                     </div>
 
-                    {/* Center — Channel logo, Team badges, or letter avatar */}
-                    {hasBadges ? (
+                    {/* Center — Channel logo (from API logo_url), Team badges, or letter avatar */}
+                    {hasLogo ? (
+                      /* Channel logo from API — this is the PRIMARY logo source */
+                      <div className="relative z-10 flex items-center justify-center">
+                        <img
+                          src={channel.logoUrl}
+                          alt={channel.name}
+                          className="w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-lg"
+                          onError={(e) => {
+                            // On error, hide and show letter fallback
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      </div>
+                    ) : hasBadges ? (
                       <div className="relative z-10 flex items-center gap-3">
                         {channel.homeBadge && (
                           <img
@@ -475,16 +390,6 @@ export default function LiveTVPage() {
                           />
                         )}
                       </div>
-                    ) : channelLogo ? (
-                      /* Channel logo from LOGO_MAP */
-                      <div className="relative z-10 flex items-center justify-center">
-                        <img
-                          src={channelLogo}
-                          alt={channel.name}
-                          className="w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-lg"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                        />
-                      </div>
                     ) : hasTeams ? (
                       <div className="relative z-10 flex flex-col items-center gap-0.5 text-center px-2">
                         <span className="text-[10px] font-bold text-white/70 truncate max-w-full">{channel.homeTeam}</span>
@@ -492,7 +397,7 @@ export default function LiveTVPage() {
                         <span className="text-[10px] font-bold text-white/70 truncate max-w-full">{channel.awayTeam}</span>
                       </div>
                     ) : (
-                      /* Bigger letter avatar for channels without logos */
+                      /* Letter avatar for channels without logos */
                       <div
                         className="relative z-10 w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black"
                         style={{

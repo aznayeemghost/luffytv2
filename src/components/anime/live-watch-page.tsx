@@ -5,8 +5,8 @@ import { useAppStore } from "./store";
 import Hls from "hls.js";
 
 // ============================================================
-// LIVE WATCH PAGE — StreamedPK-first iframe Embed Player + hls.js M3U8
-// PRIMARY: StreamedPK API embeds (Alpha–Intel, Admin) via iframe
+// LIVE WATCH PAGE — DamiTV + StreamFree iframe Embed Player + hls.js M3U8
+// PRIMARY: DamiTV HLS embed + StreamFree embed
 // SECONDARY: M3U8 via hls.js (streamfree, cdnlivetv, dami-tv)
 // FALLBACK: WatchFooty embeds
 // ============================================================
@@ -45,6 +45,7 @@ interface LiveWatchProps {
   matchChannelName?: string;
   matchChannelCode?: string;
   matchDamitvId?: string;
+  matchDamitvName?: string;
   matchWatchfootyId?: string;
   matchApiSource?: string;
   matchSportsrcCategory?: string;
@@ -172,7 +173,10 @@ export default function LiveWatchPage(props: LiveWatchProps) {
   const [retryCount, setRetryCount] = useState(0);
   const [showPlayButton, setShowPlayButton] = useState(false); // Embed auto-plays, M3U8 needs click
   const [iframeFailed, setIframeFailed] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
   const iframeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [iframeElapsed, setIframeElapsed] = useState(0); // seconds elapsed since iframe started loading
+  const iframeElapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Scoreboard live score state ──
   const [scoreboardData, setScoreboardData] = useState<{ homeScore: string; awayScore: string; period: string; clock: string; statusDetail: string } | null>(null);
@@ -225,6 +229,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
                 matchStreamKey: match.streamKey || (currentRoute as any).matchStreamKey,
                 matchStreamCategory: match.streamCategory || (currentRoute as any).matchStreamCategory,
                 matchDamitvId: match.damitvId || (currentRoute as any).matchDamitvId,
+                matchDamitvName: match.damitvName || (currentRoute as any).matchDamitvName,
                 matchSportsrcCategory: match.sportsrcCategory || (currentRoute as any).matchSportsrcCategory,
                 matchSportsrcId: match.sportsrcId || (currentRoute as any).matchSportsrcId,
                 matchChannelName: match.channelName || (currentRoute as any).matchChannelName,
@@ -329,6 +334,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
         let effectiveSources = props.matchSources || "";
         let effectiveWatchfootyId = props.matchWatchfootyId || "";
         let effectiveDamitvId = props.matchDamitvId || "";
+        let effectiveDamitvName = props.matchDamitvName || "";
         let effectiveStreamKey = props.matchStreamKey || "";
         let effectiveStreamCategory = props.matchStreamCategory || "";
         let effectiveChannelCode = props.matchChannelCode || "";
@@ -340,7 +346,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
         })();
 
         if (parsedMatchSources.length === 0) {
-          // No StreamedPK sources in props — try cross-provider lookup
+          // No sources in props — try cross-provider lookup
           try {
             const liveRes = await fetch("/api/live");
             if (liveRes.ok) {
@@ -360,14 +366,14 @@ export default function LiveWatchPage(props: LiveWatchProps) {
                     (awayNorm.includes(mAwayNorm) || mAwayNorm.includes(awayNorm))));
 
                 if (teamsMatch) {
-                  // Found a match with StreamedPK sources! Use them.
+                  // Found a match with sources! Use them.
                   if (m.sources && m.sources.length > 0) {
                     effectiveSources = JSON.stringify(m.sources);
                   }
                   // Also fill in other missing IDs — BUT only merge provider-specific IDs
                   // from their own source to prevent DamiTV/StreamFree showing everywhere
                   if (!effectiveWatchfootyId && m.watchfootyId && m.apiSource === "watchfooty") effectiveWatchfootyId = String(m.watchfootyId);
-                  if (!effectiveDamitvId && m.damitvId && m.apiSource === "damitv") effectiveDamitvId = m.damitvId;
+                  if (!effectiveDamitvId && m.damitvId && m.apiSource === "damitv") { effectiveDamitvId = m.damitvId; effectiveDamitvName = m.damitvName || m.title || ""; }
                   if (!effectiveStreamKey && m.streamKey && m.apiSource === "streamfree") effectiveStreamKey = m.streamKey;
                   if (!effectiveStreamCategory && m.streamCategory && m.apiSource === "streamfree") effectiveStreamCategory = m.streamCategory;
                   if (!effectiveChannelCode && m.channelCode) effectiveChannelCode = m.channelCode;
@@ -380,7 +386,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           } catch {}
         }
 
-        // WatchFooty streams — added LAST (lowest priority, StreamedPK is primary)
+        // WatchFooty streams — added LAST (lowest priority, DamiTV/StreamFree are primary)
         const wfStreams: StreamInfo[] = wfStreamsFromProps
           .filter((s: any) => s.url && !s.isRedirect)
           .map((s: any, i: number) => ({
@@ -399,11 +405,11 @@ export default function LiveWatchPage(props: LiveWatchProps) {
             streamType: "embed" as const,
           }));
 
-        // Fetch from main resolver API (StreamedPK PRIMARY, then streamfree, dami-tv, watchfooty, sportsembed)
+        // Fetch from main resolver API (DamiTV PRIMARY, then StreamFree, WatchFooty, SportsEmbed)
         const params = new URLSearchParams();
         params.set("matchId", props.matchId);
         params.set("provider", props.matchApiSource || "");
-        // PASS TEAM NAMES so the server can search StreamedPK by teams when sources are missing
+        // PASS TEAM NAMES so the server can search providers by teams when sources are missing
         if (_homeTeam) params.set("homeTeam", _homeTeam);
         if (_awayTeam) params.set("awayTeam", _awayTeam);
         if (_sport) params.set("sport", _sport);
@@ -412,6 +418,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
         if (props.matchChannelName) params.set("channelName", props.matchChannelName);
         if (effectiveChannelCode) params.set("channelCode", effectiveChannelCode);
         if (effectiveDamitvId) params.set("damitvId", effectiveDamitvId);
+        if (effectiveDamitvName) params.set("damitvName", effectiveDamitvName);
         if (effectiveWatchfootyId) params.set("watchfootyId", effectiveWatchfootyId);
         if (effectiveSources) params.set("sources", effectiveSources);
         if (effectiveSportsrcCategory) params.set("sportsrcCategory", effectiveSportsrcCategory);
@@ -426,7 +433,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           }
         }
 
-        // ALSO fetch from individual StreamedPK provider routes
+        // ALSO fetch from individual provider routes
         // ONLY for providers that the match actually has — don't fetch providers
         // that don't have this match (prevents showing broken/non-working streams)
         let providerStreams: StreamInfo[] = [];
@@ -456,7 +463,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           }
         } catch {}
 
-        // Merge: StreamedPK (resolver + provider routes) FIRST, then WatchFooty LAST
+        // Merge: resolver + provider routes FIRST, then WatchFooty LAST
         const allStreams = [...resolverStreams, ...providerStreams, ...wfStreams];
 
         // Deduplicate by embedUrl / m3u8Url
@@ -468,10 +475,10 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           return true;
         });
 
-        // Sort: StreamedPK (provider "streamed") FIRST, then other embeds, then M3U8
+        // Sort: DamiTV (provider "damitv") FIRST, then other embeds, then M3U8
         uniqueStreams.sort((a, b) => {
-          if (a.provider === "streamed" && b.provider !== "streamed") return -1;
-          if (b.provider === "streamed" && a.provider !== "streamed") return 1;
+          if (a.provider === "damitv" && b.provider !== "damitv") return -1;
+          if (b.provider === "damitv" && a.provider !== "damitv") return 1;
           if (a.streamType === "embed" && b.streamType !== "embed") return -1;
           if (b.streamType === "embed" && a.streamType !== "embed") return 1;
           if (a.corsEnabled && !b.corsEnabled) return -1;
@@ -481,13 +488,11 @@ export default function LiveWatchPage(props: LiveWatchProps) {
 
         if (uniqueStreams.length > 0) {
           setStreams(uniqueStreams);
-          // Prefer StreamedPK streams first (Alpha, Bravo, etc.), then any embed, then M3U8
-          const streamedStream = uniqueStreams.find((s: StreamInfo) => s.provider === "streamed" && s.embedUrl);
+          // Prefer DamiTV or any embed, then M3U8
           const embedStream = uniqueStreams.find((s: StreamInfo) => s.streamType === "embed" && s.embedUrl);
           const corsStream = uniqueStreams.find((s: StreamInfo) => s.streamType === "m3u8" && s.m3u8Url && s.corsEnabled);
           const m3u8Stream = uniqueStreams.find((s: StreamInfo) => s.streamType === "m3u8" && s.m3u8Url);
-          // StreamedPK auto-plays best, then other embeds, then CORS M3U8
-          const best = streamedStream || embedStream || corsStream || m3u8Stream || uniqueStreams[0];
+          const best = embedStream || corsStream || m3u8Stream || uniqueStreams[0];
           setActiveStream(best);
         } else if (wfStreams.length === 0 && resolverStreams.length === 0 && providerStreams.length === 0) {
           // No streams at all
@@ -504,9 +509,35 @@ export default function LiveWatchPage(props: LiveWatchProps) {
   }, [props.matchId, props.matchSources, retryCount, wfStreamsFromProps]);
 
   // When activeStream changes, prepare the player
+  // Iframe elapsed time tracker
+  useEffect(() => {
+    if (iframeLoaded || iframeFailed || !isEmbedStream) {
+      setIframeElapsed(0);
+      if (iframeElapsedRef.current) {
+        clearInterval(iframeElapsedRef.current);
+        iframeElapsedRef.current = null;
+      }
+      return;
+    }
+
+    setIframeElapsed(0);
+    iframeElapsedRef.current = setInterval(() => {
+      setIframeElapsed(prev => prev + 1);
+    }, 1000);
+
+    return () => {
+      if (iframeElapsedRef.current) {
+        clearInterval(iframeElapsedRef.current);
+        iframeElapsedRef.current = null;
+      }
+    };
+  }, [activeStream, iframeLoaded, iframeFailed, isEmbedStream]);
+
   useEffect(() => {
     // Reset iframe failure state on stream switch
     setIframeFailed(false);
+    setIframeLoaded(false);
+    setIframeElapsed(0);
     if (iframeTimeoutRef.current) {
       clearTimeout(iframeTimeoutRef.current);
       iframeTimeoutRef.current = null;
@@ -516,8 +547,32 @@ export default function LiveWatchPage(props: LiveWatchProps) {
     if (activeStream?.streamType === "embed" && activeStream?.embedUrl) {
       setPlayerState("playing");
       setShowPlayButton(false);
-      // No timeout — let the iframe load naturally. Embed sites like embedsports.top
-      // need time to load their player scripts. Premature timeouts cause false failures.
+      // Add a 20s timeout for embed iframes — if not loaded by then, try next stream
+      // DamiTV especially can hang forever, so we need a fallback
+      iframeTimeoutRef.current = setTimeout(() => {
+        if (!iframeLoaded) {
+          console.log(`Iframe timeout for ${activeStream.provider} — trying next stream`);
+          // Try next stream in the list
+          const currentIdx = streams.findIndex(s => s.id === activeStream.id);
+          const nextStream = streams.find((s, i) => i > currentIdx && s.streamType === "embed" && s.embedUrl);
+          if (nextStream) {
+            setActiveStream(nextStream);
+          } else {
+            // No more embed streams — try M3U8 or show scoreboard
+            const m3u8Stream = streams.find(s => s.streamType === "m3u8" && s.m3u8Url);
+            if (m3u8Stream) {
+              setActiveStream(m3u8Stream);
+            } else if (hasTeams) {
+              setIframeFailed(true);
+              setPlayerState("scoreboard");
+            } else {
+              setIframeFailed(true);
+              setPlayerState("error");
+              setPlayerError("Stream failed to load. Try a different server.");
+            }
+          }
+        }
+      }, 20000);
       return;
     }
 
@@ -800,7 +855,7 @@ export default function LiveWatchPage(props: LiveWatchProps) {
       <div
         ref={playerContainerRef}
         className="relative w-full bg-black"
-        style={{ height: isFullscreen ? "100vh" : "70vh", minHeight: "500px" }}
+        style={{ height: isFullscreen ? "100vh" : "90vh", minHeight: "600px", maxHeight: isFullscreen ? "100vh" : "calc(100vh - 20px)" }}
       >
         {/* Video element for hls.js (M3U8 streams) */}
         {!isEmbedStream && (
@@ -828,6 +883,14 @@ export default function LiveWatchPage(props: LiveWatchProps) {
             frameBorder={0}
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            onLoad={() => {
+              setIframeLoaded(true);
+              // Clear timeout since iframe loaded successfully
+              if (iframeTimeoutRef.current) {
+                clearTimeout(iframeTimeoutRef.current);
+                iframeTimeoutRef.current = null;
+              }
+            }}
             onError={() => {
               setIframeFailed(true);
               setPlayerState("scoreboard");
@@ -867,23 +930,66 @@ export default function LiveWatchPage(props: LiveWatchProps) {
           </div>
         )}
 
-        {/* Loading overlay */}
-        {playerState === "loading" && (
+        {/* Loading overlay — M3U8 loading or embed iframe loading */}
+        {(playerState === "loading" || (isEmbedStream && !iframeLoaded && !iframeFailed && playerState === "playing")) && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black z-20">
-            <div className="w-14 h-14 rounded-full border-2 border-[#7c6cf0]/30 border-t-[#7c6cf0] animate-spin" />
-            <p className="text-sm text-white/40">Loading stream...</p>
-            <p className="text-[10px] text-white/20">
-              {activeStream?.provider === "streamfree" ? "streamfree.app CDN" :
-               activeStream?.provider === "cdnlivetv" ? "cdnlivetv.tv" :
-               activeStream?.provider === "damitv" ? "dami-tv.pro" :
-               activeStream?.provider === "streamed" ? "Streamed • Loading embed..." :
-               "Connecting to server..."}
-            </p>
+            {/* Spinner with progress ring */}
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border-3 border-white/10 border-t-[#7c6cf0] animate-spin" />
+              {/* Progress arc — 20s max for embed, indeterminate for M3U8 */}
+              {isEmbedStream && (
+                <svg className="absolute inset-0 w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                  <circle
+                    cx="32" cy="32" r="28"
+                    fill="none"
+                    stroke="#7c6cf0"
+                    strokeWidth="2"
+                    strokeDasharray={`${Math.min(iframeElapsed / 20, 1) * 176} 176`}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000"
+                  />
+                </svg>
+              )}
+            </div>
+
+            {/* Source-specific loading message */}
+            <div className="text-center">
+              <p className="text-sm font-bold text-white/60">
+                {activeStream?.provider === "damitv" ? `Loading DamiTV ${activeStream.source?.includes("HLS") ? "HLS" : "Embed"}...` :
+                 activeStream?.provider === "streamfree" ? "Loading StreamFree..." :
+                 activeStream?.provider === "watchfooty" ? "Loading WatchFooty..." :
+                 activeStream?.provider === "embedsports" ? "Loading EmbedSports..." :
+                 activeStream?.provider === "streamedpk" ? "Loading StreamedPK..." :
+                 activeStream?.provider === "sportsembed" ? "Loading SportsEmbed..." :
+                 "Loading stream..."}
+              </p>
+              <p className="text-[11px] text-white/30 mt-1">
+                {activeStream?.provider === "damitv" ? "dami-tv.pro HLS Player" :
+                 activeStream?.provider === "streamfree" ? "streamfree.app CDN" :
+                 activeStream?.provider === "cdnlivetv" ? "cdnlivetv.tv" :
+                 activeStream?.provider === "watchfooty" ? "watchfooty.st" :
+                 activeStream?.provider === "embedsports" ? "embedsports.top" :
+                 activeStream?.provider === "streamedpk" ? "streamed.pk" :
+                 activeStream?.provider === "sportsembed" ? "sportsembed.su" :
+                 "Connecting to server..."}
+              </p>
+              {isEmbedStream && iframeElapsed > 0 && (
+                <p className="text-[10px] text-white/20 mt-1">{iframeElapsed}s / 20s timeout</p>
+              )}
+            </div>
+
             {activeStream?.corsEnabled && (
               <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">CORS Direct</span>
             )}
             {isEmbedStream && (
               <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400">Embed Player</span>
+            )}
+
+            {/* Warning after 15s for embed */}
+            {isEmbedStream && iframeElapsed >= 15 && (
+              <div className="px-4 py-2 rounded-lg bg-amber-900/60 border border-amber-500/30 text-amber-200 text-[11px] font-bold text-center">
+                Stream taking too long. Auto-switching in {20 - iframeElapsed}s...
+              </div>
             )}
           </div>
         )}

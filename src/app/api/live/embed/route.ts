@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 
 // ============================================================
-// LIVE STREAM RESOLVER — StreamedPK-first approach
-// PRIMARY: streamed.pk (Alpha–Intel sources via Streams API)
-// SECONDARY: streamfree.app (CDN has CORS! M3U8 tokens)
-// TERTIARY: dami-tv.pro (embed + HLS)
-// BACKUP: watchfooty.st (embed URLs), sportsembed.su (embed)
+// LIVE STREAM RESOLVER — DamiTV + StreamFree + WatchFooty
+// PRIMARY: DamiTV (HLS Player embed)
+// SECONDARY: streamfree.app (origin/miror servers + M3U8 with CORS CDN)
+// TERTIARY: watchfooty.st (embed URLs), sportsembed.su (embed)
 // ============================================================
 
 export const runtime = "edge";
@@ -41,90 +40,59 @@ interface StreamResult {
   streamType: "m3u8" | "embed";
 }
 
-// ── PROVIDER 1 (PRIMARY): streamed.pk — ALL 10 sources (admin, alpha–intel) ──
-const STREAMED_PRIORITY: Record<string, number> = { admin: 1, delta: 2, golf: 3, echo: 4, bravo: 5, alpha: 6, charlie: 7, foxtrot: 8, hotel: 9, intel: 10 };
-
+// ── PROVIDER 1b: streamed.pk (Multi-server sports embeds) ──
+// StreamedPK provides embed URLs from multiple servers (admin, alpha, bravo, etc.)
+// Sources come as "streamed-admin", "streamed-alpha", etc. with source IDs
 async function resolveStreamedPK(sources: { source: string; id: string }[]): Promise<StreamResult[]> {
   const results: StreamResult[] = [];
+  const sourceLabels: Record<string, string> = {
+    admin: "Admin", alpha: "Alpha", bravo: "Bravo", charlie: "Charlie",
+    delta: "Delta", echo: "Echo", foxtrot: "Foxtrot", golf: "Golf",
+    hotel: "Hotel", intel: "Intel",
+  };
 
-  const fetchPromises = sources.map(async (src) => {
-    const localResults: StreamResult[] = [];
+  const resolvePromises = sources.map(async (src) => {
+    const serverResults: StreamResult[] = [];
     try {
-      const data = await GETjson(`https://streamed.pk/api/stream/${src.source}/${encodeURIComponent(src.id)}`);
-      const streams = Array.isArray(data) ? data : (data && typeof data === 'object' ? [data] : []);
+      // Extract the server name from "streamed-{server}"
+      const serverName = src.source.replace("streamed-", "");
+      const res = await fetch(`https://streamed.pk/api/stream/${serverName}/${encodeURIComponent(src.id)}`, {
+        signal: makeCtrl().signal,
+        headers: { "User-Agent": UA, Accept: "application/json" },
+      });
+      if (!res.ok) return serverResults;
+      const data = await res.json();
+      if (!Array.isArray(data)) return serverResults;
 
-      const sourceLabel = src.source.charAt(0).toUpperCase() + src.source.slice(1);
-
-      for (const s of streams) {
-        if (!s.embedUrl) continue;
-
-        localResults.push({
-          id: `sp-${src.source}-${s.id || s.streamNo}`, streamNo: s.streamNo || localResults.length + 1,
-          language: s.language || "English", hd: s.hd !== false, m3u8Url: "", quality: s.hd ? "HD" : "SD",
-          source: `StreamPK ${sourceLabel} S${s.streamNo || localResults.length + 1}`,
-          viewers: s.viewers || 0, provider: "streamed",
-          corsEnabled: false, referer: "https://streamed.pk/", embedUrl: s.embedUrl, streamType: "embed",
-        });
+      for (const stream of data) {
+        if (stream.embedUrl) {
+          const label = sourceLabels[serverName] || serverName.charAt(0).toUpperCase() + serverName.slice(1);
+          serverResults.push({
+            id: `sp-${serverName}-${src.id}-${stream.streamNo || serverResults.length}`,
+            streamNo: stream.streamNo || serverResults.length + 1,
+            language: stream.language || "English",
+            hd: stream.hd !== false,
+            m3u8Url: "",
+            quality: stream.hd ? "720p" : "SD",
+            source: `StreamedPK ${label}`,
+            viewers: 0,
+            provider: "streamedpk",
+            corsEnabled: false,
+            referer: "https://streamed.pk/",
+            embedUrl: stream.embedUrl,
+            streamType: "embed",
+          });
+        }
       }
     } catch {}
-    return localResults;
+    return serverResults;
   });
 
-  const allResults = await Promise.all(fetchPromises);
-  for (const r of allResults) results.push(...r);
-
-  results.sort((a, b) => (STREAMED_PRIORITY[a.source.replace('StreamPK ', '').toLowerCase()] || 50) - (STREAMED_PRIORITY[b.source.replace('StreamPK ', '').toLowerCase()] || 50));
+  const allResults = await Promise.allSettled(resolvePromises);
+  for (const r of allResults) {
+    if (r.status === "fulfilled") results.push(...r.value);
+  }
   return results;
-}
-
-// ── NEW: Search StreamedPK by team names to find sources ──
-// When we don't have StreamedPK sources directly, search their API
-async function searchStreamedPKByTeams(homeTeam: string, awayTeam: string, sport: string): Promise<{ source: string; id: string }[]> {
-  if (!homeTeam && !awayTeam) return [];
-
-  const normTeam = (name: string): string =>
-    name.toLowerCase().trim()
-      .replace(/[^a-z0-9 ]/g, "")
-      .replace(/\bman\b/g, "manchester")
-      .replace(/\bunited\b/g, "utd")
-      .replace(/\bfc\b/g, "").replace(/\bsc\b/g, "").replace(/\bafc\b/g, "")
-      .trim();
-
-  const normHome = normTeam(homeTeam);
-  const normAway = normTeam(awayTeam);
-
-  try {
-    // Search both live and today matches
-    const [liveData, todayData] = await Promise.allSettled([
-      GETjson("https://streamed.pk/api/matches/live"),
-      GETjson("https://streamed.pk/api/matches/all-today"),
-    ]);
-
-    const allMatches: any[] = [];
-    if (liveData.status === "fulfilled" && Array.isArray(liveData.value)) allMatches.push(...liveData.value);
-    if (todayData.status === "fulfilled" && Array.isArray(todayData.value)) allMatches.push(...todayData.value);
-
-    for (const m of allMatches) {
-      const mHome = normTeam(m.teams?.home?.name || m.home_team || "");
-      const mAway = normTeam(m.teams?.away?.name || m.away_team || "");
-
-      // Check team match (direct, swapped, or partial)
-      const teamsMatch =
-        (normHome && normAway) && (
-          (mHome === normHome && mAway === normAway) ||
-          (mHome === normAway && mAway === normHome) ||
-          ((normHome.includes(mHome) || mHome.includes(normHome)) &&
-           (normAway.includes(mAway) || mAway.includes(normAway))) ||
-          ((normHome.includes(mAway) || mAway.includes(normHome)) &&
-           (normAway.includes(mHome) || mHome.includes(normAway)))
-        );
-
-      if (teamsMatch && m.sources && m.sources.length > 0) {
-        return m.sources;
-      }
-    }
-  } catch {}
-  return [];
 }
 
 // ── PROVIDER 2: streamfree.app (CDN has CORS!) ──
@@ -132,7 +100,7 @@ async function resolveStreamfree(category: string, streamKey: string): Promise<S
   const results: StreamResult[] = [];
 
   try {
-    const embedUrl = `https://streamfree.app/embed/${category}/${streamKey}`;
+    const embedUrl = `https://streamfree.app/embed/${category}/${streamKey}?quality=1080p&category=${category}&server=origin`;
     const html = await GEThtml(embedUrl, { Referer: "https://streamfree.app/" });
 
     let tokens: Record<string, { _t: string; _e: number; _n: string }> = {};
@@ -210,18 +178,36 @@ async function resolveStreamfree(category: string, streamKey: string): Promise<S
       streamNo++;
     }
 
-    const streamfreeEmbedUrl = `https://streamfree.app/embed/${category}/${streamKey}`;
+    // StreamFree embed with proper format: /embed/{category}/{key}?quality=1080p&category={cat}&server=origin
+    const streamfreeEmbedUrl = `https://streamfree.app/embed/${category}/${streamKey}?quality=1080p&category=${category}&server=origin`;
     results.push({
       id: `sf-embed-${streamKey}`, streamNo, language: "English", hd: true,
-      m3u8Url: "", quality: "720p", source: "StreamFree Embed", viewers: 0, provider: "streamfree",
+      m3u8Url: "", quality: "1080p", source: "StreamFree Origin", viewers: 0, provider: "streamfree",
       corsEnabled: false, referer: "https://streamfree.app/", embedUrl: streamfreeEmbedUrl, streamType: "embed",
+    });
+    // Also add miror server as backup
+    const mirorEmbedUrl = `https://streamfree.app/embed/${category}/${streamKey}?quality=1080p&category=${category}&server=miror`;
+    results.push({
+      id: `sf-embed-miror-${streamKey}`, streamNo: streamNo + 1, language: "English", hd: true,
+      m3u8Url: "", quality: "1080p", source: "StreamFree Miror", viewers: 0, provider: "streamfree",
+      corsEnabled: false, referer: "https://streamfree.app/", embedUrl: mirorEmbedUrl, streamType: "embed",
     });
   } catch (err: any) {
     if (category && streamKey) {
+      // Fallback embed with proper format
       results.push({
         id: `sf-embed-fallback-${streamKey}`, streamNo: 1, language: "English", hd: true,
-        m3u8Url: "", quality: "720p", source: "StreamFree Embed", viewers: 0, provider: "streamfree",
-        corsEnabled: false, referer: "https://streamfree.app/", embedUrl: `https://streamfree.app/embed/${category}/${streamKey}`, streamType: "embed",
+        m3u8Url: "", quality: "1080p", source: "StreamFree Origin", viewers: 0, provider: "streamfree",
+        corsEnabled: false, referer: "https://streamfree.app/",
+        embedUrl: `https://streamfree.app/embed/${category}/${streamKey}?quality=1080p&category=${category}&server=origin`,
+        streamType: "embed",
+      });
+      results.push({
+        id: `sf-embed-miror-fallback-${streamKey}`, streamNo: 2, language: "English", hd: true,
+        m3u8Url: "", quality: "1080p", source: "StreamFree Miror", viewers: 0, provider: "streamfree",
+        corsEnabled: false, referer: "https://streamfree.app/",
+        embedUrl: `https://streamfree.app/embed/${category}/${streamKey}?quality=1080p&category=${category}&server=miror`,
+        streamType: "embed",
       });
     }
   }
@@ -230,16 +216,32 @@ async function resolveStreamfree(category: string, streamKey: string): Promise<S
 }
 
 // ── PROVIDER 3: dami-tv.pro ──
-async function resolveDamiTV(matchId: string): Promise<StreamResult[]> {
+// resolve = the stream ID/uri_name (like "mlb/2026-05-27/mia-tor")
+// name = the display name (like "Miami Marlins vs. Toronto Blue Jays")
+async function resolveDamiTV(matchId: string, matchName: string): Promise<StreamResult[]> {
   const results: StreamResult[] = [];
   try {
+    // Use matchId as resolve, matchName as the display name for the HLS player
+    const resolveId = matchId;
+    const displayName = matchName || matchId;
+
+    // PRIMARY: HLS Player embed — /player/hls/?v=300&resolve={id}&name={url_encoded_name}
+    const hlsEmbedUrl = `https://dami-tv.pro/player/hls/?v=300&resolve=${encodeURIComponent(resolveId)}&name=${encodeURIComponent(displayName)}`;
+    results.push({
+      id: `dami-hls-${matchId}`, streamNo: 1, language: "English", hd: true,
+      m3u8Url: "", quality: "720p", source: "DamiTV HLS", viewers: 0, provider: "damitv",
+      corsEnabled: false, referer: "https://dami-tv.pro/", embedUrl: hlsEmbedUrl, streamType: "embed",
+    });
+
+    // FALLBACK: Old embed format
     const embedUrl = `https://dami-tv.pro/embed/?id=${encodeURIComponent(matchId)}`;
     results.push({
-      id: `dami-embed-${matchId}`, streamNo: 1, language: "English", hd: true,
-      m3u8Url: "", quality: "720p", source: "DamiTV", viewers: 0, provider: "damitv",
+      id: `dami-embed-${matchId}`, streamNo: 2, language: "English", hd: true,
+      m3u8Url: "", quality: "720p", source: "DamiTV Embed", viewers: 0, provider: "damitv",
       corsEnabled: false, referer: "https://dami-tv.pro/", embedUrl, streamType: "embed",
     });
 
+    // Try HLS M3U8
     try {
       const m3u8Url = `https://dami-tv.pro/live-hls/channel/${encodeURIComponent(matchId)}/playlist.m3u8`;
       const res = await fetch(m3u8Url, { signal: makeCtrl().signal, headers: { "User-Agent": UA, Referer: "https://dami-tv.pro/" } });
@@ -247,14 +249,15 @@ async function resolveDamiTV(matchId: string): Promise<StreamResult[]> {
         const ct = res.headers.get("content-type") || "";
         if (ct.includes("mpegurl") || ct.includes("octet-stream")) {
           results.push({
-            id: `dami-hls-${matchId}`, streamNo: results.length + 1, language: "English", hd: true,
-            m3u8Url, quality: "720p", source: "DamiTV HLS", viewers: 0, provider: "damitv",
+            id: `dami-hls-m3u8-${matchId}`, streamNo: results.length + 1, language: "English", hd: true,
+            m3u8Url, quality: "720p", source: "DamiTV HLS M3U8", viewers: 0, provider: "damitv",
             corsEnabled: false, referer: "https://dami-tv.pro/", streamType: "m3u8",
           });
         }
       }
     } catch {}
 
+    // Try PPV streams
     try {
       const data = await GETjson(`https://dami-tv.pro/papi/stream/ppv/${encodeURIComponent(matchId)}`, { Referer: "https://dami-tv.pro/" });
       if (Array.isArray(data)) {
@@ -320,6 +323,88 @@ async function resolveSportsembedSu(category: string, matchId: string): Promise<
   return results;
 }
 
+// ── PROVIDER 6: embedsports.top ──
+// Generates embed URLs based on sport category
+// Pattern: https://embedsports.top/embed/admin/admin-{slug}/1
+async function resolveEmbedsportsTop(sport: string, homeTeam: string, awayTeam: string, streamKey: string): Promise<StreamResult[]> {
+  const results: StreamResult[] = [];
+
+  // Map our sport categories to embedsports.top slugs
+  const sportSlugMap: Record<string, string[]> = {
+    cricket: ["willow-cricket", "sky-sports-cricket"],
+    tennis: ["tennis-channel", "sky-sports-tennis"],
+    "motor-sports": ["sky-sports-f1"],
+    racing: ["sky-sports-f1"],
+    football: ["sky-sports-football", "sky-sports-main-event"],
+    soccer: ["sky-sports-football", "sky-sports-main-event"],
+    basketball: ["espn"],
+    "american-football": ["espn"],
+    baseball: ["espn"],
+    hockey: ["espn"],
+    fight: ["sky-sports-action"],
+    combat: ["sky-sports-action"],
+    golf: ["sky-sports-golf"],
+    rugby: ["sky-sports-action"],
+  };
+
+  // Also check streamKey for known channel mappings
+  const channelSlugMap: Record<string, string> = {
+    willow: "willow-cricket",
+    cricketsky: "willow-cricket",
+    skytennis: "tennis-channel",
+    skyf1: "sky-sports-f1",
+    skysportsgolf: "sky-sports-golf",
+    skysportsfootball: "sky-sports-football",
+    skysports: "sky-sports-main-event",
+    skysportsmainevent: "sky-sports-main-event",
+    skysportsaction: "sky-sports-action",
+    skysportsarena: "sky-sports-arena",
+    skysportsnews: "sky-sports-news",
+    tntsports1: "tnt-sports",
+    btsport: "tnt-sports",
+    espn: "espn",
+    cbc: "espn",
+    bbc: "sky-sports-main-event",
+    supersport: "sky-sports-main-event",
+  };
+
+  // If streamKey matches a known channel, use that slug
+  const keyLower = (streamKey || "").toLowerCase();
+  if (channelSlugMap[keyLower]) {
+    const slug = channelSlugMap[keyLower];
+    // Add multiple server options for known channels
+    const maxServers = (keyLower === "willow" || keyLower === "cricketsky") ? 6 :
+                       (keyLower === "skytennis" || keyLower === "tntsports1" || keyLower === "skyf1") ? 2 : 1;
+    for (let i = 1; i <= maxServers; i++) {
+      results.push({
+        id: `es-ch-${slug}-${i}`, streamNo: i, language: "English", hd: true,
+        m3u8Url: "", quality: "720p", source: `EmbedSports Server ${i}`, viewers: 0,
+        provider: "embedsports", corsEnabled: false, referer: "https://embedsports.top/",
+        embedUrl: `https://embedsports.top/embed/admin/admin-${slug}/${i}`,
+        streamType: "embed",
+      });
+    }
+    return results;
+  }
+
+  // Otherwise, add embeds based on sport category
+  const slugs = sportSlugMap[sport] || [];
+  for (const slug of slugs) {
+    const maxServers = (sport === "cricket" || sport === "tennis") ? 2 : 1;
+    for (let i = 1; i <= maxServers; i++) {
+      results.push({
+        id: `es-${sport}-${slug}-${i}`, streamNo: results.length + 1, language: "English", hd: true,
+        m3u8Url: "", quality: "720p", source: `EmbedSports ${slug.replace(/-/g, " ")} ${i}`, viewers: 0,
+        provider: "embedsports", corsEnabled: false, referer: "https://embedsports.top/",
+        embedUrl: `https://embedsports.top/embed/admin/admin-${slug}/${i}`,
+        streamType: "embed",
+      });
+    }
+  }
+
+  return results;
+}
+
 // ── MAIN HANDLER ──
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -328,6 +413,7 @@ export async function GET(req: Request) {
   const streamCategory = url.searchParams.get("streamCategory") || "";
   const channelCode = url.searchParams.get("channelCode") || "";
   const damitvId = url.searchParams.get("damitvId") || "";
+  const damitvName = url.searchParams.get("damitvName") || "";
   const watchfootyId = url.searchParams.get("watchfootyId") || "";
   const sources = url.searchParams.get("sources") || "";
   const matchId = url.searchParams.get("matchId") || "";
@@ -346,20 +432,11 @@ export async function GET(req: Request) {
 
   const resolvePromises: Promise<StreamResult[]>[] = [];
 
-  // ── PRIORITY 1: StreamedPK (Alpha–Intel + Admin) — PRIMARY source ──
-  if (parsedSources.length > 0) {
-    resolvePromises.push(resolveStreamedPK(parsedSources));
-  } else if (homeTeam || awayTeam) {
-    // NO StreamedPK sources in props — SEARCH StreamedPK API by team names!
-    // This is the KEY fix: always try to find StreamedPK sources
-    const searchSP = async (): Promise<StreamResult[]> => {
-      const foundSources = await searchStreamedPKByTeams(homeTeam, awayTeam, sport);
-      if (foundSources.length > 0) {
-        return resolveStreamedPK(foundSources);
-      }
-      return [];
-    };
-    resolvePromises.push(searchSP());
+  // ── PRIORITY 1: DamiTV (if damitvId provided) — PRIMARY source ──
+  // damitvId = the resolve ID (uri_name like "mlb/2026-05-27/mia-tor")
+  // damitvName = the display name (like "Miami Marlins vs. Toronto Blue Jays")
+  if (damitvId) {
+    resolvePromises.push(resolveDamiTV(damitvId, damitvName));
   }
 
   // ── PRIORITY 2: streamfree (needs streamKey + streamCategory) ──
@@ -367,27 +444,31 @@ export async function GET(req: Request) {
     resolvePromises.push(resolveStreamfree(streamCategory, streamKey));
   }
 
+  // ── PRIORITY 2b: StreamedPK (needs sources array with streamed-* entries) ──
+  const streamedSources = parsedSources.filter(s => s.source.startsWith("streamed-") && s.id);
+  if (streamedSources.length > 0) {
+    resolvePromises.push(resolveStreamedPK(streamedSources));
+  }
+
   // Helper: clean matchId by stripping prefixes
   const cleanMatchId = matchId.replace(/^(espn|wf|sp|sf|cdn|dami|se|es)-/i, "");
 
-  // ── PRIORITY 3: DamiTV ──
-  // ONLY resolve DamiTV if we have an explicit damitvId from the API.
-  // DO NOT add DamiTV as a fallback for matches that didn't come from DamiTV.
-  // This prevents DamiTV showing as a source for every match when it doesn't have streams.
-  if (damitvId) {
-    resolvePromises.push(resolveDamiTV(damitvId));
-  }
-
-  // ── PRIORITY 4: WatchFooty ──
+  // ── PRIORITY 3: WatchFooty ──
   if (watchfootyId) {
     resolvePromises.push(resolveWatchfooty(parseInt(watchfootyId)));
   }
 
-  // ── PRIORITY 5: SportsEmbed ──
+  // ── PRIORITY 4: SportsEmbed ──
   const sportsrcCategory = url.searchParams.get("sportsrcCategory") || streamCategory || "sports";
   const sportsrcId = url.searchParams.get("sportsrcId") || matchId || "";
   if (sportsrcId) {
     resolvePromises.push(resolveSportsembedSu(sportsrcCategory, sportsrcId));
+  }
+
+  // ── PRIORITY 5: EmbedSports.top — add sport-specific embed links ──
+  // Only add if we have a sport category and either a streamKey or team names
+  if (sport && (streamKey || homeTeam || awayTeam)) {
+    resolvePromises.push(resolveEmbedsportsTop(sport, homeTeam, awayTeam, streamKey));
   }
 
   // Fallback: if no providers matched at all, try SportsEmbed only
@@ -408,11 +489,11 @@ export async function GET(req: Request) {
     return true;
   });
 
-  // Sort: StreamedPK first, then other embeds, then M3U8
+  // Sort: DamiTV first, then other embeds, then M3U8
   const qualityOrder: Record<string, number> = { "2160p": 1, "1080p": 2, "HD": 2, "720p": 3, "SD": 4, "540p": 5, "480p": 6 };
   uniqueStreams.sort((a, b) => {
-    if (a.provider === "streamed" && b.provider !== "streamed") return -1;
-    if (b.provider === "streamed" && a.provider !== "streamed") return 1;
+    if (a.provider === "damitv" && b.provider !== "damitv") return -1;
+    if (b.provider === "damitv" && a.provider !== "damitv") return 1;
     if (a.streamType === "embed" && b.streamType !== "embed") return -1;
     if (a.streamType !== "embed" && b.streamType === "embed") return 1;
     if (a.corsEnabled && !b.corsEnabled) return -1;

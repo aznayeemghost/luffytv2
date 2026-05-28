@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 
 // ============================================================
 // LIVE TV & SPORTS — Multi-Source Aggregator
-// Sources: streamfree.app (M3U8), cdnlivetv.tv (762 channels),
-//          dami-tv.pro (match data), watchfooty.st (match data + streams),
-//          streamed.pk (backup), ESPN (schedules),
+// Sources: streamfree.app, dami-tv.pro, watchfooty.st, ESPN (schedules),
 //          sportsembed.su (embeds)
 // ============================================================
 
@@ -57,6 +55,7 @@ interface LiveMatch {
   channelCode?: string;
   channelName?: string;
   damitvId?: string;
+  damitvName?: string;
   watchfootyId?: number;
   sportsrcCategory?: string;
   sportsrcId?: string;
@@ -79,19 +78,52 @@ const STREAMFREE_CHANNELS = [
   { key: "willow", name: "Willow Cricket", category: "cricket", sport: "cricket" },
   { key: "cricketsky", name: "Sky Sports Cricket", category: "cricket", sport: "cricket" },
   { key: "skytennis", name: "Sky Sports Tennis", category: "tennis", sport: "tennis" },
-  { key: "skysports", name: "Sky Sports Main Event", category: "sports", sport: "other" },
+  { key: "skysports", name: "Sky Sports Main Event", category: "soccer", sport: "football" },
   { key: "skysportsfootball", name: "Sky Sports Football", category: "football", sport: "football" },
   { key: "skysportsnews", name: "Sky Sports News", category: "news", sport: "other" },
   { key: "skysportsgolf", name: "Sky Sports Golf", category: "golf", sport: "golf" },
-  { key: "skysportsaction", name: "Sky Sports Action", category: "sports", sport: "other" },
-  { key: "skysportsarena", name: "Sky Sports Arena", category: "sports", sport: "other" },
-  { key: "btsport", name: "BT Sport", category: "sports", sport: "other" },
-  { key: "tntsports1", name: "TNT Sports 1", category: "sports", sport: "other" },
-  { key: "espn", name: "ESPN", category: "sports", sport: "other" },
-  { key: "cbc", name: "CBC", category: "sports", sport: "other" },
-  { key: "bbc", name: "BBC Sport", category: "sports", sport: "other" },
-  { key: "supersport", name: "SuperSport", category: "sports", sport: "other" },
+  { key: "skysportsaction", name: "Sky Sports Action", category: "soccer", sport: "football" },
+  { key: "skysportsarena", name: "Sky Sports Arena", category: "soccer", sport: "football" },
+  { key: "btsport", name: "BT Sport", category: "soccer", sport: "football" },
+  { key: "tntsports1", name: "TNT Sports 1", category: "soccer", sport: "football" },
+  { key: "espn", name: "ESPN", category: "soccer", sport: "football" },
+  { key: "cbc", name: "CBC", category: "soccer", sport: "football" },
+  { key: "bbc", name: "BBC Sport", category: "soccer", sport: "football" },
+  { key: "supersport", name: "SuperSport", category: "soccer", sport: "football" },
 ];
+
+// Build a quick lookup map: streamKey → correct category
+const SF_KEY_CATEGORY_MAP: Record<string, string> = {};
+for (const ch of STREAMFREE_CHANNELS) { SF_KEY_CATEGORY_MAP[ch.key] = ch.category; }
+
+// Smart StreamFree category resolver:
+// 1. Check known channel mapping first (most accurate)
+// 2. If API category is generic "sports", detect from channel name
+// 3. Fall back to API category
+function resolveStreamfreeCategory(streamKey: string, apiCategory: string, channelName: string): string {
+  // Priority 1: Known channel mapping
+  if (SF_KEY_CATEGORY_MAP[streamKey]) return SF_KEY_CATEGORY_MAP[streamKey];
+
+  // Priority 2: If API says "sports", detect from the channel name
+  if (apiCategory === "sports" || apiCategory === "other") {
+    const name = (channelName || "").toLowerCase();
+    if (name.includes("cricket")) return "cricket";
+    if (name.includes("tennis")) return "tennis";
+    if (name.includes("f1") || name.includes("racing") || name.includes("rally") || name.includes("motor")) return "racing";
+    if (name.includes("golf")) return "golf";
+    if (name.includes("football") || name.includes("soccer")) return "football";
+    if (name.includes("basketball") || name.includes("nba")) return "basketball";
+    if (name.includes("baseball") || name.includes("mlb")) return "baseball";
+    if (name.includes("hockey") || name.includes("nhl")) return "hockey";
+    if (name.includes("fight") || name.includes("ufc") || name.includes("boxing")) return "combat";
+    if (name.includes("rugby")) return "rugby";
+    if (name.includes("dart")) return "darts";
+    if (name.includes("news")) return "news";
+  }
+
+  // Priority 3: Use API category as-is
+  return apiCategory;
+}
 
 async function fetchStreamfreeChannelStatus(): Promise<LiveMatch[]> {
   // Check availability of known TV channels via /api/stream-status/{key}
@@ -159,9 +191,16 @@ async function fetchStreamfreeStreams(): Promise<LiveMatch[]> {
         // Determine if this is a TV channel or a real match
         const isChannel = !homeTeam && !awayTeam && !ts;
 
+        // IMPORTANT: Resolve the correct StreamFree category for embed URLs.
+        // The API may return a generic "sports" category, but the embed URL needs
+        // the specific sport category (cricket, tennis, racing, etc.).
+        const streamKey = s.stream_key || s.key || s.id || "";
+        const rawApiCategory = category || s.category;
+        const resolvedCategory = resolveStreamfreeCategory(streamKey, rawApiCategory, s.title || s.name || "");
+
         matches.push({
-          id: `sf-${s.stream_key || s.key || s.id || Math.random().toString(36).slice(2)}`,
-          title: s.title || s.name || formatTitle(s.stream_key || ""),
+          id: `sf-${streamKey || Math.random().toString(36).slice(2)}`,
+          title: s.title || s.name || formatTitle(streamKey),
           sport: isChannel ? "other" : sport,
           sportName: isChannel ? "TV Channel" : (SPORT_NAMES[sport] || capitalize(s.category || category)),
           date: ts,
@@ -174,10 +213,11 @@ async function fetchStreamfreeStreams(): Promise<LiveMatch[]> {
           isLive: s.live || s.is_live || s.status === "live" || isChannel || false,
           apiSource: "streamfree",
           sources: [],
-          streamKey: s.stream_key || s.key || s.id || "",
-          streamCategory: s.category || category,
+          streamKey,
+          // Use RESOLVED category (sport-specific, not generic "sports")
+          streamCategory: resolvedCategory,
           channelName: isChannel ? (s.title || s.name || "") : undefined,
-          channelCode: isChannel ? (s.category || category) : undefined,
+          channelCode: isChannel ? resolvedCategory : undefined,
         });
       }
     }
@@ -234,6 +274,7 @@ async function fetchDamiTVStreams(): Promise<LiveMatch[]> {
           apiSource: "damitv",
           sources: [],
           damitvId: s.uri_name || s.id || "",
+          damitvName: s.name || "",
         });
       }
     }
@@ -279,6 +320,7 @@ async function fetchDamiTVChannels(): Promise<LiveMatch[]> {
           apiSource: "damitv",
           sources: [],
           damitvId: s.uri_name || s.id || "",
+          damitvName: s.name || "",
           channelName: s.name || "",
           channelCode: s.category_name || category.category || "",
         });
@@ -530,32 +572,43 @@ async function fetchWatchfootyPopular(): Promise<LiveMatch[]> {
   } catch { return []; }
 }
 
-// ── SOURCE 5: streamed.pk (9 stream sources: alpha–intel) ──
-async function fetchStreamedPK(endpoint: string): Promise<LiveMatch[]> {
+// ── SOURCE 5: streamed.pk (Sports embed aggregation) ──
+// StreamedPK provides live match embeds from multiple server sources (admin, alpha, bravo, etc.)
+async function fetchStreamedPK(): Promise<LiveMatch[]> {
   try {
-    const res = await httpGet(`https://streamed.pk${endpoint}`);
+    const res = await httpGet("https://streamed.pk/api/matches/live");
     if (!res.ok) return [];
     const data = await res.json();
     if (!Array.isArray(data)) return [];
 
-    return data.map((m: any): LiveMatch => {
-      const sources = Array.isArray(m.sources) ? m.sources.map((s: any) => ({ source: s.source || "", id: s.id || "" })) : [];
-      const isLiveEndpoint = endpoint.includes("/live");
+    return data.map((match: any): LiveMatch => {
+      const catName = match.category || "other";
+      const sport = mapCategoryToSport(catName);
+      const homeTeam = match.teams?.home?.name || extractTeam(match.title || "", 0);
+      const awayTeam = match.teams?.away?.name || extractTeam(match.title || "", 1);
+      const homeBadge = match.teams?.home?.badge ? `https://streamed.pk/api/images/proxy/${match.teams.home.badge}` : "";
+      const awayBadge = match.teams?.away?.badge ? `https://streamed.pk/api/images/proxy/${match.teams.away.badge}` : "";
+
+      // Build sources array from StreamedPK sources
+      const sources: { source: string; id: string }[] = (match.sources || []).map((s: any) => ({
+        source: `streamed-${s.source}`,
+        id: s.id || "",
+      }));
 
       return {
-        id: `sp-${m.id || Math.random()}`,
-        title: m.title || "Match",
-        sport: mapCategoryToSport(m.category || m.sport || "other"),
-        sportName: SPORT_NAMES[mapCategoryToSport(m.category || m.sport || "other")] || capitalize(m.category || "other"),
-        date: m.date ? (typeof m.date === "number" ? (m.date > 1e12 ? m.date : m.date * 1000) : new Date(m.date).getTime()) : 0,
-        poster: m.poster ? (m.poster.startsWith("http") ? m.poster : `https://streamed.pk${m.poster}`) : "",
-        popular: m.popular || false,
-        homeTeam: m.teams?.home?.name || m.home_team || extractTeam(m.title || "", 0),
-        awayTeam: m.teams?.away?.name || m.away_team || extractTeam(m.title || "", 1),
-        homeBadge: m.teams?.home?.badge ? (m.teams.home.badge.startsWith("http") ? m.teams.home.badge : `https://streamed.pk/api/images/badge/${m.teams.home.badge}.webp`) : (m.home_logo || ""),
-        awayBadge: m.teams?.away?.badge ? (m.teams.away.badge.startsWith("http") ? m.teams.away.badge : `https://streamed.pk/api/images/badge/${m.teams.away.badge}.webp`) : (m.away_logo || ""),
-        isLive: m.live || m.isLive || m.status === "live" || m.status === "in" || false,
-        apiSource: "streamed",
+        id: `sp-${match.id}`,
+        title: match.title || "Live Match",
+        sport,
+        sportName: SPORT_NAMES[sport] || capitalize(catName),
+        date: match.date ? new Date(match.date).getTime() : 0,
+        poster: match.poster ? `https://streamed.pk${match.poster}` : "",
+        popular: match.popular || false,
+        homeTeam,
+        awayTeam,
+        homeBadge,
+        awayBadge,
+        isLive: true,
+        apiSource: "streamedpk",
         sources,
       };
     });
@@ -664,11 +717,10 @@ function normalizeTeamName(name: string): string {
 
 // ── Merge & Deduplicate ──
 // Uses fuzzy team name matching so "Man City vs Arsenal" (WatchFooty)
-// merges with "Manchester City vs Arsenal" (StreamedPK)
+// merges across providers
 function mergeMatches(lists: LiveMatch[][]): LiveMatch[] {
   const seen = new Map<string, LiveMatch>();
-  // Also keep a separate index by StreamedPK source IDs for cross-provider matching
-  const spSourceIndex = new Map<string, LiveMatch>(); // key: "source:id" -> match in seen
+
 
   for (const list of lists) {
     for (const m of list) {
@@ -704,20 +756,7 @@ function mergeMatches(lists: LiveMatch[][]): LiveMatch[] {
         }
       }
 
-      // If still no match AND this match has StreamedPK sources, try matching by source IDs
-      // This handles cases where team names are too different for fuzzy matching
-      // but both matches reference the same StreamedPK stream
-      if (!existing && m.sources && m.sources.length > 0) {
-        for (const src of m.sources) {
-          if (src.source && src.id) {
-            const spKey = `sp:${src.source}:${src.id}`;
-            if (spSourceIndex.has(spKey)) {
-              existing = spSourceIndex.get(spKey)!;
-              break;
-            }
-          }
-        }
-      }
+
 
       if (existing) {
         // Merge: prefer streamfree (has M3U8), fill missing fields
@@ -735,15 +774,6 @@ function mergeMatches(lists: LiveMatch[][]): LiveMatch[] {
         continue;
       }
       seen.set(exactKey, m);
-
-      // Index StreamedPK sources for future cross-provider matching
-      if (m.sources && m.sources.length > 0) {
-        for (const src of m.sources) {
-          if (src.source && src.id) {
-            spSourceIndex.set(`sp:${src.source}:${src.id}`, m);
-          }
-        }
-      }
     }
   }
   return Array.from(seen.values()).sort((a, b) => {
@@ -768,8 +798,7 @@ function pickMissing(base: LiveMatch, fill: LiveMatch): Partial<LiveMatch> {
   // Only mark as live if confirmed by a source; don't override a correct non-live status
   // from a more authoritative/recent source
   if (fill.isLive && !base.isLive) result.isLive = true;
-  // ALWAYS merge sources from fill into base — be aggressive about preserving StreamedPK sources
-  // This ensures StreamedPK sources are never lost even when WatchFooty matches come first
+  // Merge sources from fill into base
   if (fill.sources.length > 0) {
     if (base.sources.length === 0) {
       // Base has no sources — just use fill's sources
@@ -793,6 +822,7 @@ function pickMissing(base: LiveMatch, fill: LiveMatch): Partial<LiveMatch> {
   // IMPORTANT: Only merge damitvId if the match actually came from DamiTV API
   // This prevents DamiTV showing as a source for every match
   if (!base.damitvId && fill.damitvId && fill.apiSource === "damitv") result.damitvId = fill.damitvId;
+  if (!base.damitvName && fill.damitvName && fill.apiSource === "damitv") result.damitvName = fill.damitvName;
   if (!base.sportsrcCategory && fill.sportsrcCategory && fill.apiSource === "sportsembed") result.sportsrcCategory = fill.sportsrcCategory;
   if (!base.sportsrcId && fill.sportsrcId && fill.apiSource === "sportsembed") result.sportsrcId = fill.sportsrcId;
   if (!base.channelCode && fill.channelCode) result.channelCode = fill.channelCode;
@@ -888,18 +918,16 @@ export async function GET(req: Request) {
     const wfTopTeamsPromise = fetchWatchfootyTopTeams(sport || undefined);
 
     // Fetch from ALL sources in parallel
-    const [streamfree, streamfreeChannels, damiChannels, damiSports, wfLive, wfAll, wfPopularLive, wfPopular, streamedLive, streamedToday, streamedUpcoming, espn, sportsembed] = await Promise.allSettled([
+    const [streamfree, streamfreeChannels, damiChannels, damiSports, streamedpk, wfLive, wfAll, wfPopularLive, wfPopular, espn, sportsembed] = await Promise.allSettled([
       fetchStreamfreeStreams(),
       fetchStreamfreeChannelStatus(), // Check StreamFree TV channel availability
       fetchDamiTVChannels(),
       fetchDamiTVStreams(),
+      fetchStreamedPK(), // StreamedPK sports matches
       fetchWatchfootyLive(),
       fetchWatchfootyAll(),
       fetchWatchfootyPopularLive(),
       fetchWatchfootyPopular(),
-      fetchStreamedPK("/api/matches/live"),
-      fetchStreamedPK("/api/matches/all-today"),
-      fetchStreamedPK("/api/matches/upcoming"),
       fetchESPNMatches(),
       fetchSportsembedSu(),
     ]);
@@ -915,14 +943,10 @@ export async function GET(req: Request) {
     // Also extract TV channels from StreamFree streams list (channels with no teams/timestamp)
     const sfStreamChannels = (streamfree.status === "fulfilled" ? streamfree.value : [])
       .filter(m => m.channelName && !m.homeTeam && !m.awayTeam);
-    // Extract TV channels from StreamedPK (admin sources with no date = TV channels)
-    const streamedTVChannels = (streamedLive.status === "fulfilled" ? streamedLive.value : [])
-      .filter(m => m.sources?.some(s => s.source === "admin") && !m.date);
-
     // Deduplicate TV channels by name
     const allTVChannels: LiveMatch[] = [];
     const seenChannelNames = new Set<string>();
-    for (const ch of [...sfChannels, ...sfStreamChannels, ...streamedTVChannels]) {
+    for (const ch of [...sfChannels, ...sfStreamChannels]) {
       // NOTE: DamiTV channels removed from here — they now go to the dedicated Live TV (Daddylive) page
       const name = (ch.channelName || ch.title || "").toLowerCase().trim();
       if (!name || seenChannelNames.has(name)) continue;
@@ -940,14 +964,12 @@ export async function GET(req: Request) {
       (streamfree.status === "fulfilled" ? streamfree.value : []).filter(m => m.homeTeam || m.awayTeam || m.date),
       // DamiTV: only actual sports matches (already filtered in fetchDamiTVStreams)
       damiSports.status === "fulfilled" ? damiSports.value : [],
+      // StreamedPK: live sports matches with multiple server sources
+      streamedpk.status === "fulfilled" ? streamedpk.value : [],
       wfLive.status === "fulfilled" ? wfLive.value : [],
       wfAll.status === "fulfilled" ? wfAll.value : [],
       wfPopularLive.status === "fulfilled" ? wfPopularLive.value : [],
       wfPopular.status === "fulfilled" ? wfPopular.value : [],
-      // StreamedPK: only real matches (filter out admin/TV channels)
-      (streamedLive.status === "fulfilled" ? streamedLive.value : []).filter(m => !m.sources?.some(s => s.source === "admin") || m.date),
-      (streamedToday.status === "fulfilled" ? streamedToday.value : []).filter(m => !m.sources?.some(s => s.source === "admin") || m.date),
-      streamedUpcoming.status === "fulfilled" ? streamedUpcoming.value : [],
       espn.status === "fulfilled" ? espn.value : [],
       sportsembed.status === "fulfilled" ? sportsembed.value : [],
     ];
@@ -968,13 +990,11 @@ export async function GET(req: Request) {
       const confirmedByEspn = m.apiSource === "espn";
       // DamiTV always_live channels are 24/7 — keep them
       const isAlwaysLiveChannel = m.apiSource === "damitv" && !m.homeTeam && !m.awayTeam;
-      // StreamedPK /api/matches/live is authoritative — only returns live matches
-      const confirmedByStreamed = m.apiSource === "streamed" && m.isLive;
       // NOTE: WatchFooty /all and /popular endpoints are NOT authoritative for live status
       // They return ended matches too. Only /live endpoint is authoritative.
       // Since WatchFooty matches get apiSource "watchfooty" regardless of which endpoint,
       // we DO NOT give them a free pass for stale matches.
-      if (!confirmedByEspn && !isAlwaysLiveChannel && !confirmedByStreamed) {
+      if (!confirmedByEspn && !isAlwaysLiveChannel) {
         m.isLive = false;
         m.popular = false; // Also unmark popular for ended matches
       }

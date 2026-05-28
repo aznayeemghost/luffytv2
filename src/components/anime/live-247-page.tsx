@@ -5,7 +5,8 @@ import { useAppStore } from "./store";
 
 // ============================================================
 // 24/7 LIVE CHANNELS PAGE — Always-on streams
-// DamiTV 24/7 + StreamFree + DaddyLive non-sports channels
+// Sources: DamiTV + StreamFree
+// Uses API-provided logos from dami-tv.pro
 // ============================================================
 
 interface TVChannel {
@@ -15,8 +16,9 @@ interface TVChannel {
   sport?: string;
   country: { code: string; name: string; flag: string };
   embedUrl: string;
-  source: "daddylive" | "damitv" | "streamfree";
+  source: "damitv" | "streamfree";
   poster?: string;
+  logoUrl?: string;
   isLive?: boolean;
   isAlwaysLive?: boolean;
   status?: string;
@@ -49,65 +51,9 @@ const CAT_COLORS: Record<string, string> = {
 
 // Source colors and labels
 const SOURCE_CONFIG: Record<string, { color: string; label: string; shortLabel: string }> = {
-  daddylive: { color: "#3b82f6", label: "DaddyLive", shortLabel: "DADDY" },
-  damitv: { color: "#22c55e", label: "DamiTV", shortLabel: "DAMI" },
+  damitv: { color: "#f97316", label: "DamiTV", shortLabel: "DAMI" },
   streamfree: { color: "#a855f7", label: "StreamFree", shortLabel: "SF" },
 };
-
-// Channel LOGO_MAP for common channels
-const LOGO_MAP: Record<string, string> = {
-  "espn": "https://cdn.espnmedia.com/images/espn_logo.png",
-  "sky sports": "https://www.skysports.com/images/sky-sports-logo.png",
-  "bt sport": "https://production.btsport.com/images/bt-sport-logo.png",
-  "tnt sport": "https://tntsports.co.uk/images/tnt-sports-logo.png",
-  "bein": "https://www.beinsports.com/images/bein-sports-logo.png",
-  "dazn": "https://www.dazn.com/images/dazn-logo.png",
-  "nbc sport": "https://www.nbcsports.com/images/nbc-sports-logo.png",
-  "cbs sport": "https://www.cbssports.com/images/cbs-sports-logo.png",
-  "fox sport": "https://www.foxsports.com/images/fox-sports-logo.png",
-  "eurosport": "https://www.eurosport.com/images/eurosport-logo.png",
-  "cnn": "https://edition.cnn.com/images/cnn-logo.png",
-  "bbc": "https://static.files.bbci.co.uk/orbit/835287017f7c8f5b95e0e8ce7a0f4370/img/bbc-blocks-dark.png",
-  "hbo": "https://www.hbo.com/images/hbo-logo.png",
-  "discovery": "https://www.discovery.com/images/discovery-logo.png",
-  "nat geo": "https://www.nationalgeographic.com/images/nat-geo-logo.png",
-  "paramount": "https://www.paramount.com/images/paramount-logo.png",
-  "peacock": "https://www.peacocktv.com/images/peacock-logo.png",
-  "mtv": "https://www.mtv.com/images/mtv-logo.png",
-  "comedy": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Comedy_Central_2018_logo.svg/200px-Comedy_Central_2018_logo.svg.png",
-  "nickelodeon": "https://www.nickelodeon.com/images/nick-logo.png",
-  "nick": "https://www.nickelodeon.com/images/nick-logo.png",
-  "disney": "https://www.disney.com/images/disney-logo.png",
-  "cartoon": "https://www.cartoonnetwork.com/images/cn-logo.png",
-  "history": "https://www.history.com/images/history-logo.png",
-  "animal planet": "https://www.animalplanet.com/images/animal-planet-logo.png",
-  "science": "https://www.sciencechannel.com/images/science-logo.png",
-  "smithsonian": "https://www.smithsonianchannel.com/images/smithsonian-logo.png",
-  "lifetime": "https://www.mylifetime.com/images/lifetime-logo.png",
-  "bravo": "https://www.bravotv.com/images/bravo-logo.png",
-  "fx": "https://www.fxnetworks.com/images/fx-logo.png",
-  "amc": "https://www.amc.com/images/amc-logo.png",
-  "tbs": "https://www.tbs.com/images/tbs-logo.png",
-  "tnt": "https://www.tntdrama.com/images/tnt-logo.png",
-  "starz": "https://www.starz.com/images/starz-logo.png",
-  "showtime": "https://www.showtime.com/images/showtime-logo.png",
-  "bloomberg": "https://www.bloomberg.com/images/bloomberg-logo.png",
-  "cnbc": "https://www.cnbc.com/images/cnbc-logo.png",
-  "al jazeera": "https://www.aljazeera.com/images/aljazeera-logo.png",
-  "dw": "https://www.dw.com/images/dw-logo.png",
-  "france 24": "https://www.france24.com/images/france24-logo.png",
-  "euronews": "https://www.euronews.com/images/euronews-logo.png",
-};
-
-function getChannelLogo(name: string): string | null {
-  const lower = name.toLowerCase();
-  if (LOGO_MAP[lower]) return LOGO_MAP[lower];
-  const keys = Object.keys(LOGO_MAP).sort((a, b) => b.length - a.length);
-  for (const key of keys) {
-    if (lower.includes(key)) return LOGO_MAP[key];
-  }
-  return null;
-}
 
 export default function Live247Page() {
   const navigate = useAppStore(s => s.navigate);
@@ -141,7 +87,7 @@ export default function Live247Page() {
       if (!res.ok) throw new Error("Failed to load channels");
       const data = await res.json();
 
-      // Filter to 24/7 channels only
+      // Filter to 24/7 channels only — isAlwaysLive or non-sports categories
       const allChannels: TVChannel[] = data.channels || [];
       const live247Channels = allChannels.filter(ch =>
         ch.isAlwaysLive ||
@@ -182,6 +128,7 @@ export default function Live247Page() {
       channelId: channel.id,
       channelName: channel.name,
       channelCategory: channel.category,
+      channelStreamCategory: (channel as any).streamCategory || "",
       channelCountryCode: channel.country.code,
       channelCountryName: channel.country.name,
       channelEmbedUrl: channel.embedUrl,
@@ -311,7 +258,7 @@ export default function Live247Page() {
             {filteredChannels.map(channel => {
               const color = CAT_COLORS[channel.category] || CAT_COLORS.General;
               const srcConfig = SOURCE_CONFIG[channel.source];
-              const channelLogo = getChannelLogo(channel.name);
+              const hasLogo = channel.logoUrl;
 
               return (
                 <button
@@ -355,11 +302,11 @@ export default function Live247Page() {
                       </span>
                     </div>
 
-                    {/* Center — Channel logo or letter avatar */}
-                    {channelLogo ? (
+                    {/* Center — Channel logo from API or letter avatar */}
+                    {hasLogo ? (
                       <div className="relative z-10 flex items-center justify-center">
                         <img
-                          src={channelLogo}
+                          src={channel.logoUrl}
                           alt={channel.name}
                           className="w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-lg"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
