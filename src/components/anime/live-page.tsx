@@ -204,6 +204,85 @@ const SOURCE_BADGES: Record<string, { label: string; color: string; bg: string }
 };
 
 // ═══════════════════════════════════════════════════════════════
+// 24/7 STREAMS — Pinned always-live channels at top
+// ═══════════════════════════════════════════════════════════════
+interface Stream247 {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  embedUrl: string;
+  category: string;
+  streamCategory: string;
+  description: string;
+}
+
+const STREAMS_247: Stream247[] = [
+  {
+    id: "sf-willow",
+    name: "Willow Cricket",
+    icon: "🏏",
+    color: "#f59e0b",
+    embedUrl: "https://embedsports.top/embed/admin/admin-willow-cricket/1",
+    category: "Sports",
+    streamCategory: "cricket",
+    description: "24/7 Cricket — Live matches, highlights & more",
+  },
+];
+
+function Stream247Card({ stream, onWatch }: { stream: Stream247; onWatch: (s: Stream247) => void }) {
+  return (
+    <button
+      onClick={() => onWatch(stream)}
+      className="group relative flex-shrink-0 w-full rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl cursor-pointer border border-white/[0.08] hover:border-white/[0.18]"
+    >
+      <div className="relative flex items-center gap-4 p-4 sm:p-5" style={{ background: `linear-gradient(135deg, ${stream.color}18, ${stream.color}08, #0d0d12)` }}>
+        {/* Left: Channel icon */}
+        <div
+          className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-2xl sm:text-3xl"
+          style={{
+            background: `linear-gradient(135deg, ${stream.color}30, ${stream.color}15)`,
+            border: `1.5px solid ${stream.color}40`,
+          }}
+        >
+          {stream.icon}
+        </div>
+
+        {/* Middle: Channel info */}
+        <div className="flex-1 min-w-0 text-left">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-base sm:text-lg font-black text-white" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+              {stream.name}
+            </h3>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-600 text-white text-[8px] font-black uppercase tracking-wider shadow-lg">
+              <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+              LIVE 24/7
+            </span>
+          </div>
+          <p className="text-[11px] sm:text-[12px] text-white/40 font-medium">{stream.description}</p>
+        </div>
+
+        {/* Right: Watch button */}
+        <div className="flex-shrink-0">
+          <span
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase text-white transition-all group-hover:opacity-90"
+            style={{
+              background: `linear-gradient(135deg, ${stream.color}35, ${stream.color}18)`,
+              border: `1px solid ${stream.color}30`,
+            }}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Watch Now
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // NEWS TICKER BAR — Scrolling marquee at top
 // ═══════════════════════════════════════════════════════════════
 function NewsTicker({ articles }: { articles: NewsArticle[] }) {
@@ -632,6 +711,18 @@ export default function LivePage() {
 
   useEffect(() => { fetchNews(0, false); }, [fetchNews]);
 
+  // ── Navigate to watch a 24/7 stream ──
+  const handleWatch247 = (stream: Stream247) => {
+    navigate({
+      page: "live-tv-watch",
+      channelId: stream.id,
+      channelName: stream.name,
+      channelCategory: stream.category,
+      channelStreamCategory: stream.streamCategory,
+      channelEmbedUrl: stream.embedUrl,
+    } as any);
+  };
+
   // ── Navigate to watch a TV channel ──
   const handleWatchChannel = (channel: TVChannel) => {
     navigate({
@@ -926,6 +1017,25 @@ export default function LivePage() {
 
         {!loading && (
           <>
+            {/* ══════════════════════════════════════════
+                24/7 STREAMS — Always-live channels (TOP OF PAGE)
+                ══════════════════════════════════════════ */}
+            {STREAMS_247.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                    <span className="text-base">📡</span> 24/7 Streams
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">ALWAYS LIVE</span>
+                  </h2>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {STREAMS_247.map(stream => (
+                    <Stream247Card key={stream.id} stream={stream} onWatch={handleWatch247} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* ══════════════════════════════════════════
                 MOST POPULAR — DamiTV Source (TOP OF PAGE)
                 ══════════════════════════════════════════ */}

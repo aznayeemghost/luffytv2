@@ -156,6 +156,9 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
   // Determine channel source
   const isDami = props.channelId.startsWith("dami-");
   const isSF = props.channelId.startsWith("sf-");
+  // Detect EmbedSports-only 24/7 channels (embedUrl contains embedsports.top)
+  // These should skip StreamFree server building and use EmbedSports directly
+  const isEmbedSportsOnly = isSF && props.channelEmbedUrl.includes("embedsports.top");
 
   // Extract DamiTV data from embed URL
   // damiResolveId: The numeric channel ID for the resolve API (e.g., "0", "1", "375")
@@ -242,7 +245,9 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     }
 
     // ── StreamFree servers ──
-    if (isSF) {
+    // Skip StreamFree server building for EmbedSports-only 24/7 channels
+    // (their embedUrl is embedsports.top, not streamfree.app)
+    if (isSF && !isEmbedSportsOnly) {
       // Use the actual StreamFree category from the embed URL or prop
       // NEVER use "sports" as default — must use the real category (racing, cricket, etc.)
       const sfCat = sfCategory;
@@ -305,7 +310,10 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
 
     // ── EmbedSports.top servers ──
     // Add EmbedSports.top as additional servers for specific channels
-    const sfKeyForES = sfMatch.streamKey || (isSF ? props.channelId.replace("sf-", "") : "");
+    // For EmbedSports-only 24/7 channels, these are the PRIMARY servers
+    const sfKeyForES = isEmbedSportsOnly
+      ? props.channelId.replace("sf-", "") // e.g., "willow"
+      : (sfMatch.streamKey || (isSF ? props.channelId.replace("sf-", "") : ""));
     const esChannelUrls = EMBEDSPORTS_CHANNELS[sfKeyForES || ""];
     if (esChannelUrls && esChannelUrls.length > 0) {
       esChannelUrls.forEach((url, idx) => {
@@ -379,7 +387,7 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
     }
 
     return availableServers;
-  }, [props.channelId, props.channelEmbedUrl, props.channelCountryCode, props.channelDamitvDefaultUrl, isDami, isSF, damiResolveId, damiName, sfMatch, sfCategory, props.channelName]);
+  }, [props.channelId, props.channelEmbedUrl, props.channelCountryCode, props.channelDamitvDefaultUrl, isDami, isSF, isEmbedSportsOnly, damiResolveId, damiName, sfMatch, sfCategory, props.channelName]);
 
   // Compute the best initial server
   const bestInitialServer = useMemo(() => {
