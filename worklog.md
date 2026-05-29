@@ -46,3 +46,54 @@ Stage Summary:
 - WatchFooty used as PRIMARY for display data (image, title, teams, scores)
 - Each DamiTV channel becomes a separate stream option (labeled with channel name)
 - Pushed to GitHub as commit b04f645
+---
+Task ID: 1
+Agent: Main
+Task: Add DamiTV streams to sports page using their API + create Live TV page with working embeds
+
+Work Log:
+- Fetched DamiTV API docs from https://dami-tv.pro/papi/api/streams - got full JSON structure with categories, streams, embed URLs
+- Key discovery: DamiTV embed URL format is `https://dami-tv.pro/embed/?id={id}` - these WORK
+- DamiTV API returns categories (american-football, afl, baseball, basketball, fight, cricket, football, hockey, motor-sports, rugby, tennis, 24/7-streams) with streams that have posters, embed URLs, sources
+- Rewrote /api/live/matches/route.ts with DamiTV as PRIMARY source (Source 1)
+  - DamiTV streams get embed URLs from API: stream.embed || stream.iframe || https://dami-tv.pro/embed/?id={id}
+  - Also adds DamiTV player HLS URLs as backup servers
+  - EmbedSports as Source 2 with match deduplication (adds as extra servers)
+  - VIPStreamed as Source 3
+  - WatchFooty as Source 4 with deduplication
+  - Matches sorted: live first, then by viewers
+- Rewrote /api/live/channels/route.ts
+  - DamiTV 24/7 streams (South Park, Family Guy, etc.) as Source 1
+  - DaddyLive API as Source 2
+- Created live-watch-page.tsx
+  - IFRAME WITHOUT SANDBOX ATTRIBUTE - this was blocking all embeds before
+  - 87vh height (within the 85-90vh range)
+  - Server selector with HD badges
+  - Auto-advance to next server on error
+  - Back button to Live page
+- Updated store.ts
+  - Added `live` and `live-watch` to Route type
+  - Added hash navigation for #live and #live-watch
+- Updated page.tsx
+  - Imported and rendered LivePage and LiveWatchPage
+  - live-watch is treated as watch page (no navbar/footer)
+- Updated navbar.tsx
+  - Added red "LIVE" button with animated pulse in top pill navbar
+  - Added "Live" tab in mobile bottom nav with broadcast icon
+  - Replaced Features with Live in bottom nav
+- Updated live-page.tsx
+  - Added poster field to LiveMatch interface
+  - Match cards now show DamiTV poster images
+  - Added LIVE/UPCOMING status badges (blue for upcoming, red+pulse for live)
+  - Added sport styles for American Football, AFL, Motor Sports, Fight
+- Build verified successful
+- Pushed to GitHub: fahadulalim93-cloud/luffytv-tasin (commit e3ae207)
+
+Stage Summary:
+- DamiTV is now the PRIMARY sports stream source with working embeds
+- LiveHDTV/DaddyLive dropped from matches (DaddyLive stays for channels)
+- Iframe has NO sandbox attribute (was blocking embeds)
+- Match deduplication across all APIs
+- Poster images from DamiTV API
+- Live TV accessible via red LIVE button in navbar + mobile bottom nav
+- All changes pushed to luffytv-tasin remote
