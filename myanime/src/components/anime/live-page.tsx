@@ -30,6 +30,7 @@ interface Channel {
   name: string;
   category: string;
   logo: string;
+  letter: string;
   servers: Array<{ label: string; embedUrl: string }>;
 }
 
@@ -648,7 +649,7 @@ export default function LivePage() {
       )}
 
       {/* ═════════════════════════════════════════════
-          CHANNELS VIEW
+          CHANNELS VIEW — 900+ TV channels with logos
           ═════════════════════════════════════════════ */}
       {viewMode === "channels" && !error && (
         <section className="space-y-5">
@@ -663,80 +664,122 @@ export default function LivePage() {
               }`}
               style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
             >
-              All
+              All ({channels.length})
             </button>
-            {channelCategories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setChannelFilter(cat)}
-                className={`px-4 py-2 text-[11px] font-bold rounded-xl transition-all whitespace-nowrap ${
-                  channelFilter === cat
-                    ? "bg-[#7c6cf0] text-white shadow-lg shadow-[#7c6cf0]/25"
-                    : "bg-white/[0.03] text-white/35 hover:text-white hover:bg-white/[0.06] border border-white/[0.05]"
-                }`}
-                style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-              >
-                {cat}
-              </button>
-            ))}
+            {channelCategories.map((cat) => {
+              const count = channels.filter(c => c.category === cat).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setChannelFilter(cat)}
+                  className={`px-4 py-2 text-[11px] font-bold rounded-xl transition-all whitespace-nowrap ${
+                    channelFilter === cat
+                      ? "bg-[#7c6cf0] text-white shadow-lg shadow-[#7c6cf0]/25"
+                      : "bg-white/[0.03] text-white/35 hover:text-white hover:bg-white/[0.06] border border-white/[0.05]"
+                  }`}
+                  style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+                >
+                  {cat} ({count})
+                </button>
+              );
+            })}
           </div>
 
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => <MatchSkeleton key={i} />)}
+          {/* Letter Quick Jump */}
+          {!loading && filteredChannels.length > 0 && (
+            <div className="flex items-center gap-1 overflow-x-auto scroll-container pb-1">
+              {Array.from(new Set(filteredChannels.map(c => c.letter || c.name.charAt(0).toUpperCase()))).sort().map(letter => {
+                const count = filteredChannels.filter(c => (c.letter || c.name.charAt(0).toUpperCase()) === letter).length;
+                return (
+                  <button
+                    key={letter}
+                    onClick={() => {
+                      const el = document.getElementById(`channel-letter-${letter}`);
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-white/[0.03] text-white/30 hover:text-white hover:bg-white/[0.08] border border-white/[0.04] transition-all whitespace-nowrap"
+                    style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+                  >
+                    {letter}
+                    <span className="text-[8px] opacity-40 ml-0.5">{count}</span>
+                  </button>
+                );
+              })}
             </div>
-          ) : filteredChannels.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredChannels.map((channel) => (
-                <div
-                  key={channel.id}
-                  onClick={() => handleWatchChannel(channel)}
-                  className="group relative bg-white/[0.02] border border-white/[0.05] rounded-xl overflow-hidden hover:bg-white/[0.05] hover:border-white/[0.12] hover:border-[#7c6cf0]/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
-                >
-                  <div className="p-4 flex items-center gap-3">
-                    {/* Channel Logo/Icon */}
-                    <div className="w-10 h-10 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden">
-                      {channel.logo ? (
-                        <img
-                          src={channel.logo}
-                          alt={channel.name}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <svg className="w-5 h-5 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <rect x="2" y="3" width="20" height="14" rx="2" />
-                          <line x1="8" y1="21" x2="16" y2="21" />
-                          <line x1="12" y1="17" x2="12" y2="21" />
-                        </svg>
-                      )}
-                    </div>
+          )}
 
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-[12px] font-bold text-white/80 truncate group-hover:text-white transition-colors" style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}>
-                        {channel.name}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[9px] font-bold text-white/20 uppercase" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
-                          {channel.category}
-                        </span>
-                        <span className="text-[9px] font-bold text-[#7c6cf0]/40" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
-                          {channel.servers.length} servers
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Play icon */}
-                    <div className="shrink-0 w-8 h-8 rounded-lg bg-[#7c6cf0]/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                      <svg className="w-3.5 h-3.5 text-[#7c6cf0]" fill="currentColor" viewBox="0 0 24 24">
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                    </div>
-                  </div>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 animate-pulse">
+                  <div className="w-12 h-12 rounded-lg bg-white/[0.04] mx-auto mb-3" />
+                  <div className="h-3 bg-white/[0.04] rounded w-3/4 mx-auto" />
                 </div>
               ))}
+            </div>
+          ) : filteredChannels.length > 0 ? (
+            <div className="space-y-4">
+              {/* Group channels by letter */}
+              {Array.from(new Set(filteredChannels.map(c => c.letter || c.name.charAt(0).toUpperCase()))).sort().map(letter => {
+                const letterChannels = filteredChannels.filter(c => (c.letter || c.name.charAt(0).toUpperCase()) === letter);
+                return (
+                  <div key={letter}>
+                    <div id={`channel-letter-${letter}`} className="flex items-center gap-3 mb-3 scroll-mt-20">
+                      <span className="text-2xl font-black text-white/10" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>{letter}</span>
+                      <div className="flex-1 h-px bg-white/[0.04]" />
+                      <span className="text-[9px] font-bold text-white/15" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>{letterChannels.length} channels</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                      {letterChannels.map((channel) => (
+                        <div
+                          key={channel.id}
+                          onClick={() => handleWatchChannel(channel)}
+                          className="group relative bg-white/[0.02] border border-white/[0.05] rounded-xl overflow-hidden hover:bg-white/[0.05] hover:border-white/[0.12] hover:border-[#7c6cf0]/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
+                        >
+                          <div className="p-3 flex flex-col items-center gap-2 text-center">
+                            {/* Channel Logo */}
+                            <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden">
+                              {channel.logo ? (
+                                <img
+                                  src={channel.logo}
+                                  alt={channel.name}
+                                  className="w-full h-full object-contain p-1"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-lg font-black text-white/10" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                                  {channel.name.charAt(0)}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Channel Name */}
+                            <h3 className="text-[11px] font-bold text-white/70 truncate w-full group-hover:text-white transition-colors" style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}>
+                              {channel.name}
+                            </h3>
+
+                            {/* Category badge */}
+                            <span className="text-[8px] font-bold text-white/15 uppercase" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                              {channel.category}
+                            </span>
+                          </div>
+
+                          {/* Play icon overlay on hover */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/30 rounded-xl">
+                            <div className="w-10 h-10 rounded-full bg-[#7c6cf0]/80 flex items-center justify-center shadow-lg shadow-[#7c6cf0]/30">
+                              <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -744,7 +787,7 @@ export default function LivePage() {
                 No channels found
               </p>
               <p className="text-[11px] text-white/15" style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}>
-                Check back later
+                Try a different search or category
               </p>
             </div>
           )}
@@ -761,7 +804,7 @@ export default function LivePage() {
               STREAM TIPS
             </h3>
             <p className="text-[11px] text-white/20 leading-relaxed max-w-md" style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}>
-              If a stream isn&apos;t working, try switching to another server. Streams auto-refresh every 60 seconds. Data provided by EmbedSports, VIPStreamed, and DLHD.
+              If a stream isn&apos;t working, try switching to another server. Live TV channels powered by DamiTV and DLHD. Sports data from DamiTV, EmbedSports, VIPStreamed, and WatchFooty.
             </p>
           </div>
           <div className="flex items-center gap-3">
