@@ -21,6 +21,8 @@ import MangaPage from "@/components/anime/manga-page";
 import MangaDetailPage from "@/components/anime/manga-detail";
 import MangaReader from "@/components/anime/manga-reader";
 import WatchNowPage from "@/components/anime/watchnow-page";
+import LivePage from "@/components/anime/live-page";
+import LiveWatchPage from "@/components/anime/live-watch-page";
 import ContactPage from "@/components/anime/contact-page";
 import GuidePage from "@/components/anime/guide-page";
 
@@ -190,7 +192,7 @@ export default function MainPage() {
     );
   }
 
-  const isWatchPage = route.page === "watch" || route.page === "movie-watch" || route.page === "tv-watch";
+  const isWatchPage = route.page === "watch" || route.page === "movie-watch" || route.page === "tv-watch" || route.page === "live-watch";
   const isMangaReader = route.page === "manga-read";
 
   const renderPage = () => {
@@ -213,6 +215,8 @@ export default function MainPage() {
       case "movie-watch": return <MovieWatchPage movieId={route.id} />;
       case "tv-watch": return <TVWatchPage tvId={route.id} season={route.season} episode={route.episode} />;
       case "watchnow": return <WatchNowPage />;
+      case "live": return <LivePage />;
+      case "live-watch": return <LiveWatchPage />;
       case "contact": return <ContactPage />;
       case "guide": return <GuidePage />;
       case "features": {

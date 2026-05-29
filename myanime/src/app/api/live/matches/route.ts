@@ -3,7 +3,42 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 10000;
+
+interface DamiTVSource {
+  source: string;
+  id: string;
+  name: string;
+  embed: string;
+}
+
+interface DamiTVStream {
+  id: string;
+  name: string;
+  poster: string;
+  starts_at: number;
+  ends_at: number;
+  category_name: string;
+  status: string;
+  league: string;
+  teams: {
+    home: { name: string; badge: string };
+    away: { name: string; badge: string };
+  };
+  uri_name: string;
+  viewers: number;
+  always_live: number;
+  tag: string;
+  iframe: string | null;
+  embed: string | null;
+  sources: DamiTVSource[];
+}
+
+interface DamiTVCategory {
+  category: string;
+  id: number;
+  streams: DamiTVStream[];
+}
 
 interface EmbedSportStream {
   id: string;
@@ -22,7 +57,28 @@ interface NormalizedMatch {
   league: string;
   viewers: number;
   hd: boolean;
+  poster: string;
+  status: string;
   servers: Array<{ label: string; embedUrl: string; hd: boolean }>;
+}
+
+// Map DamiTV category names to our display names
+function mapDamiCategory(cat: string): string {
+  const c = cat.toLowerCase();
+  if (c.includes("american-football") || c.includes("american football")) return "American Football";
+  if (c.includes("afl")) return "AFL";
+  if (c.includes("baseball")) return "Baseball";
+  if (c.includes("basketball")) return "Basketball";
+  if (c.includes("fight") || c.includes("mma") || c.includes("ufc") || c.includes("boxing") || c.includes("wwe") || c.includes("aew")) return "MMA/Boxing";
+  if (c.includes("cricket")) return "Cricket";
+  if (c.includes("football") || c.includes("soccer")) return "Football";
+  if (c.includes("hockey")) return "Hockey";
+  if (c.includes("motor") || c.includes("f1") || c.includes("racing")) return "Motorsport";
+  if (c.includes("rugby")) return "Rugby";
+  if (c.includes("tennis")) return "Tennis";
+  if (c.includes("golf")) return "Golf";
+  if (c.includes("24/7")) return "24/7 Streams";
+  return "Sports";
 }
 
 function parseCategory(id: string, language: string): string {
@@ -87,7 +143,84 @@ export async function GET() {
   const seen = new Set<string>();
   const allMatches: NormalizedMatch[] = [];
 
-  // ─── Source 1: EmbedSports (PRIMARY - returns direct embedUrl) ───
+  // ─── Source 1: DamiTV API (PRIMARY — proper embed URLs that WORK) ───
+  try {
+    const res = await fetchWithTimeout("https://dami-tv.pro/papi/api/streams", TIMEOUT_MS);
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.streams)) {
+        const categories: DamiTVCategory[] = data.streams;
+
+        for (const cat of categories) {
+          // Skip 24/7 streams — those are channels, not matches
+          if (cat.category === "24/7-streams") continue;
+
+          for (const stream of cat.streams) {
+            const id = `damitv-${stream.id}`;
+            if (seen.has(id)) continue;
+            seen.add(id);
+
+            // Build embed URL — DamiTV provides direct embed URLs
+            const embedUrl = stream.embed || stream.iframe || `https://dami-tv.pro/embed/?id=${stream.id}`;
+
+            const servers: Array<{ label: string; embedUrl: string; hd: boolean }> = [];
+
+            // Add DamiTV embed servers from sources array
+            if (Array.isArray(stream.sources) && stream.sources.length > 0) {
+              for (const src of stream.sources) {
+                if (src.embed) {
+                  servers.push({
+                    label: src.name || `DamiTV ${servers.length + 1}`,
+                    embedUrl: src.embed,
+                    hd: true,
+                  });
+                }
+              }
+            }
+
+            // Always add the main embed as first server if not already present
+            if (servers.length === 0 || !servers.some(s => s.embedUrl === embedUrl)) {
+              servers.unshift({
+                label: "DamiTV Server 1",
+                embedUrl,
+                hd: true,
+              });
+            }
+
+            // Also generate alternate DamiTV player URLs as backup servers
+            const altEmbed1 = `https://dami-tv.pro/player/hls/?v=300&resolve=${stream.id}&name=${encodeURIComponent(stream.name)}`;
+            const altEmbed2 = `https://dami-tv.pro/embed/?id=${stream.uri_name || stream.id}`;
+
+            if (!servers.some(s => s.embedUrl === altEmbed1)) {
+              servers.push({ label: "DamiTV Server 2", embedUrl: altEmbed1, hd: true });
+            }
+            if (!servers.some(s => s.embedUrl === altEmbed2)) {
+              servers.push({ label: "DamiTV Server 3", embedUrl: altEmbed2, hd: true });
+            }
+
+            const category = mapDamiCategory(stream.category_name || cat.category);
+            const leagueName = stream.league || stream.tag || "";
+
+            allMatches.push({
+              id,
+              title: stream.name,
+              category,
+              league: leagueName,
+              viewers: stream.viewers || 0,
+              hd: true,
+              poster: stream.poster || "",
+              status: stream.status || "upcoming",
+              servers,
+            });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[Live Matches] DamiTV error:", error);
+  }
+
+  // ─── Source 2: EmbedSports (adds more servers for existing matches) ───
   try {
     const res = await fetchWithTimeout("https://embedsports.top/fetch", TIMEOUT_MS);
     if (res && res.ok) {
@@ -95,7 +228,7 @@ export async function GET() {
       const streams: EmbedSportStream[] = Array.isArray(data) ? data : [];
 
       if (streams.length > 0) {
-        // Group by id — each id can have multiple streamNo (different servers)
+        // Group by id
         const grouped = new Map<string, EmbedSportStream[]>();
         for (const s of streams) {
           if (!grouped.has(s.id)) grouped.set(s.id, []);
@@ -103,22 +236,44 @@ export async function GET() {
         }
 
         for (const [id, servers] of grouped) {
-          if (seen.has(id)) continue;
-          seen.add(id);
-          const first = servers[0];
-          allMatches.push({
-            id,
-            title: formatTitle(id),
-            category: parseCategory(id, first.language),
-            league: parseLeague(id, first.language),
-            viewers: servers.reduce((sum, s) => sum + (s.viewers || 0), 0),
-            hd: servers.some(s => s.hd),
-            servers: servers.map(s => ({
-              label: `Server ${s.streamNo}${s.hd ? " HD" : ""}`,
-              embedUrl: s.embedUrl,
-              hd: s.hd,
-            })),
-          });
+          const esId = `es-${id}`;
+
+          // Try to find if this match already exists from DamiTV (dedup by title similarity)
+          const title = formatTitle(id);
+          const existing = allMatches.find(m =>
+            m.title.toLowerCase().includes(title.toLowerCase().split(" vs ")[0]) ||
+            title.toLowerCase().includes(m.title.toLowerCase().split(" vs ")[0])
+          );
+
+          if (existing) {
+            // Add EmbedSports servers as additional options
+            for (const s of servers) {
+              existing.servers.push({
+                label: `EmbedSports ${s.streamNo}${s.hd ? " HD" : ""}`,
+                embedUrl: s.embedUrl,
+                hd: s.hd,
+              });
+            }
+          } else if (!seen.has(esId)) {
+            // New match not in DamiTV — add it
+            seen.add(esId);
+            const first = servers[0];
+            allMatches.push({
+              id: esId,
+              title,
+              category: parseCategory(id, first.language),
+              league: parseLeague(id, first.language),
+              viewers: servers.reduce((sum, s) => sum + (s.viewers || 0), 0),
+              hd: servers.some(s => s.hd),
+              poster: "",
+              status: "live",
+              servers: servers.map(s => ({
+                label: `EmbedSports ${s.streamNo}${s.hd ? " HD" : ""}`,
+                embedUrl: s.embedUrl,
+                hd: s.hd,
+              })),
+            });
+          }
         }
       }
     }
@@ -126,7 +281,7 @@ export async function GET() {
     console.error("[Live Matches] EmbedSports error:", error);
   }
 
-  // ─── Source 2: VIPStreamed API ───
+  // ─── Source 3: VIPStreamed API ───
   try {
     const res = await fetchWithTimeout("https://api.vipstreamed.live/api/streams", TIMEOUT_MS);
     if (res && res.ok) {
@@ -136,45 +291,49 @@ export async function GET() {
       if (Array.isArray(streams) && streams.length > 0) {
         for (const stream of streams) {
           const s = stream as Record<string, unknown>;
-          const id = String(s.id || s.slug || "");
+          const rawId = String(s.id || s.slug || "");
+          const id = `vip-${rawId}`;
           if (!id || seen.has(id)) continue;
           seen.add(id);
 
-          const title = String(s.title || s.name || formatTitle(id));
+          const title = String(s.title || s.name || formatTitle(rawId));
           const category = String(s.category || s.sport || "Sports");
           const league = String(s.league || s.competition || "");
-          const slug = id.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+          const slug = rawId.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
           const viewers = Number(s.viewers || 0);
-          const hlsStreams = Array.isArray(s.streams) ? s.streams : [];
 
           const servers: Array<{ label: string; embedUrl: string; hd: boolean }> = [];
 
-          // Add HLS proxy URLs if available
+          // Add VIPStreamed HLS proxy URLs if available
+          const hlsStreams = Array.isArray(s.streams) ? s.streams : [];
           for (const q of hlsStreams) {
             const qual = q as Record<string, unknown>;
             if (qual.proxy_url) {
               servers.push({
-                label: `${String(qual.quality || "HD")} (HLS)`,
+                label: `VIPStreamed ${String(qual.quality || "HD")}`,
                 embedUrl: String(qual.proxy_url),
                 hd: String(qual.quality || "").includes("1080") || String(qual.quality || "").includes("720"),
               });
             }
           }
 
-          // Add EmbedSports embeds
+          // Add embedsports embeds as backups
           servers.push(
-            { label: "Server 1 HD", embedUrl: `https://embedsports.top/embed/admin/${slug}/1`, hd: true },
-            { label: "Server 2", embedUrl: `https://embedsports.top/embed/admin/${slug}/2`, hd: false },
+            { label: "EmbedSports 1 HD", embedUrl: `https://embedsports.top/embed/admin/${slug}/1`, hd: true },
+            { label: "EmbedSports 2", embedUrl: `https://embedsports.top/embed/admin/${slug}/2`, hd: false },
           );
 
-          // Add NTV embed
-          servers.push({
-            label: "Server 3",
-            embedUrl: `https://ntv.cx/embed?t=${Buffer.from(slug).toString("base64")}`,
-            hd: false,
+          allMatches.push({
+            id,
+            title,
+            category,
+            league,
+            viewers,
+            hd: true,
+            poster: String(s.poster || ""),
+            status: "live",
+            servers,
           });
-
-          allMatches.push({ id, title, category, league, viewers, hd: true, servers });
         }
       }
     }
@@ -182,7 +341,7 @@ export async function GET() {
     console.error("[Live Matches] VIPStreamed error:", error);
   }
 
-  // ─── Source 3: WatchFooty API ───
+  // ─── Source 4: WatchFooty API ───
   try {
     const res = await fetchWithTimeout("https://api.watchfooty.st/api/v1/matches/live", TIMEOUT_MS);
     if (res && res.ok) {
@@ -191,27 +350,44 @@ export async function GET() {
       if (Array.isArray(matches)) {
         for (const m of matches.slice(0, 30)) {
           const match = m as Record<string, unknown>;
-          const id = String(match.slug || match.id || "");
-          if (!id || seen.has(String(id))) continue;
-          seen.add(String(id));
+          const rawId = String(match.slug || match.id || "");
+          const id = `wf-${rawId}`;
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
 
-          const title = String(match.title || match.name || match.match || `Live Match`);
+          const title = String(match.title || match.name || match.match || "Live Match");
           const category = String(match.sport || match.category || "Sports");
-          const slug = String(id).toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+          const league = String(match.league || match.competition || "");
+          const slug = rawId.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 
-          allMatches.push({
-            id: String(id),
-            title,
-            category,
-            league: String(match.league || match.competition || ""),
-            viewers: Number(match.viewers || 0),
-            hd: true,
-            servers: [
-              { label: "Server 1 HD", embedUrl: `https://embedsports.top/embed/admin/${slug}/1`, hd: true },
-              { label: "Server 2", embedUrl: `https://embedsports.top/embed/admin/${slug}/2`, hd: false },
-              { label: "Server 3", embedUrl: `https://ntv.cx/embed?t=${Buffer.from(slug).toString("base64")}`, hd: false },
-            ],
-          });
+          // Try to find existing match from DamiTV for dedup
+          const existing = allMatches.find(m2 =>
+            m2.title.toLowerCase().includes(title.toLowerCase().split(" vs ")[0]) ||
+            title.toLowerCase().includes(m2.title.toLowerCase().split(" vs ")[0])
+          );
+
+          if (existing) {
+            // Add WatchFooty servers as additional options
+            existing.servers.push(
+              { label: "WatchFooty 1", embedUrl: `https://embedsports.top/embed/admin/${slug}/1`, hd: true },
+              { label: "WatchFooty 2", embedUrl: `https://embedsports.top/embed/admin/${slug}/2`, hd: false },
+            );
+          } else {
+            allMatches.push({
+              id,
+              title,
+              category,
+              league,
+              viewers: Number(match.viewers || 0),
+              hd: true,
+              poster: String(match.poster || ""),
+              status: "live",
+              servers: [
+                { label: "WatchFooty 1 HD", embedUrl: `https://embedsports.top/embed/admin/${slug}/1`, hd: true },
+                { label: "WatchFooty 2", embedUrl: `https://embedsports.top/embed/admin/${slug}/2`, hd: false },
+              ],
+            });
+          }
         }
       }
     }
@@ -219,46 +395,12 @@ export async function GET() {
     console.error("[Live Matches] WatchFooty error:", error);
   }
 
-  // ─── Source 4: DLHD API ───
-  try {
-    const res = await fetchWithTimeout("https://dlhd.pk/api.php", TIMEOUT_MS);
-    if (res && res.ok) {
-      const data = await res.json();
-      const arr = Array.isArray(data) ? data : data?.channels || data?.data || [];
-      if (Array.isArray(arr)) {
-        for (const item of arr.slice(0, 20)) {
-          const raw = item as Record<string, unknown>;
-          const id = String(raw.id || raw.channel_id || "");
-          if (!id || seen.has(`dlhd-${id}`)) continue;
-          seen.add(`dlhd-${id}`);
-
-          const title = String(raw.name || raw.channel || raw.title || `Live Stream`);
-          const category = String(raw.category || raw.group || raw.type || "Sports");
-          const slug = String(raw.slug || id).toLowerCase().replace(/[^a-z0-9-]+/g, "-");
-          const embedUrl = String(raw.embedUrl || raw.embed_url || raw.url || `https://dlhd.pk/stream/stream-${id}.php`);
-
-          allMatches.push({
-            id: `dlhd-${id}`,
-            title,
-            category,
-            league: "",
-            viewers: 0,
-            hd: true,
-            servers: [
-              { label: "Server 1 HD", embedUrl: `https://embedsports.top/embed/admin/${slug}/1`, hd: true },
-              { label: "Server 2", embedUrl, hd: false },
-              { label: "Server 3", embedUrl: `https://ntv.cx/embed?t=${Buffer.from(slug).toString("base64")}`, hd: false },
-            ],
-          });
-        }
-      }
-    }
-  } catch (error) {
-    console.error("[Live Matches] DLHD error:", error);
-  }
-
-  // Sort by viewers descending
-  allMatches.sort((a, b) => b.viewers - a.viewers);
+  // Sort: live matches first, then by viewers descending
+  allMatches.sort((a, b) => {
+    if (a.status === "live" && b.status !== "live") return -1;
+    if (a.status !== "live" && b.status === "live") return 1;
+    return b.viewers - a.viewers;
+  });
 
   return NextResponse.json(allMatches);
 }

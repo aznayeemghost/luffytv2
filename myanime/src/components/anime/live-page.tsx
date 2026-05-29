@@ -20,6 +20,8 @@ interface LiveMatch {
   league: string;
   viewers: number;
   hd: boolean;
+  poster: string;
+  status: string;
   servers: ServerInfo[];
 }
 
@@ -139,11 +141,15 @@ const sportStyles: Record<string, { gradient: string; accent: string; bg: string
   "mma/boxing": { gradient: "from-rose-500/25 via-rose-600/10 to-transparent", accent: "text-rose-400", bg: "bg-rose-500/10", emoji: "🥊" },
   mma: { gradient: "from-rose-500/25 via-rose-600/10 to-transparent", accent: "text-rose-400", bg: "bg-rose-500/10", emoji: "🥊" },
   boxing: { gradient: "from-rose-500/25 via-rose-600/10 to-transparent", accent: "text-rose-400", bg: "bg-rose-500/10", emoji: "🥊" },
+  fight: { gradient: "from-rose-500/25 via-rose-600/10 to-transparent", accent: "text-rose-400", bg: "bg-rose-500/10", emoji: "🥊" },
   baseball: { gradient: "from-red-500/25 via-red-600/10 to-transparent", accent: "text-red-400", bg: "bg-red-500/10", emoji: "⚾" },
   hockey: { gradient: "from-cyan-500/25 via-cyan-600/10 to-transparent", accent: "text-cyan-400", bg: "bg-cyan-500/10", emoji: "🏒" },
   tennis: { gradient: "from-lime-500/25 via-lime-600/10 to-transparent", accent: "text-lime-400", bg: "bg-lime-500/10", emoji: "🎾" },
   motorsport: { gradient: "from-violet-500/25 via-violet-600/10 to-transparent", accent: "text-violet-400", bg: "bg-violet-500/10", emoji: "🏎️" },
+  "motor-sports": { gradient: "from-violet-500/25 via-violet-600/10 to-transparent", accent: "text-violet-400", bg: "bg-violet-500/10", emoji: "🏎️" },
   rugby: { gradient: "from-teal-500/25 via-teal-600/10 to-transparent", accent: "text-teal-400", bg: "bg-teal-500/10", emoji: "🏉" },
+  "american football": { gradient: "from-amber-700/25 via-amber-800/10 to-transparent", accent: "text-amber-300", bg: "bg-amber-700/10", emoji: "🏈" },
+  afl: { gradient: "from-teal-500/25 via-teal-600/10 to-transparent", accent: "text-teal-400", bg: "bg-teal-500/10", emoji: "🏉" },
   golf: { gradient: "from-green-500/25 via-green-600/10 to-transparent", accent: "text-green-400", bg: "bg-green-500/10", emoji: "⛳" },
   sports: { gradient: "from-[#7c6cf0]/25 via-[#7c6cf0]/10 to-transparent", accent: "text-[#a78bfa]", bg: "bg-[#7c6cf0]/10", emoji: "📺" },
 };
@@ -239,7 +245,6 @@ export default function LivePage() {
       servers: JSON.stringify(match.servers),
     });
   };
-
   const handleWatchChannel = (channel: Channel) => {
     const servers: ServerInfo[] = channel.servers.map(s => ({
       label: s.label,
@@ -255,7 +260,6 @@ export default function LivePage() {
     });
   };
 
-  // Categories
   const categories = Array.from(new Set(matches.map(m => m.category).filter(Boolean))).sort();
   const channelCategories = Array.from(new Set(channels.map(c => c.category).filter(Boolean))).sort();
 
@@ -521,11 +525,17 @@ export default function LivePage() {
                         }}
                       />
 
-                      {/* Live Badge */}
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/90 backdrop-blur-sm shadow-lg shadow-red-500/20">
-                        <LivePulse size="sm" />
-                        <span className="text-[9px] font-bold text-white" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>LIVE</span>
-                      </div>
+                      {/* Live/Upcoming Badge */}
+                      {match.status === "live" ? (
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/90 backdrop-blur-sm shadow-lg shadow-red-500/20">
+                          <LivePulse size="sm" />
+                          <span className="text-[9px] font-bold text-white" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>LIVE</span>
+                        </div>
+                      ) : (
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/70 backdrop-blur-sm shadow-lg shadow-blue-500/20">
+                          <span className="text-[9px] font-bold text-white" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>UPCOMING</span>
+                        </div>
+                      )}
 
                       {/* HD Badge */}
                       {match.hd && (
@@ -534,11 +544,23 @@ export default function LivePage() {
                         </div>
                       )}
 
-                      {/* Sport Emoji + Icon */}
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-3xl opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all duration-500">
-                          {style.emoji}
-                        </span>
+                      {/* Sport Emoji + Poster */}
+                      {match.poster ? (
+                        <img
+                          src={match.poster}
+                          alt={match.title}
+                          className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      ) : null}
+                      <div className="flex flex-col items-center gap-1 relative z-10">
+                        {!match.poster && (
+                          <span className="text-3xl opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all duration-500">
+                            {style.emoji}
+                          </span>
+                        )}
                       </div>
 
                       {/* Viewers */}

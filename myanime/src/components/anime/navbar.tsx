@@ -127,10 +127,11 @@ export default function Navbar() {
         <polyline points="9 22 9 12 15 12 15 22" />
       </svg>
     )},
-    { id: "guide", label: "Guide", icon: () => (
+    { id: "live", label: "Live", icon: () => (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="M4.5 12a7.5 7.5 0 0115 0" />
+        <path d="M1.5 12a10.5 10.5 0 0121 0" />
       </svg>
     )},
     { id: "watchnow", label: "Watch", icon: () => (
@@ -138,10 +139,10 @@ export default function Navbar() {
         <polygon points="5 3 19 12 5 21 5 3" />
       </svg>
     )},
-    { id: "features", label: "Features", icon: () => (
+    { id: "guide", label: "Guide", icon: () => (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.18V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0-1.18-2.82H3a2 2 0 0 1 0-4h.09" />
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
       </svg>
     )},
     { id: "contact", label: "Contact", icon: () => (
@@ -154,24 +155,19 @@ export default function Navbar() {
 
   const isBottomActive = (id: string) => {
     if (id === "home" && route.page === "home") return true;
+    if (id === "live" && (route.page === "live" || route.page === "live-watch")) return true;
     if (id === "guide" && route.page === "guide") return true;
     if (id === "watchnow" && route.page === "watchnow") return true;
     if (id === "watchnow" && ["dub", "movies", "tv", "manga", "anime", "watch", "movie-detail", "tv-detail", "movie-watch", "tv-watch", "manga-detail", "manga-read"].includes(route.page)) return true;
-    if (id === "features" && route.page === "features") return true;
     if (id === "contact" && route.page === "contact") return true;
     return false;
   };
 
   const handleBottomNav = (id: string) => {
     if (id === "home") navigate({ page: "home" });
+    else if (id === "live") navigate({ page: "live" });
     else if (id === "guide") navigate({ page: "guide" });
     else if (id === "watchnow") navigate({ page: "watchnow" });
-    else if (id === "features") {
-      if (route.page === "home") {
-        const el = document.getElementById("features-section");
-        if (el) el.scrollIntoView({ behavior: "smooth" });
-      } else navigate({ page: "features" });
-    }
     else if (id === "contact") navigate({ page: "contact" });
   };
 
@@ -228,15 +224,28 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* CTA — Watch Now (purple + white) */}
-          <button
-            onClick={() => navigate({ page: "watchnow" })}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-full text-[12px] font-bold tracking-[0.04em] uppercase bg-[#7c6cf0] text-white hover:bg-[#6b5ce0] hover:shadow-[0_0_20px_rgba(124,108,240,0.4)] transition-all"
-            style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-            Watch Now
-          </button>
+          {/* CTA — Live TV + Watch Now */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate({ page: "live" })}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold tracking-[0.04em] uppercase bg-red-500/80 text-white hover:bg-red-600 hover:shadow-[0_0_16px_rgba(239,68,68,0.4)] transition-all"
+              style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+              </span>
+              LIVE
+            </button>
+            <button
+              onClick={() => navigate({ page: "watchnow" })}
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold tracking-[0.04em] uppercase bg-[#7c6cf0] text-white hover:bg-[#6b5ce0] hover:shadow-[0_0_20px_rgba(124,108,240,0.4)] transition-all"
+              style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+              Watch Now
+            </button>
+          </div>
 
           {/* Mobile: search + hamburger */}
           <div className="flex md:hidden items-center gap-1">
