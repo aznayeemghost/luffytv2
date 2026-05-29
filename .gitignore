@@ -5,3 +5,6 @@ node_modules/
 *.pyc
 __pycache__/
 .vercel
+download_full_commit.py
+download_old_commit.py
+restore_all.py
