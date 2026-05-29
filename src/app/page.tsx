@@ -157,6 +157,11 @@ export default function MainPage() {
         if (newRoute.page === "live-watch" && current.page === "live-watch" && newRoute.matchId === current.matchId) {
           return;
         }
+        // Same guard for live-tv-watch: preserve rich channel data (embedUrl, etc.)
+        // navigate() stores full channel data but parseHash() would lose it
+        if (newRoute.page === "live-tv-watch" && current.page === "live-tv-watch" && newRoute.channelId === current.channelId) {
+          return;
+        }
         useAppStore.setState({ route: newRoute });
       }
     };
