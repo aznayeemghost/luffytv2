@@ -3,17 +3,18 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAppStore } from "./store";
 import LiveNewsPage from "./live-news-page";
+import LiveTVPage from "./live-tv-page";
 
 // ============================================================
 // LIVE TV & SPORTS — WatchFooty-Style Complete Redesign
 // Single scroll page with:
 // A. News Ticker Bar (marquee, top)
-// B. Sport Navigation Bar (sticky)
+// B. Sport Navigation Bar (sticky) + LIVE TV / NEWS tabs
 // C. Sports Category Cards (horizontal scroll)
 // D. Popular Live Section (landscape poster cards)
 // E. All Matches Section (grouped by sport/time, vertical list)
 // F. News Section (grid at bottom)
-// Sub-pages: Live TV, Sports, News (no 24/7 Live)
+// Sub-pages: Live TV (900+ channels), News
 // ============================================================
 
 const WF_BASE = "https://api.watchfooty.st";
@@ -234,48 +235,58 @@ function Stream247Card({ stream, onWatch }: { stream: Stream247; onWatch: (s: St
   return (
     <button
       onClick={() => onWatch(stream)}
-      className="group relative flex-shrink-0 w-full rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl cursor-pointer border border-white/[0.08] hover:border-white/[0.18]"
+      className="group relative flex-shrink-0 w-[280px] sm:w-[320px] md:w-[360px] rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl cursor-pointer border border-white/[0.08] hover:border-white/[0.18]"
     >
-      <div className="relative flex items-center gap-4 p-4 sm:p-5" style={{ background: `linear-gradient(135deg, ${stream.color}18, ${stream.color}08, #0d0d12)` }}>
-        {/* Left: Channel icon */}
-        <div
-          className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-2xl sm:text-3xl"
-          style={{
-            background: `linear-gradient(135deg, ${stream.color}30, ${stream.color}15)`,
-            border: `1.5px solid ${stream.color}40`,
-          }}
-        >
+      {/* Poster background with gradient */}
+      <div className="relative h-[180px] sm:h-[200px]" style={{ background: `linear-gradient(135deg, ${stream.color}35, ${stream.color}15, #0d0d12)` }}>
+        {/* Sport icon as watermark */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-10 text-[80px]">
           {stream.icon}
         </div>
 
-        {/* Middle: Channel info */}
-        <div className="flex-1 min-w-0 text-left">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-base sm:text-lg font-black text-white" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
-              {stream.name}
-            </h3>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-600 text-white text-[8px] font-black uppercase tracking-wider shadow-lg">
-              <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
-              LIVE 24/7
-            </span>
-          </div>
-          <p className="text-[11px] sm:text-[12px] text-white/40 font-medium">{stream.description}</p>
+        {/* Dark gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+        {/* Top-left: LIVE 24/7 badge */}
+        <div className="absolute top-3 left-3 z-10">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            LIVE 24/7
+          </span>
         </div>
 
-        {/* Right: Watch button */}
-        <div className="flex-shrink-0">
+        {/* Top-right: Category badge */}
+        <div className="absolute top-3 right-3 z-10">
           <span
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase text-white transition-all group-hover:opacity-90"
-            style={{
-              background: `linear-gradient(135deg, ${stream.color}35, ${stream.color}18)`,
-              border: `1px solid ${stream.color}30`,
-            }}
+            className="px-2 py-1 rounded-md text-[9px] font-bold"
+            style={{ background: `${stream.color}25`, color: stream.color, border: `1px solid ${stream.color}30` }}
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            Watch Now
+            {stream.category}
           </span>
+        </div>
+
+        {/* Bottom: Channel name + description + Watch button */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+          <div className="flex items-end justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-black text-white mb-0.5" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
+                {stream.name}
+              </h3>
+              <p className="text-[11px] text-white/40 font-medium truncate">{stream.description}</p>
+            </div>
+            <span
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold uppercase text-white transition-all group-hover:opacity-90"
+              style={{
+                background: `linear-gradient(135deg, ${stream.color}40, ${stream.color}20)`,
+                border: `1px solid ${stream.color}30`,
+              }}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              Watch
+            </span>
+          </div>
         </div>
       </div>
     </button>
@@ -639,6 +650,7 @@ export default function LivePage() {
   // ── Refs ──
   const sportCardsRef = useRef<HTMLDivElement>(null);
   const popularRef = useRef<HTMLDivElement>(null);
+  const stream247Ref = useRef<HTMLDivElement>(null);
 
   // ── Fetch data ──
   const fetchData = useCallback(async () => {
@@ -884,6 +896,11 @@ export default function LivePage() {
     return <LiveNewsPage />;
   }
 
+  // ── Tab: If on tv-channels sub-page, render LiveTVPage instead ──
+  if (sectionSubPage === "tv-channels") {
+    return <LiveTVPage />;
+  }
+
   return (
     <div className="min-h-screen pb-8 -mx-4 lg:-mx-8">
 
@@ -909,6 +926,46 @@ export default function LivePage() {
             </svg>
             Home
           </button>
+
+          {/* Tab Buttons: LIVE SPORTS | LIVE TV | NEWS */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={() => setSectionSubPage("sports")}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                sectionSubPage === "sports" || !sectionSubPage || sectionSubPage === "home"
+                  ? "bg-[#7c6cf0]/20 text-[#7c6cf0] border border-[#7c6cf0]/30"
+                  : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+              }`}
+              style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+            >
+              ⚽ Live Sports
+            </button>
+            <button
+              onClick={() => setSectionSubPage("tv-channels")}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                sectionSubPage === "tv-channels"
+                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                  : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+              }`}
+              style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+            >
+              📺 Live TV
+            </button>
+            <button
+              onClick={() => setSectionSubPage("news")}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                sectionSubPage === "news"
+                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                  : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+              }`}
+              style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}
+            >
+              📰 News
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-white/[0.06] flex-shrink-0" />
 
           {/* Live Only Toggle */}
           <button
@@ -1018,17 +1075,31 @@ export default function LivePage() {
         {!loading && (
           <>
             {/* ══════════════════════════════════════════
-                24/7 STREAMS — Always-live channels (TOP OF PAGE)
+                24/7 STREAMS — Poster Slider (TOP OF PAGE)
                 ══════════════════════════════════════════ */}
             {STREAMS_247.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space-mono), 'Space Mono', monospace" }}>
-                    <span className="text-base">📡</span> 24/7 Streams
+                    <span className="text-base">📡</span> 24/7 Live Streams
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">ALWAYS LIVE</span>
                   </h2>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => stream247Ref.current?.scrollBy({ left: -400, behavior: "smooth" })}
+                      className="p-1 rounded-lg bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <button
+                      onClick={() => stream247Ref.current?.scrollBy({ left: 400, behavior: "smooth" })}
+                      className="p-1 rounded-lg bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-3">
+                <div ref={stream247Ref} className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory">
                   {STREAMS_247.map(stream => (
                     <Stream247Card key={stream.id} stream={stream} onWatch={handleWatch247} />
                   ))}
