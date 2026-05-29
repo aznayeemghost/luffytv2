@@ -97,3 +97,42 @@ Stage Summary:
 - Poster images from DamiTV API
 - Live TV accessible via red LIVE button in navbar + mobile bottom nav
 - All changes pushed to luffytv-tasin remote
+---
+Task ID: 2
+Agent: Main
+Task: Rework Live TV with DLHD 900+ channels + DamiTV player format + logos from channels.json
+
+Work Log:
+- Fetched and parsed DLHD 24-7-channels.php HTML structure
+  - Found 900 channels with pattern: href="/watch.php?id={id}" data-title="{name}" data-first="{letter}"
+  - ID used as `resolve` parameter in DamiTV player URL
+  - card__title used as channel name
+- Fetched DamiTV channels.json (371 channels with logos)
+  - Structure: { name, logo, iframeUrl, defaultUrl, country, source: "cdnlivetv" }
+  - All have CDN-stream URLs: https://dami-tv.pro/cdn-stream/{encoded_name}
+- Built fuzzy name matching: 361 out of 900 DLHD channels matched to DamiTV logos
+- Rewrote /api/live/channels/route.ts:
+  - Source 1: DLHD 24-7-channels.php — parse HTML → extract id + name + letter
+  - Source 2: DamiTV channels.json — additional CDN channels with logos
+  - Build DamiTV player embed: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={encoded_name}
+  - DLHD embed as backup: https://daddylive.org/embed/embed.php?id={id}&player=1&source=tv.json
+  - Category auto-classification: Sports, News, Entertainment, Kids, Music
+  - 18+ channels filtered out
+- Reworked Live TV channels UI in live-page.tsx:
+  - Letter-based quick-jump navigation (A, B, C... with counts)
+  - Grid layout: 2-6 columns depending on screen size
+  - Channel cards with logos (from DamiTV), name, category badge
+  - First-letter fallback for channels without logos
+  - Purple play button overlay on hover
+  - Category filters with counts
+  - Letter-grouped sections with dividers
+- Build verified successful
+- Pushed to GitHub: fahadulalim93-cloud/luffytv-tasin (commit 939ac43)
+
+Stage Summary:
+- 900+ TV channels from DLHD with DamiTV player embed URLs
+- DamiTV player format: https://dami-tv.pro/player/hls/?v=300&resolve={id}&name={encoded_name}
+- 361 channels have logos from DamiTV channels.json
+- Letter-based quick-jump navigation for easy browsing
+- Category auto-classification working
+- All changes pushed to luffytv-tasin remote
