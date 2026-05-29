@@ -156,9 +156,11 @@ export default function LiveTVWatchPage(props: LiveTVWatchProps) {
   // Determine channel source
   const isDami = props.channelId.startsWith("dami-");
   const isSF = props.channelId.startsWith("sf-");
-  // Detect EmbedSports-only 24/7 channels (embedUrl contains embedsports.top)
-  // These should skip StreamFree server building and use EmbedSports directly
-  const isEmbedSportsOnly = isSF && props.channelEmbedUrl.includes("embedsports.top");
+  // Detect EmbedSports-only 24/7 channels:
+  // 1. embedUrl contains embedsports.top, OR
+  // 2. Known EmbedSports channel IDs (always have EmbedSports servers)
+  const EMBEDSPORTS_ONLY_IDS = new Set(["sf-willow"]);
+  const isEmbedSportsOnly = EMBEDSPORTS_ONLY_IDS.has(props.channelId) || (isSF && props.channelEmbedUrl.includes("embedsports.top"));
 
   // Extract DamiTV data from embed URL
   // damiResolveId: The numeric channel ID for the resolve API (e.g., "0", "1", "375")
